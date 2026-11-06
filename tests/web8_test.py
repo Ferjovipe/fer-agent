@@ -72,7 +72,8 @@ try:
         # ---------- Built-in agents ----------
         page.click("#openBuiltIn"); page.wait_for_selector("#builtInView .builtin-agent")
         cards = page.eval_on_selector_all("#builtInView .builtin-agent .builtin-name", "bs => bs.map(b => b.textContent)")
-        check(len(cards) == 9 and "Sabio 2" in cards and "Jefe" in cards and not any("Consejera" in t for t in cards), f"“Agentes de serie”: the 9 that come with it, with “Sabio 2” ({cards})")
+        check(len(cards) == 10 and cards[-1] == "Correo" and "Sabio 2" in cards and "Jefe" in cards and not any("Consejera" in t for t in cards),
+              f"“Agentes de serie”: the 9 of the recommended team, with “Sabio 2”, and Correo (v9) on its own ({cards})")
         check(page.is_visible("#builtInView .builtin-agent:has-text('Jefe') >> text=Siempre está") and page.is_visible("#builtInView button:text-is('Instalar el equipo recomendado (faltan 8)')"), "the boss is already there; button “Instalar el equipo recomendado (faltan 8)”")
         check(personal(page.inner_text("#builtInView")) == [], f"the built-in page, with no personal references: {personal(page.inner_text('#builtInView'))}")
         photo(page, "3-built-in-agents")
