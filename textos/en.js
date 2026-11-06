@@ -1488,4 +1488,10 @@ export default {
   "Carpeta guardada. La aplicación se vuelve a abrir para usarla.": "Folder saved. The app reopens to use it.",
   "Cambiar la carpeta": "Change the folder",
   "Esa carpeta no existe.": "That folder doesn't exist.",
+  "Descargar la aplicación": "Download the app",
+  "Código abierto · Gratis · Mac, Windows o en el navegador · Funciona con tu clave de OpenRouter o con la API de tu suscripción": "Open source · Free · Mac, Windows or in the browser · Works with your OpenRouter key or your subscription's API",
+  "El mismo edificio funciona en cuatro sitios, y te lo llevas de uno a otro con una copia.": "The same building works in four places, and you take it from one to another with a backup.",
+  "En tu ordenador": "On your computer",
+  "La aplicación de Mac y Windows: se instala con doble clic y los agentes tienen manos (navegan, leen y escriben en su carpeta).": "The Mac and Windows app: it installs with a double click and the agents get hands (they browse, and read and write in their folder).",
+  "Descargar": "Download",
 };

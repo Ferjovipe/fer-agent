@@ -91,6 +91,8 @@ try:
         page.on("pageerror", lambda e: errores.append(str(e)))
         page.goto(URL); page.wait_for_selector("#landing .heroe-txt")
         # ---------- Portada ----------
+        bajar = page.locator("#landing .heroe .boton-borde")
+        check(bajar.inner_text() == "Download the app" and bajar.get_attribute("href") == "https://github.com/Ferjovipe/fer-agent/releases/latest", "en la portada, «Download the app»: a la última versión en GitHub, sin pedir nada")
         aviso = page.inner_text("#landing .aviso-l")
         check(aviso.startswith("Fer Agent is free, open-source software, provided “as is”") and "at your own risk" in aviso, f"el aviso de responsabilidad, en inglés: «{aviso[:70]}»")
         check(page.inner_text("#landing h1") == "You have an agentic company at your service." and page.get_attribute(".idiomas-landing button[lang='en']", "aria-pressed") == "true",

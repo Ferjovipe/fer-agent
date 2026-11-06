@@ -1492,4 +1492,10 @@ export default {
   "Carpeta guardada. La aplicación se vuelve a abrir para usarla.": "",
   "Cambiar la carpeta": "",
   "Esa carpeta no existe.": "",
+  "Descargar la aplicación": "",
+  "Código abierto · Gratis · Mac, Windows o en el navegador · Funciona con tu clave de OpenRouter o con la API de tu suscripción": "",
+  "El mismo edificio funciona en cuatro sitios, y te lo llevas de uno a otro con una copia.": "",
+  "En tu ordenador": "",
+  "La aplicación de Mac y Windows: se instala con doble clic y los agentes tienen manos (navegan, leen y escriben en su carpeta).": "",
+  "Descargar": "",
 };

@@ -37,6 +37,7 @@ const check = (c, t) => { console.log((c ? "PASS " : "FAIL ") + t); ok = ok && !
   check(await win.evaluate(() => !!(window.ferApp && window.ferApp.elegirCarpeta && window.ferApp.reiniciar)) && await win.evaluate(() => typeof require === "undefined"),
     "la ventana solo puede pedir elegir carpeta y volver a abrirse (sin acceso al ordenador)");
   check((await win.innerText("#landing h1")) === "You have an agentic company at your service.", "un ordenador en inglés, la aplicación en inglés");
+  check((await win.locator("#landing .boton-borde").count()) === 0, "dentro de la aplicación no sale «Download the app»");
   await win.screenshot({ path: path.join(SALIDA, "app9-humo-portada.png") });
   await win.waitForTimeout(2000);
   await win.click("#landing .boton-grande >> nth=0");

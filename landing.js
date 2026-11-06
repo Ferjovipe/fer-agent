@@ -3,6 +3,8 @@
 // Todos los textos pasan por tr() (textos.js): se traducen sin tocar este archivo.
 // =====================================================================
 // figura(aspecto, img): pinta el personaje con sus colores dentro de la imagen
+// La descarga de la aplicación: la última versión publicada en GitHub (sin registro)
+const DESCARGA = "https://github.com/Ferjovipe/fer-agent/releases/latest";
 export function pintarLanding(cont, { h, entrar, figura, idiomas, idioma, cambiarIdioma }) {
   cont.innerHTML = "";
   const SERIE = [
@@ -24,8 +26,11 @@ export function pintarLanding(cont, { h, entrar, figura, idiomas, idioma, cambia
         h("span", { class: "marca-landing" }, "Fer Agent"),
         h("h1", {}, "Tienes una empresa agéntica a tu servicio."),
         h("p", {}, "Nosotros ponemos la base. Tú decides el organigrama y qué hace cada agente."),
-        h("button", { class: "boton-grande", type: "button", onclick: entrar }, "Entrar en el edificio"),
-        h("span", { class: "letra-pequena" }, "Código abierto · Funciona con tu clave de OpenRouter o con la API de tu suscripción")),
+        h("div", { class: "botones-heroe" },
+          h("button", { class: "boton-grande", type: "button", onclick: entrar }, "Entrar en el edificio"),
+          // la aplicación de Mac y Windows, sin pedir nada (no se enseña dentro de la propia aplicación)
+          /Electron\//.test(navigator.userAgent) ? null : h("a", { class: "boton-borde", href: DESCARGA, target: "_blank", rel: "noopener" }, "Descargar la aplicación")),
+        h("span", { class: "letra-pequena" }, "Código abierto · Gratis · Mac, Windows o en el navegador · Funciona con tu clave de OpenRouter o con la API de tu suscripción")),
       h("button", { class: "bajar", type: "button", onclick: () => cont.querySelector(".seccion-l").scrollIntoView({ behavior: "smooth" }) }, "Cómo funciona ↓")),
     h("section", { class: "seccion-l" },
       h("h2", {}, "Cómo funciona"),
@@ -48,8 +53,10 @@ export function pintarLanding(cont, { h, entrar, figura, idiomas, idioma, cambia
         h("div", {}, h("b", {}, "El contador, siempre a la vista"), h("span", {}, "Lo que gasta cada agente, cada planta y el edificio entero.")))),
     h("section", { class: "seccion-l" },
       h("h2", {}, "Vive donde quieras"),
-      h("p", {}, "El mismo edificio funciona en tres sitios, y te lo llevas de uno a otro con una copia."),
+      h("p", {}, "El mismo edificio funciona en cuatro sitios, y te lo llevas de uno a otro con una copia."),
       h("div", { class: "lugares" },
+        h("div", {}, h("b", {}, "En tu ordenador"), h("span", {}, "La aplicación de Mac y Windows: se instala con doble clic y los agentes tienen manos (navegan, leen y escriben en su carpeta)."),
+          /Electron\//.test(navigator.userAgent) ? null : h("a", { href: DESCARGA, target: "_blank", rel: "noopener" }, "Descargar")),
         h("div", {}, h("b", {}, "En tu navegador"), h("span", {}, "Sin instalar nada. Los agentes trabajan mientras la web esté abierta.")),
         h("div", {}, h("b", {}, "En un ordenador o un móvil encendidos"), h("span", {}, "Fer Casa lo mantiene trabajando las 24 horas, con todo lo demás cerrado.")),
         h("div", {}, h("b", {}, "En la nube"), h("span", {}, "El mismo programa en un servidor alquilado.")))),
