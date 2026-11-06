@@ -1,11 +1,12 @@
-# Fer Home (fer-casa.mjs) keeps the keys and the building here: never in the repository
+# Fer Home (fer-home.mjs) keeps the keys and the building here: never in the repository
+data/
 datos/
 config.json
 # Dependencies and leftovers
 node_modules/
 .DS_Store
 # Test outputs
-pruebas/capturas/
+tests/screenshots/
 __pycache__/
 # The app: what gets built
 dist/

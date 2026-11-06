@@ -1,0 +1,12 @@
+---
+name: read-file
+title: Read from its folder
+description: Reads a text file from the agents' folder on your computer, or lists what's in one of its subfolders. It can't leave that folder.
+effect: read
+fixed: false
+data: {"path": "notes/example.md"}
+script: read.mjs
+---
+# Read from its folder
+
+The agents have a folder of their own on your computer (by default, "data/agent-files" inside Fer Home). This skill reads a text file from there (.txt, .md, .csv, .json…) or lists a subfolder. It can never read outside that folder.

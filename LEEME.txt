@@ -11,14 +11,14 @@ Qué hay en esta carpeta
 index.html, app.js        La web: el edificio, cada planta, el chat con cada agente, las fichas, la
                           bandeja, el agente del mes, las reuniones, el gasto y los ajustes.
 landing.js                La portada.
-textos.js, textos/        Los idiomas: el programa está escrito en inglés; textos/es.js es la traducción al
+languages.js, languages/  Los idiomas: el programa está escrito en inglés; languages/es.js es la traducción al
                           español (y el modelo para traducir a cualquier otro idioma).
 README.md                 La portada en GitHub, en inglés.
-personajes.js, img/       Los diez personajes y los trozos del dibujo del edificio.
+characters.js, img/       Los diez personajes y los trozos del dibujo del edificio.
 engine.js                 El motor. Lo usan igual la web y Fer Casa.
-fer-casa.mjs              Fer Casa: el mismo edificio encendido las 24 horas en un ordenador, y las manos.
-manos.mjs, skills/        Las manos de los agentes (solo con Fer Casa): su Chrome, su carpeta y las skills.
-pruebas/                  Las pruebas automáticas (no hacen falta para usarlo).
+fer-home.mjs              Fer Casa: el mismo edificio encendido las 24 horas en un ordenador, y las manos.
+hands.mjs, skills/        Las manos de los agentes (solo con Fer Casa): su Chrome, su carpeta y las skills.
+tests/                    Las pruebas automáticas (no hacen falta para usarlo).
 
 
 Versión 9.0
@@ -38,8 +38,8 @@ La aplicación de escritorio (Mac y Windows). Es el mismo edificio con Fer Home 
     tú una vez en tus webs (correo, redes…). Usa el Google Chrome que tengas instalado.
   - Ajustes → Cerebro → «Cambiar la carpeta»: si eliges una carpeta dentro de Google Drive para
     ordenador, el cerebro también está en Drive y en Obsidian.
-  - Los datos: en un Mac, ~/Library/Application Support/Fer Agent/datos; en Windows,
-    %APPDATA%\Fer Agent\datos. Ahí queda también fer-agent.log, por si algo falla.
+  - Los datos: en un Mac, ~/Library/Application Support/Fer Agent/data; en Windows,
+    %APPDATA%\Fer Agent\data. Ahí queda también fer-agent.log, por si algo falla.
   - En el Mac, cerrar la ventana no apaga el edificio (sigue en el Dock); en Windows, sí.
 
 
@@ -55,7 +55,7 @@ Los últimos detalles del inglés:
   - Lo que escribiste tú (un agente renombrado, una planta tuya, instrucciones que cambiaste) se
     queda como lo escribiste. En Ajustes, «Volver a los nombres de serie» devuelve a los agentes de
     serie su nombre oficial en el idioma del edificio; lo que creaste tú no cambia.
-  - En inglés, Fer Casa se llama Fer Home (el archivo sigue siendo fer-casa.mjs).
+  - En inglés, Fer Casa se llama Fer Home (el archivo es fer-home.mjs).
   - En Ajustes, debajo de la clave: cómo sacar una clave de OpenRouter en tres pasos, con los enlaces.
   - En la portada, el aviso de responsabilidad: Fer Agent se ofrece tal cual, sin garantías; los
     agentes pueden equivocarse y se usan bajo la propia responsabilidad.
@@ -201,18 +201,18 @@ Una sola vez:
   c) Abre Terminal, escribe  cd  y un espacio, arrastra la carpeta a la ventana y pulsa Enter.
   d) Escribe:   npm install playwright-core
      (Es la pieza que mueve el Chrome de los agentes. Usa tu Google Chrome; no hace falta descargar otro.)
-  e) Si usas otras API (las de tus suscripciones):   node fer-casa.mjs claves
-     y pega la clave de cada una (Intro deja la que haya). Se guardan en datos/config.json.
+  e) Si usas otras API (las de tus suscripciones):   node fer-home.mjs claves
+     y pega la clave de cada una (Intro deja la que haya). Se guardan en data/config.json.
      Si añadiste una API propia en la web (Ajustes → Otras API), aparece también en la lista.
-  f) Escribe:   node fer-casa.mjs entrar https://x.com/login
+  f) Escribe:   node fer-home.mjs entrar https://x.com/login
      Se abre el Chrome de los agentes: entra con la cuenta NUEVA de X y cierra esa ventana. La sesión
-     queda guardada en datos/chrome-agentes (separada de tu Chrome).
-  g) Si quieres Telegram:   node fer-casa.mjs telegram   y sigue los pasos (con @BotFather).
-  h) Si quieres el cerebro en Drive y Obsidian:   node fer-casa.mjs carpeta   y elige una carpeta dentro
+     queda guardada en data/agents-chrome (separada de tu Chrome).
+  g) Si quieres Telegram:   node fer-home.mjs telegram   y sigue los pasos (con @BotFather).
+  h) Si quieres el cerebro en Drive y Obsidian:   node fer-home.mjs carpeta   y elige una carpeta dentro
      de Google Drive para ordenador (en un Mac suele estar en
      /Users/TU_USUARIO/Library/CloudStorage/GoogleDrive-…/Mi unidad/Fer Agent).
 Cada día:
-  i) En la carpeta, escribe:   caffeinate -i node fer-casa.mjs
+  i) En la carpeta, escribe:   caffeinate -i node fer-home.mjs
      La primera vez te pide la clave de OpenRouter y un PIN. Abre http://localhost:8787 y pon el PIN.
      Un edificio nuevo de Fer Casa empieza solo con el jefe: el resto, en «Agentes de serie».
      Si ya tenías tu edificio en la web: allí «Guardar copia» y aquí, en Ajustes,
@@ -289,12 +289,12 @@ Traducir a otro idioma
 ----------------------
 El programa está escrito en inglés. El mismo diccionario traduce las pantallas y lo que el motor les
 dice a los agentes:
-  1. Copia textos/es.js (inglés a la izquierda, español a la derecha) como textos/xx.js
+  1. Copia languages/es.js (inglés a la izquierda, español a la derecha) como languages/xx.js
      (xx: el código del idioma, por ejemplo fr).
   2. Sustituye lo de la derecha de cada texto por su traducción. Lo que quede vacío sale en inglés.
      Los {1}, {2}… son datos (nombres, cifras): se dejan tal cual. Respeta los espacios del principio
      y del final de cada texto.
-  3. Añade el idioma a IDIOMAS en textos.js (por ejemplo  fr: "Français") y a IDIOMAS_MOTOR en
+  3. Añade el idioma a LANGUAGES en languages.js (por ejemplo  fr: "Français") y a ENGINE_LANGUAGES en
      engine.js (fr: "fr-FR"). Aparece en Ajustes y en la portada.
      Para probarlo sin tocar nada más: abre la web con  ?lang=fr  al final de la dirección.
 
@@ -320,9 +320,9 @@ En un Mac
   a) Instala Node: entra en https://nodejs.org, descarga la versión «LTS» y haz doble clic en el instalador.
   b) Descomprime el ZIP, por ejemplo en Documentos.
   c) Abre la aplicación Terminal. Escribe  cd  y un espacio, arrastra la carpeta a la ventana y pulsa Enter.
-  d) Escribe:   caffeinate -i node fer-casa.mjs
+  d) Escribe:   caffeinate -i node fer-home.mjs
      («caffeinate -i» evita que el Mac se duerma mientras Fer Casa está encendido.)
-  e) La primera vez te pide la clave de OpenRouter y un PIN. Se guardan en la carpeta «datos».
+  e) La primera vez te pide la clave de OpenRouter y un PIN. Se guardan en la carpeta «data».
   f) Abre en el navegador:  http://localhost:8787   y escribe el PIN.
   Para pararlo: Ctrl+C en la Terminal.
 
@@ -335,14 +335,14 @@ En un móvil Android viejo (Termux)
        unzip ~/storage/downloads/fer-agent-edificio-v8.zip -d ~/fer
        cd ~/fer
        termux-wake-lock
-       node fer-casa.mjs
+       node fer-home.mjs
   c) Abre en el navegador del móvil:  http://localhost:8787
   d) En Ajustes de Android → Aplicaciones → Termux → Batería: «Sin restricciones», para que no lo duerma.
   e) Para que arranque solo si el móvil se reinicia: instala también «Termux:Boot» desde F-Droid,
      ábrelo una vez y crea el archivo ~/.termux/boot/fer.sh con estas tres líneas:
        #!/data/data/com.termux/files/usr/bin/sh
        termux-wake-lock
-       cd ~/fer && node fer-casa.mjs >> ~/fer/datos/pantalla.txt 2>&1
+       cd ~/fer && node fer-home.mjs >> ~/fer/data/fer-home.log 2>&1
      Y dale permiso:  chmod +x ~/.termux/boot/fer.sh
   Déjalo enchufado. Si la batería se hincha, deja de usar ese móvil.
 
@@ -354,7 +354,7 @@ Desde otro aparato de tu casa
 
 3. FER CASA EN LA NUBE (un servidor Linux alquilado)
 ----------------------------------------------------
-Es el mismo programa: copia la carpeta, instala Node 18+ y ejecuta «node fer-casa.mjs» una vez a mano
+Es el mismo programa: copia la carpeta, instala Node 18+ y ejecuta «node fer-home.mjs» una vez a mano
 para poner la clave y el PIN. Después déjalo funcionando como servicio del sistema.
 No abras el puerto 8787 a internet sin https: para entrar desde fuera usa un túnel seguro
 (por ejemplo Cloudflare Tunnel o Tailscale). Eso queda como siguiente paso.
@@ -363,7 +363,7 @@ No abras el puerto 8787 a internet sin https: para entrar desde fuera usa un tú
 Seguridad
 ---------
 - En el navegador, cada clave vive solo en ese navegador y solo viaja a la dirección de su API
-  (OpenRouter o la de cada una de tus otras API). En Fer Casa, viven solo en datos/config.json.
+  (OpenRouter o la de cada una de tus otras API). En Fer Casa, viven solo en data/config.json.
   Ninguna clave va dentro del ZIP, de las copias, de la mudanza ni de la carpeta del cerebro.
 - Pon un límite de gasto a cada clave en la web de cada empresa: es la red de seguridad.
 - El PIN de Fer Casa (mínimo 8) evita que otro en tu red gaste tu crédito; tras 5 fallos desde un
@@ -378,22 +378,22 @@ Seguridad
   dirección la hayas escrito tú. Lo que trae de fuera le llega marcado como «datos, no órdenes».
   Y las skills de leer y buscar solo van a internet: nunca a tu router, a tu red de casa, a este
   ordenador ni a las direcciones internas de un servidor.
-- El Chrome de los agentes es un perfil aparte (datos/chrome-agentes): no ve tus contraseñas ni tus sesiones.
+- El Chrome de los agentes es un perfil aparte (data/agents-chrome): no ve tus contraseñas ni tus sesiones.
 - Cada skill tiene un tiempo máximo (5 minutos; el Vigía, 8; se cambia con «timeout:» en su SKILL.md).
   Si una página se cuelga, la skill se para, se cierra su Chrome y la siguiente sigue.
 - Fer Casa habla sin https: úsalo en tu red de casa o con un túnel seguro.
 
 Pruebas (para quien quiera comprobarlo)
 ---------------------------------------
-  node --test pruebas/motor.test.mjs pruebas/motor7.test.mjs pruebas/vigia.test.mjs   el motor y el Vigía
-  node --test pruebas/motor82.test.mjs   el motor en inglés
-  node --test pruebas/motor9.test.mjs    los edificios de versiones anteriores pasan a la 9 sin perder nada
-  python3 pruebas/web_test.py      la web, lo de la versión 6 (necesita Playwright)
-  python3 pruebas/web7_test.py     la web, lo de la versión 7
-  python3 pruebas/web8_test.py     la web, lo nuevo de la versión 8
-  python3 pruebas/web82_test.py    la web en inglés: ninguna pantalla con restos de español
-  python3 pruebas/web9_storage_test.py   un navegador que usó una versión anterior conserva su edificio, sus imágenes y su Biblioteca
-  python3 pruebas/casa_test.py     Fer Casa
-  python3 pruebas/casa7_test.py    Fer Casa con manos, Telegram, carpeta del cerebro y otra API
-  (casa_test y casa7_test arrancan Fer Casa con el equipo recomendado: FER_TEMPLATE=basic; casa_test usa los nombres
+  node --test tests/engine.test.mjs tests/engine7.test.mjs tests/watcher.test.mjs     el motor y el Vigía
+  node --test tests/engine82.test.mjs    el motor en inglés
+  node --test tests/engine9.test.mjs     los edificios de versiones anteriores pasan a la 9 sin perder nada
+  python3 tests/web_test.py        la web, lo de la versión 6 (necesita Playwright)
+  python3 tests/web7_test.py       la web, lo de la versión 7
+  python3 tests/web8_test.py       la web, lo nuevo de la versión 8
+  python3 tests/web82_test.py      la web en inglés: ninguna pantalla con restos de español
+  python3 tests/web9_storage_test.py     un navegador que usó una versión anterior conserva su edificio, sus imágenes y su Biblioteca
+  python3 tests/home_test.py       Fer Casa
+  python3 tests/home7_test.py      Fer Casa con manos, Telegram, carpeta del cerebro y otra API
+  (home_test y home7_test arrancan Fer Casa con el equipo recomendado: FER_TEMPLATE=basic; home_test usa los nombres
    de antes de la versión 9, FER_PLANTILLA=basico, que también valen)

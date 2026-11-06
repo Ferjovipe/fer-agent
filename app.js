@@ -1,14 +1,14 @@
 // =====================================================================
 // Fer Agent · The Building — THE SCREEN
 // Draws the home page, the building, the profiles, the chat with each agent, the spending, the agent of the month,
-// the meeting rooms and the settings. Every text goes through tr() (textos.js) so it can be translated.
+// the meeting rooms and the settings. Every text goes through tr() (languages.js) so it can be translated.
 // The real work is done by engine.js (here in the browser, or in Fer Home).
 // =====================================================================
 import { LOCALE, setLanguage, Building, ROLES, CAPABILITIES, SEATS, PER_POOL, MAX_OFFICES, MAX_POOLS, MAX_MEETING_SEATS, VERSION, JEV_MODEL, MODEL_TYPES, LEVELS, LEVEL_NAME,
   seating, cleanLook, heartbeatText, levelKey, modelType, variablePrice, fmt, fmtCap, explainError, PROVIDERS, filterApiModels, MAX_PERSONALITY, MAX_OBJECTIVE_LINES,
   cleanObjectives, unitPrice, hearingPricePerSecond, noPublishedPrice, describedPrice, imageTokens, memoryNotesMd, cleanTopic, modelVersion, chooseModel, brainFolders, readBackupFile } from "./engine.js";
-import { CHARACTERS } from "./personajes.js";
-import { tr, trAlways, setNames, loadLanguage, translatePage, language, LANGUAGES, saveLanguage, savedLanguage } from "./textos.js";
+import { CHARACTERS } from "./characters.js";
+import { tr, trAlways, setNames, loadLanguage, translatePage, language, LANGUAGES, saveLanguage, savedLanguage } from "./languages.js";
 import { renderLanding } from "./landing.js";
 
 const OR = "https://openrouter.ai/api/v1";
@@ -459,9 +459,9 @@ function lookPicker(current, onChange) {
 const WIDTH = 1438;
 const SECTION = {
   // «placa»: where the sign goes, top left of its floor (v8: before, it sat at the bottom edge and looked like it belonged to the floor below)
-  dome: { img: "img/cupula.webp", img2: "img/cupula2x.webp", high: 187, ground: 152, fig: 66, sign: 100, mobileSign: 128 },
-  storey: { img: "img/piso.webp", img2: "img/piso2x.webp", high: 130, ground: 93, fig: 58, sign: 1, mobileSign: 96 },   // on a phone a floor is 3 fingers high: the signs go on each floor's slab (they don't cover anyone)
-  lobby: { img: "img/vestibulo.webp", img2: "img/vestibulo2x.webp", high: 219, ground: 141, fig: 84, sign: 10, mobileSign: 146 }
+  dome: { img: "img/dome.webp", img2: "img/dome2x.webp", high: 187, ground: 152, fig: 66, sign: 100, mobileSign: 128 },
+  storey: { img: "img/storey.webp", img2: "img/storey2x.webp", high: 130, ground: 93, fig: 58, sign: 1, mobileSign: 96 },   // on a phone a floor is 3 fingers high: the signs go on each floor's slab (they don't cover anyone)
+  lobby: { img: "img/lobby.webp", img2: "img/lobby2x.webp", high: 219, ground: 141, fig: 84, sign: 10, mobileSign: 146 }
 };
 const PLACES = {
   dome: { left: [585], center: [717], right: [850] },
@@ -1124,7 +1124,7 @@ function directPicker(prov, current, onChange) {
 const catalog = () => (mode === "home" ? homeSkills : ed.skillsCatalog());
 function skillsBlock(a, change) {
   const cat = catalog();
-  if (!cat.length) return h("small", { class: "note" }, mode === "home" ? "Fer Home has no skills yet (“skills” folder next to fer-casa.mjs)." :
+  if (!cat.length) return h("small", { class: "note" }, mode === "home" ? "Fer Home has no skills yet (“skills” folder next to fer-home.mjs)." :
     "Hands work with Fer Home running on your computer: the agents' Chrome, their folder on the Mac and the skills. On this website, without Fer Home, they do nothing. How to set it up: README in the ZIP.");
   const has = (n) => a.skills.includes(n);
   const list = h("div", { class: "skills-list" }, cat.map((k) => h("label", { class: "cap" },
@@ -1282,7 +1282,7 @@ function renderChat(force) {
   if (thinking) m.append(h("div", { class: "msg bot typing" }, writing ? h("div", { class: "bubble", html: markdown(writing) }) : h("div", { class: "bubble" }, h("span", { class: "thinking", "aria-label": "Thinking" }, h("i"), h("i"), h("i")))));
   $("chat").scrollTop = $("chat").scrollHeight;
 }
-// Images and music: saved apart (in this browser, IndexedDB; in Fer Home, its «datos/medios» folder), so they aren't lost on reload
+// Images and music: saved apart (in this browser, IndexedDB; in Fer Home, its «data/media» folder), so they aren't lost on reload
 const mediaCache = new Map();
 async function mediaUrl(m) {
   if (mediaCache.has(m.id)) return mediaCache.get(m.id);
@@ -2204,7 +2204,7 @@ function otherApisBlock() {
         h("button", { class: "btn mini primary", type: "button", onclick: async () => { try { await callApp("/api/conf/key", { prov: P.id, key: kk.value.trim() }); await refreshHome(); renderSettings(); toast(kk.value.trim() ? "Key saved on this computer." : "Key removed."); } catch (e) { warn(e); } } }, "Save")),
         h("small", { class: "note" }, "It's stored only on this computer and only travels to this API's address. To remove it, leave it empty and press “Save”."));
     }
-    else if (mode === "home") row.append(h("small", { class: "note" }, hasApiKey(P.id) ? "Key set in Fer Home." : "No key in Fer Home. On the Fer Home computer: node fer-casa.mjs keys"));
+    else if (mode === "home") row.append(h("small", { class: "note" }, hasApiKey(P.id) ? "Key set in Fer Home." : "No key in Fer Home. On the Fer Home computer: node fer-home.mjs keys"));
     else {
       const has = !!store.get(apiKey(P.id));
       const inp = h("input", { type: "password", autocomplete: "off", placeholder: P.web ? `Your key (from ${P.web})` : "Your key", value: has ? "••••••••••" : "" });
@@ -2230,7 +2230,7 @@ function otherApisBlock() {
       while (conx.some((c) => c.id === id) || PROVIDERS[id]) id += "-2";
       saveList([...currentList(), { id, name: name || api.replace(/^https?:\/\//, "").split("/")[0], api, format: fmtSel.value }]);
     } }, "Add"), err)));
-  b.append(h("small", { class: "note" }, mode === "local" ? "The keys stay only in this browser and only travel to their API's address. They never go into backups or moves." : "With Fer Home, the keys live on its computer (datos/config.json): node fer-casa.mjs keys."));
+  b.append(h("small", { class: "note" }, mode === "local" ? "The keys stay only in this browser and only travel to their API's address. They never go into backups or moves." : "With Fer Home, the keys live on its computer (data/config.json): node fer-home.mjs keys."));
   return b;
 }
 function renderSettings() {
@@ -2242,7 +2242,7 @@ function renderSettings() {
     h("div", { class: "where" },
       isApp() ? h("div", { class: "here" }, h("b", {}, "In this app"), h("br"), h("span", { class: "note" }, "On your computer, with no Terminal. The agents work while the app is open, with hands: their Chrome, their folder and their skills."), homeInfo.data ? h("br") : null, homeInfo.data ? h("small", { class: "note" }, tr("Your data:") + " ", raw(homeInfo.data)) : null) : null,
       h("div", { class: mode === "local" ? "here" : "" }, h("b", {}, "In this browser"), h("br"), h("span", { class: "note" }, "Works right away, nothing to install. The agents work while this website is open on some device.")),
-      h("div", { class: mode === "home" && !isApp() ? "here" : "" }, h("b", {}, "Fer Home: a computer or phone that stays on"), h("br"), h("span", { class: "note" }, "The fer-casa.mjs program runs this same building around the clock and gives the agents hands (their Chrome, their folder, their skills). You open the website from the address it gives you.")),
+      h("div", { class: mode === "home" && !isApp() ? "here" : "" }, h("b", {}, "Fer Home: a computer or phone that stays on"), h("br"), h("span", { class: "note" }, "The fer-home.mjs program runs this same building around the clock and gives the agents hands (their Chrome, their folder, their skills). You open the website from the address it gives you.")),
       h("div", {}, h("b", {}, "Fer Home in the cloud"), h("br"), h("span", { class: "note" }, "The same program on a rented server. It works even when everything at home is off."))),
     h("small", { class: "note" }, "How to install Fer Home: the README in the ZIP and the “Fer Agent · The Building” document.")));
   // access: your key and your money
@@ -2278,7 +2278,7 @@ function renderSettings() {
     c.append(h("div", { class: "block" }, h("h4", {}, "Fer Home PIN"),
       h("div", { class: "row-c" }, p, h("button", { class: "btn primary mini", onclick: async () => { pin = p.value.trim(); pinRejected = false; store.set(K.pin, pin); await refreshHome(); renderChat(true); if (!pinRejected) closeDrawer(); else renderSettings(); } }, "Enter")),
       pinRejected ? h("small", { class: "note", style: { color: "var(--danger)" } }, "That PIN isn't right (or there were too many attempts: wait a minute).") : null,
-      h("small", { class: "note" }, "The keys live in Fer Home (datos/config.json), not on this device. The PIN stops anyone else on your network using your credit.")));
+      h("small", { class: "note" }, "The keys live in Fer Home (data/config.json), not on this device. The PIN stops anyone else on your network using your credit.")));
   }
   c.append(otherApisBlock());
   // the building's name and objectives
@@ -2398,9 +2398,9 @@ function brainBlock() {
   if (mode === "home") {
     const cc = Object.assign({ n: brainFolders(ed.e) }, homeInfo.folder || {});
     box.append(h("p", { class: "note", style: { margin: 0 } }, `With Fer Home, the brain lives in a folder on that computer: “${cc.n.library}” (your notes), “${cc.n.memory}” (one note per topic) and “${cc.n.backup}”. If that folder is inside Google Drive for desktop, you also have it in Drive and in Obsidian.`),
-      h("div", { class: "folder-state" }, h("i", { class: "dot " + (cc.path ? "ok" : "") }), h("span", {}, cc.path ? `Folder: ${cc.path}` : "Folder: Fer Home's data folder (datos/cerebro)"),
+      h("div", { class: "folder-state" }, h("i", { class: "dot " + (cc.path ? "ok" : "") }), h("span", {}, cc.path ? `Folder: ${cc.path}` : "Folder: Fer Home's data folder (data/brain)"),
         cc.notes !== undefined ? h("span", { class: "note" }, `· ${cc.notes} topics · ${cc.library || 0} notes in the Library`) : null),
-      h("small", { class: "note" }, "To change it: on the Fer Home computer, node fer-casa.mjs folder"));
+      h("small", { class: "note" }, "To change it: on the Fer Home computer, node fer-home.mjs folder"));
     return box;
   }
   const conf = store.json(K.folder, null) || {};
@@ -2450,7 +2450,7 @@ function download(text, name) {
   const a = h("a", { href: URL.createObjectURL(blob), download: name });
   document.body.append(a); a.click(); a.remove();
 }
-function exportBuilding() { download(JSON.stringify(ed.e, null, 1), `fer-edificio-${new Date().toLocaleDateString("sv-SE")}.json`); }
+function exportBuilding() { download(JSON.stringify(ed.e, null, 1), `fer-agent-building-${new Date().toLocaleDateString("sv-SE")}.json`); }
 const techieBackup = () => (mode === "local" ? store.json(K.backup, null) : null);
 let beforeV9 = null;   // the building from before version 9, as it was (only in this browser, if it was moved here)
 
@@ -2804,7 +2804,7 @@ try { if (window.speechSynthesis) speechSynthesis.onvoiceschanged = () => { if (
 // =====================================================================
 async function singleTab() {
   if (!navigator.locks) return true;
-  // the first tab keeps the «lock» while it's open
+  // the first tab keeps the «lock» while it's open (its name, from before version 9, is kept so a tab of an earlier version and this one see each other)
   const isMine = await new Promise((res) => {
     navigator.locks.request("fer-edificio-pestana", { ifAvailable: true }, (l) => { res(!!l); if (l) return new Promise(() => {}); }).catch(() => res(true));
   });
@@ -2900,7 +2900,7 @@ async function syncLanguage() {
     }
     lists.then(() => { ed.setModels(models); render(); });
     // the building's heartbeat: every 20 seconds it checks whose turn it is to wake up
-    // If the website is open in several tabs, only one makes the building beat (so nothing is spent twice).
+    // If the website is open in several tabs, only one makes the building beat (so nothing is spent twice). The lock keeps its name from before version 9.
     const beat = async () => {
       beatAntenna(); if (!hasAccess()) return;
       const work = async () => { try { await ed.tick(); } catch {} };

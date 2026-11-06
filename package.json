@@ -10,7 +10,7 @@
   "main": "app/main.cjs",
   "scripts": {
     "app": "electron .",
-    "home": "node fer-casa.mjs",
+    "home": "node fer-home.mjs",
     "installers": "electron-builder --publish never"
   },
   "dependencies": {
@@ -35,12 +35,12 @@
       "app.js",
       "engine.js",
       "landing.js",
-      "textos.js",
-      "textos/**",
-      "personajes.js",
+      "languages.js",
+      "languages/**",
+      "characters.js",
       "img/**",
-      "fer-casa.mjs",
-      "manos.mjs",
+      "fer-home.mjs",
+      "hands.mjs",
       "skills/**",
       "build/icon.png",
       "package.json",

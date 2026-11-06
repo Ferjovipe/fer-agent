@@ -9,7 +9,7 @@ export const VERSION = "9.0";
 
 // ---------------- Language ----------------
 // The engine is written in English. A building in another language (for now «es») uses the same dictionary as the website
-// (textos/es.js): each English text is the key; the {1}, {2}… are data (names, figures) filled in afterwards.
+// (languages/es.js): each English text is the key; the {1}, {2}… are data (names, figures) filled in afterwards.
 // Buildings made before version 9 saved some texts in Spanish (states, activity): in English they are turned back into English.
 export const ENGINE_LANGUAGES = { es: "es-ES", en: "en-US" };
 export let LANGUAGE = "es", LOCALE = "es-ES";   // this program's (website or Fer Home): numbers, dates and the texts of the loose functions
@@ -20,7 +20,7 @@ export const UNTRANSLATED = new Set();   // texts asked for in another language 
 export async function loadDictionary(id) {
   if (!ENGINE_LANGUAGES[id] || id === "en" || DICTIONARIES.has(id)) return;
   try {
-    const m = await import(`./textos/${id}.js`);
+    const m = await import(`./languages/${id}.js`);
     const d = new Map();
     for (const [k, v] of Object.entries(m.default || {})) if (typeof v === "string" && v) d.set(k, v);
     DICTIONARIES.set(id, d);
@@ -527,6 +527,8 @@ const V8_VALUES = {
   congelacion1: "freeze1", congelacion2: "freeze2", basico: "basic", vacio: "empty", dibujo: "drawing", franjas: "strips",
   "en curso": "in_progress", "sin respuesta": "no_answer", económico: "budget"
 };
+// the skills that come with Fer Agent were called this before version 9 (Fer Home still runs them by these names)
+export const OLD_SKILL_NAMES = { "buscar-web": "web-search", "escribir-archivo": "write-file", "leer-archivo": "read-file", "leer-web": "read-web", "vigia-x": "x-watcher" };
 // the built-in agents' and floors' ids, wherever an agent or a floor is referred to (and «tú», the owner)
 const V8_IDS = {
   jefe: "boss", sabio1: "sage1", sabio2: "sage2", tecno: "techie", arturito: "artie", creador: "creator",
@@ -567,9 +569,13 @@ export function migrateFromV8(s) {
     return out;
   };
   const n = walk(s, "");
+  const skill = (x) => OLD_SKILL_NAMES[x] || x;
+  for (const a of Array.isArray(n.agents) ? n.agents : []) if (a && Array.isArray(a.skills)) a.skills = a.skills.map(skill);
+  for (const p of Array.isArray(n.approvals) ? n.approvals : []) if (p && p.action && typeof p.action.skill === "string") p.action.skill = skill(p.action.skill);
   for (const a of Array.isArray(n.agents) ? n.agents : []) {
     const f = a && a.fixedSkill;
-    if (!f || f.skill !== "vigia-x") continue;
+    if (f && typeof f.skill === "string") f.skill = skill(f.skill);
+    if (!f || f.skill !== "x-watcher") continue;
     if (f.settings && typeof f.settings === "object") f.settings = Object.fromEntries(Object.entries(f.settings).map(([k, v]) => [V8_WATCHER[k] || k, v]));
     if (f.state && typeof f.state === "object" && f.state.vistos !== undefined && f.state.seen === undefined) { f.state.seen = f.state.vistos; delete f.state.vistos; }
   }
@@ -785,7 +791,7 @@ export class Building {
     let txt = null;
     try { txt = await this.o.load(); } catch {}
     if (txt) { try { this.e = JSON.parse(txt); } catch { this.e = null; } }
-    // a building from before version 9 (Spanish field names): it's saved as it was (browser: separately; Fer Home: datos/copias), then it moves to the English names
+    // a building from before version 9 (Spanish field names): it's saved as it was (browser: separately; Fer Home: data/backups), then it moves to the English names
     let migrated = false;
     if (txt && isBeforeV9(this.e)) {
       const moved = migrateFromV8(this.e); migrated = true;
@@ -798,7 +804,7 @@ export class Building {
       this.e = createTemplate(template === "empty" ? "empty" : "basic", this.models, id); this.debut(this.e.agents); await this.save();
     }
     const versionBefore = this.e.version;
-    // before rebuilding a version 4 building, it's saved as it was (browser: separately; Fer Home: datos/copias)
+    // before rebuilding a version 4 building, it's saved as it was (browser: separately; Fer Home: data/backups)
     if (txt && isV4(this.e) && this.o.backup) { try { await this.o.backup(txt, "before-v5"); this.e.backupV4 = true; } catch {} }
     this.repair();
     await loadDictionary(this.language());
@@ -1376,7 +1382,7 @@ export class Building {
     await this.saveMedia(id, url, "audio", description);
     return { id, url, cost, model, transcript };
   }
-  // Images and music are saved apart (in the browser, IndexedDB; in Fer Home, datos/medios) so they aren't lost on reload
+  // Images and music are saved apart (in the browser, IndexedDB; in Fer Home, data/media) so they aren't lost on reload
   async saveMedia(id, url, type, text) { if (this.o.saveMedia && url) { try { await this.o.saveMedia(id, url, type, text); } catch {} } }
   // See: if the brain can't see, a brain with vision describes the image first.
   async describeImage(ag, dataUrl, question) {

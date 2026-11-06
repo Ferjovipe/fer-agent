@@ -1,6 +1,6 @@
 // =====================================================================
 // Fer Agent · the desktop app (version 9)
-// It's the same building: it starts Fer Home (fer-casa.mjs) inside the app,
+// It's the same building: it starts Fer Home (fer-home.mjs) inside the app,
 // only on this computer (127.0.0.1), and opens its window. No Terminal:
 // the app sets the PIN itself and the OpenRouter key is pasted in Settings.
 // The data (building, keys, brain, the agents' Chrome) stays in the app's data folder
@@ -52,7 +52,10 @@ function openWindow() {
 }
 
 app.whenReady().then(async () => {
-  const data = path.join(app.getPath("userData"), "datos");
+  const data = path.join(app.getPath("userData"), "data");
+  // before version 9 it was called «datos»: it moves once (Fer Home then moves what's inside)
+  const before = path.join(app.getPath("userData"), "datos");
+  if (fs.existsSync(before) && !fs.existsSync(data)) { try { fs.renameSync(before, data); } catch {} }
   fs.mkdirSync(data, { recursive: true });
   logToFile(data);
   if (process.platform !== "darwin") Menu.setApplicationMenu(null);
@@ -63,7 +66,7 @@ app.whenReady().then(async () => {
   // the only two messages of this file, in the computer's language (the building isn't open yet, so there's no dictionary)
   const msg = language === "es" ? { doesNotStart: "No se pudo arrancar el edificio: ", doesNotOpen: "El edificio no arrancó. Mira el archivo fer-agent.log en " }
     : { doesNotStart: "The building couldn't start: ", doesNotOpen: "The building didn't start. Look at the fer-agent.log file in " };
-  try { await import(pathToFileURL(path.join(ROOT, "fer-casa.mjs")).href); }
+  try { await import(pathToFileURL(path.join(ROOT, "fer-home.mjs")).href); }
   catch (e) { dialog.showErrorBox("Fer Agent", msg.doesNotStart + e.message); app.quit(); return; }
   if (!(await waitFor(`http://127.0.0.1:${port}/api/hello`, 30000))) { dialog.showErrorBox("Fer Agent", msg.doesNotOpen + data); app.quit(); return; }
   try { pin = JSON.parse(fs.readFileSync(path.join(data, "config.json"), "utf8")).pin; } catch {}

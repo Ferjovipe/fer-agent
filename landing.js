@@ -1,6 +1,6 @@
 // =====================================================================
 // Fer Agent · THE HOME PAGE (landing)
-// Every text goes through tr() (textos.js): they're translated without touching this file.
+// Every text goes through tr() (languages.js): they're translated without touching this file.
 // =====================================================================
 // figura(aspecto, img): paints the character with its colours inside the image
 // Downloading the app: the latest version published on GitHub (no sign-up)
@@ -19,7 +19,7 @@ export function renderLanding(cont, { h, enter, figure, languages, language, cha
   ];
   cont.append(
     h("section", { class: "hero" },
-      h("img", { src: "img/portada.webp", alt: "" }),
+      h("img", { src: "img/landing.webp", alt: "" }),
       languages ? h("div", { class: "landing-languages", role: "group", "aria-label": "Language" }, Object.entries(languages).map(([k, t]) =>
         h("button", { type: "button", lang: k, "aria-pressed": String(k === language), onclick: () => { if (k !== language) changeLanguage(k); } }, k.toUpperCase() + " · " + t))) : null,
       h("div", { class: "hero-txt" },
