@@ -388,6 +388,7 @@ Pruebas (para quien quiera comprobarlo)
   node --test tests/engine.test.mjs tests/engine7.test.mjs tests/watcher.test.mjs     el motor y el Vigía
   node --test tests/engine82.test.mjs    el motor en inglés
   node --test tests/engine9.test.mjs     los edificios de versiones anteriores pasan a la 9 sin perder nada
+  node --test tests/memory.test.mjs     la memoria automática: Memory archiva sola lo importante de cada conversación
   python3 tests/web_test.py        la web, lo de la versión 6 (necesita Playwright)
   python3 tests/web7_test.py       la web, lo de la versión 7
   python3 tests/web8_test.py       la web, lo nuevo de la versión 8

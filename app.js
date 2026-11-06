@@ -989,7 +989,7 @@ function profileWork(box, a, change, { brainless }) {
       h("button", { class: "btn mini", onclick: () => Motor.run({ type: "memory.delete", noteId: n.id }).then(render) }, "Delete")), h("div", { class: "txt" }, raw(n.text))));
     const nt = h("textarea", { rows: "2", placeholder: "Something the building should remember…" }), et = h("input", { placeholder: "tags, separated by commas" });
     box.append(h("div", { class: "block" }, h("h4", {}, `Building's long-term memory (${ed.e.longMemory.length})`),
-      h("p", { class: "note", style: { margin: 0 } }, "When you say “remember…” to the boss, Memory searches here by keywords and passes it on. It uses no brain: it doesn't spend. Later on it will be able to live in Google Drive."),
+      h("p", { class: "note", style: { margin: 0 } }, "When you say “remember…”, Memory searches here by keywords and passes on only what matters: searching costs nothing. It also files on its own what matters from each conversation (Settings → Automatic memory), with a cheap model paid by the agent you talked to."),
       nt, et, h("div", {}, h("button", { class: "btn mini", onclick: () => { if (!nt.value.trim()) return; Motor.run({ type: "memory.save", text: nt.value.trim(), tags: et.value.split(",").map((x) => x.trim()).filter(Boolean) }).then(render).catch(warn); } }, "Save memory")), ml));
   }
 }
@@ -2297,6 +2297,13 @@ function renderSettings() {
     field("Building objectives (yours or your company's)", obj, "Five lines at most. Every agent reads them when it wakes up, together with its own and its role's lessons. Keep it short: every letter is paid for in every heartbeat."), tally));
   // the brain: library and long-term memory in a folder
   c.append(brainBlock());
+  // automatic memory: Memory files on its own what matters from each conversation
+  const chkMem = h("input", { type: "checkbox", checked: aj.autoMemory !== false, onchange: (ev) => saveSetting({ autoMemory: ev.target.checked }) });
+  const selMem = modelPicker("text", aj.memoryModel, { empty: tr("The same one as for the lessons ({1})").replace("{1}", modelName(aj.lessonsModel || chooseModel("budget", ed.models)) || tr("none")), onChange: (v) => saveSetting({ memoryModel: v }) });
+  c.append(h("div", { class: "block" }, h("h4", {}, "Automatic memory"),
+    h("label", { class: "cap" }, chkMem, h("span", {}, "Memory saves on its own what matters from each conversation",
+      h("small", {}, "When a chat has been quiet for 10 minutes, a cheap model reads it and files the facts in the long-term memory, each one under its topic (one per person or company and one per project). The agent you talked to pays for it. It also works with the general pause on: it's the end of a conversation you had."))),
+    field("Model Memory files with", selMem)));
   // the building's default models (each agent can choose its own in its profile → Capabilities)
   const selView = modelPicker("text", aj.visionModel, { empty: "None", filter: (m) => modelData(m).sees, onChange: (v) => saveSetting({ visionModel: v }) });
   const selImg = modelPicker("image", aj.imageModel, { empty: "None", onChange: (v) => saveSetting({ imageModel: v }) });

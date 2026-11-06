@@ -143,7 +143,14 @@ try:
         # ---------- Drawers ----------
         page.click("#openSettings"); page.wait_for_selector("#drawerBody h4"); page.wait_for_timeout(300)
         check(not spanish(page, "#drawer", "ajustes"), f"Settings in English: {leftovers.get('settings')}")
-        photo(page, "6-settings"); page.click("#closeDrawer")
+        photo(page, "6-settings")
+        # v9: the automatic memory, switched on, and it can be switched off
+        mem_block = "#drawerBody .block:has(h4:text-is('Automatic memory'))"
+        check(page.is_checked(mem_block + " input[type=checkbox]") and state(page)["settings"]["autoMemory"] is True, "Settings → Automatic memory: on")
+        page.uncheck(mem_block + " input[type=checkbox]"); page.wait_for_timeout(400)
+        check(state(page)["settings"]["autoMemory"] is False, "and it can be switched off")
+        page.check(mem_block + " input[type=checkbox]"); page.wait_for_timeout(400)
+        page.click("#closeDrawer")
         page.click("#meter"); page.wait_for_selector("#drawerBody .who-spends"); page.wait_for_timeout(200)
         check(not spanish(page, "#drawer", "gasto"), f"Spending in English: {leftovers.get('spending')}")
         page.click("#closeDrawer")

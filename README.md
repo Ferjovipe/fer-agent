@@ -68,7 +68,7 @@ Tested with automated tests (OpenRouter, the other APIs, Google Drive, Telegram 
 ## Tests
 
 ```
-node --test tests/engine.test.mjs tests/engine7.test.mjs tests/engine82.test.mjs tests/engine9.test.mjs tests/watcher.test.mjs
+node --test tests/engine.test.mjs tests/engine7.test.mjs tests/engine82.test.mjs tests/engine9.test.mjs tests/watcher.test.mjs tests/memory.test.mjs
 python3 tests/web_test.py        # website (Spanish), v6 features   — needs Playwright
 python3 tests/web7_test.py       # website (Spanish), v7 features
 python3 tests/web8_test.py       # website (Spanish), v8 features

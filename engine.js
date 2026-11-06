@@ -1390,7 +1390,7 @@ export class Building {
       ], { concept: this.L("memory: filing the conversation"), max_tokens: 1500 });
     } catch (err) {
       this._memoryRetry[a.id] = this.now() + MEMORY_QUIET_MS;   // it tries again later
-      if (mem) this.logActivity(mem, this.F("couldn't file the chat with {1}: {2}", a.name, err.message), 0);
+      this.logActivity(mem || payer, this.F("couldn't file the chat with {1}: {2}", a.name, err.message), 0);
       return null;
     }
     a.memoryUpTo = last;   // paid for: these messages aren't sent again, even if the answer can't be read
@@ -1400,7 +1400,7 @@ export class Building {
       if (t.length < 3) continue;
       saved.push(this.saveMemory(t + this.F(" (chat with {1})", a.name), Array.isArray(f.tags) ? f.tags : [], mem ? mem.id : "", this.existingTopic(f.topic)));
     }
-    if (mem) this.logActivity(mem, this.F("filed the chat with {1}: {2} {3}", a.name, saved.length, saved.length === 1 ? this.L("fact") : this.L("facts")), 0);
+    this.logActivity(mem || payer, this.F("filed the chat with {1}: {2} {3}", a.name, saved.length, saved.length === 1 ? this.L("fact") : this.L("facts")), 0);   // without a Memory agent, in the activity of the one who paid
     await this.save();
     return { agent: a.id, saved: saved.length, cost: r.cost };
   }
