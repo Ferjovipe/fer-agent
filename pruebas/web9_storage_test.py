@@ -56,7 +56,7 @@ try:
         # what version 8 left in this browser (on the same address, before opening the website)
         page.goto(f"http://localhost:{PORT}/pruebas/punto.png")
         page.evaluate(SEED, OLD)
-        page.goto(URL); enter(page, team=False); page.wait_for_selector(".tramo")
+        page.goto(URL); enter(page, team=False); page.wait_for_selector(".tier")
         page.wait_for_timeout(800)
         e = state(page)
         check(e and isinstance(e.get("agents"), list) and len(e["agents"]) == len(old["agentes"]) and not any(k in e for k in ("agentes", "plantas", "ajustes")),
@@ -67,7 +67,7 @@ try:
               f"nothing is left under the old names in this browser: {sorted(ls)}")
         check(ls.get("ferAgent.key") == "sk-or-test" and ls.get("ferAgent.language") == "es" and ls.get("ferAgent.device") == "ap_viejo1"
               and ls.get("ferAgent.lastBackup") == "1793948000000" and ls.get("ferAgent.speaker") == "1", "the key, the language, the device, the last backup and the speaker stay")
-        check(page.evaluate("document.documentElement.lang") == "es" and page.is_visible("#abrirAjustes"), "the website still opens in Spanish")
+        check(page.evaluate("document.documentElement.lang") == "es" and page.is_visible("#openSettings"), "the website still opens in Spanish")
         idb = page.evaluate(READ_IDB)
         check(idb["version"] == 2 and idb["stores"] == ["kv", "library", "media"], f"the browser's stores, with the new names: {idb['stores']} (version {idb['version']})")
         check(idb["media"] and idb["media"]["url"] == PNG_URL and idb["media"]["type"] == "image" and idb["media"]["text"] == "un gato", "the images saved before version 9 are still there")
@@ -75,17 +75,17 @@ try:
         check(idb["sync"] == {"type": "local", "lastSync": 7, "myBuilding": 3, "seenBuilding": 4} and idb["oldSync"] is None, "the brain folder's sync, with the new names")
         check(idb["beforeV9"] == OLD, "the building as it was before version 9 is kept apart, exactly")
         # the image in the boss's chat
-        page.click("#hablarJefe"); page.wait_for_selector("#vistaChat:not([hidden])"); page.wait_for_timeout(600)
-        srcs = page.eval_on_selector_all("#mensajes .burbuja img", "is => is.map((i) => i.src)")
+        page.click("#talkToBoss"); page.wait_for_selector("#chatView:not([hidden])"); page.wait_for_timeout(600)
+        srcs = page.eval_on_selector_all("#messages .bubble img", "is => is.map((i) => i.src)")
         check(any(s.startswith("data:image/png") for s in srcs), "the image of the earlier chat is shown")
-        page.click("#cerrarChat")
+        page.click("#closeChat")
         # Settings → the building from before version 9, to download
-        page.click("#abrirAjustes"); page.wait_for_selector("#cajon:not([hidden])")
-        check(page.is_visible("#cajonCuerpo >> text=Tu edificio de antes de la versión 9, tal como estaba."), "Settings offers the building from before version 9")
-        with page.expect_download() as d: page.click("#cajonCuerpo .fila-c:has-text('antes de la versión 9') button")
+        page.click("#openSettings"); page.wait_for_selector("#drawer:not([hidden])")
+        check(page.is_visible("#drawerBody >> text=Tu edificio de antes de la versión 9, tal como estaba."), "Settings offers the building from before version 9")
+        with page.expect_download() as d: page.click("#drawerBody .row-c:has-text('antes de la versión 9') button")
         check(open(d.value.path(), encoding="utf-8").read() == OLD and d.value.suggested_filename == "fer-agent-before-version-9.json", "and it downloads exactly as it was")
         # opening again: nothing moves twice
-        page.reload(); page.wait_for_selector("#landing .boton-grande, .tramo", timeout=15000); page.wait_for_timeout(600)
+        page.reload(); page.wait_for_selector("#landing .button-big, .tier", timeout=15000); page.wait_for_timeout(600)
         check(state(page)["agents"] == e["agents"] or len(state(page)["agents"]) == len(e["agents"]), "opening it again changes nothing")
         check(not errors, f"no errors on the page: {errors}")
         b.close()

@@ -19,7 +19,7 @@ def router_es(route, request):
 # What is shown on screen, without the conversations (what the simulated agents write) nor what the user writes,
 # nor the model names in the drop-downs (they are data: «Text Embedding 4»…)
 VISIBLE = """(sel) => { const raiz = document.querySelector(sel); if (!raiz) return [];
-  const fuera = (el) => el.closest('#mensajes .msg:not(.saludo) .burbuja, input, textarea, select, .serie-pj, script, style, [hidden]');
+  const fuera = (el) => el.closest('#messages .msg:not(.greeting) .bubble, input, textarea, select, .builtin-fig, script, style, [hidden]');
   const out = []; const w = document.createTreeWalker(raiz, NodeFilter.SHOW_TEXT);
   while (w.nextNode()) { const n = w.currentNode, el = n.parentElement; const t = n.nodeValue.trim();
     if (!t || !el || fuera(el)) continue; const r = el.getBoundingClientRect(); const cs = getComputedStyle(el);
@@ -47,17 +47,17 @@ def english(page, sel, where):
     return bad
 def photo(page, name): page.screenshot(path=os.path.join(OUTPUT, "v9-es-" + name + ".png"))
 def profile_es(page, ag_id, tab=None):
-    if page.is_visible("#vistaChat"): page.click("#cerrarChat")
+    if page.is_visible("#chatView"): page.click("#closeChat")
     try:
-        if page.is_visible(".volver"): page.click(".volver", timeout=2000)
+        if page.is_visible(".back"): page.click(".back", timeout=2000)
     except Exception: pass
-    sel = f".tramo .pj[data-id='{ag_id}']"
+    sel = f".tier .fig[data-id='{ag_id}']"
     if not page.is_visible(sel):
         e = state(page); ag = next(a for a in e["agents"] if a["id"] == ag_id)
-        idx = [p["id"] for p in e["floors"]].index(ag["floor"]); page.click(f".tramo >> nth={idx} >> .entrar"); page.wait_for_timeout(300)
-        sel = f".pj[data-id='{ag_id}']"
-    page.click(sel); page.wait_for_selector("#ficha .ficha-pestanas"); page.wait_for_timeout(200)
-    if tab is not None: page.click(f"#ficha .ficha-pestanas button >> nth={tab}"); page.wait_for_timeout(250)
+        idx = [p["id"] for p in e["floors"]].index(ag["floor"]); page.click(f".tier >> nth={idx} >> .enter"); page.wait_for_timeout(300)
+        sel = f".fig[data-id='{ag_id}']"
+    page.click(sel); page.wait_for_selector("#profile .profile-tabs"); page.wait_for_timeout(200)
+    if tab is not None: page.click(f"#profile .profile-tabs button >> nth={tab}"); page.wait_for_timeout(250)
 
 server = subprocess.Popen([sys.executable, "-m", "http.server", str(PORT), "--directory", ROOT], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
 time.sleep(1)
@@ -68,18 +68,18 @@ try:
         ctx.add_init_script(INIT); ctx.route("https://**/*", router_es)
         page = ctx.new_page(); errors = []
         page.on("pageerror", lambda e: errors.append(str(e)))
-        page.goto(URL); page.wait_for_selector("#landing .heroe-txt")
+        page.goto(URL); page.wait_for_selector("#landing .hero-txt")
         # ---------- Home page ----------
         check(page.inner_text("#landing h1") == "Tienes una empresa agéntica a tu servicio.", f"the home page in Spanish: «{page.inner_text('#landing h1')}»")
         check(page.evaluate("document.documentElement.lang") == "es", "the page says it is in Spanish (lang=es)")
         check(not english(page, "#landing", "portada"), f"home page with no English left: {leftovers.get('portada')}")
         photo(page, "1-portada")
         # ---------- Settings without a key ----------
-        page.click("#landing .boton-grande >> nth=0"); page.wait_for_selector("#cajon:not([hidden])")
-        check(not english(page, "#cajon", "ajustes sin clave"), f"Settings (no key) in Spanish: {leftovers.get('ajustes sin clave')}")
-        check(page.inner_text("#cajonCuerpo .como-clave").startswith("¿Aún no tienes clave?"), "how to get the OpenRouter key, in Spanish")
-        page.fill("#cajonCuerpo input[placeholder='sk-or-...']", "sk-or-test"); page.click("#cajonCuerpo .bloque:has(h4:text-is('Tu clave de OpenRouter')) >> text=Guardar")
-        page.wait_for_selector(".tramo .pj")
+        page.click("#landing .button-big >> nth=0"); page.wait_for_selector("#drawer:not([hidden])")
+        check(not english(page, "#drawer", "ajustes sin clave"), f"Settings (no key) in Spanish: {leftovers.get('ajustes sin clave')}")
+        check(page.inner_text("#drawerBody .how-key").startswith("¿Aún no tienes clave?"), "how to get the OpenRouter key, in Spanish")
+        page.fill("#drawerBody input[placeholder='sk-or-...']", "sk-or-test"); page.click("#drawerBody .block:has(h4:text-is('Tu clave de OpenRouter')) >> text=Guardar")
+        page.wait_for_selector(".tier .fig")
         e = state(page)
         check(e.get("language") == "es" and e["agents"][0]["name"] == "Jefe" and [x["name"] for x in e["floors"]] == ["Cúpula", "Vestíbulo"] and e["name"] == "Mi edificio",
               f"a new building is born in Spanish: {e.get('language')}, {e['agents'][0]['name']}, {[x['name'] for x in e['floors']]}, {e['name']}")
@@ -87,101 +87,101 @@ try:
               "the boss's instructions in Spanish, and the brain folders with Spanish names")
         check(not english(page, "body", "edificio solo jefe"), f"the building (only the boss) in Spanish: {leftovers.get('edificio solo jefe')}")
         # ---------- Built-in agents ----------
-        page.click("#abrirSerie"); page.wait_for_selector("#vistaSerie .serie-ag")
-        names = page.eval_on_selector_all("#vistaSerie .serie-nombre", "bs => bs.map(b => b.textContent)")
+        page.click("#openBuiltIn"); page.wait_for_selector("#builtInView .builtin-agent")
+        names = page.eval_on_selector_all("#builtInView .builtin-name", "bs => bs.map(b => b.textContent)")
         check(names == ["Jefe", "Sabio 1", "Sabio 2", "Tecno", "Arturito", "Creador de agentes", "JEV", "Interventor", "Memory"], f"«Agentes de serie» with their Spanish names: {names}")
-        check(not english(page, "#vistaSerie", "serie"), f"built-in agents page in Spanish: {leftovers.get('builtIn')}")
-        page.click("#vistaSerie button:has-text('Instalar el equipo recomendado')"); page.wait_for_timeout(700)
-        notice = page.inner_text("#avisoFlotante") if page.is_visible("#avisoFlotante") else ""
+        check(not english(page, "#builtInView", "serie"), f"built-in agents page in Spanish: {leftovers.get('builtIn')}")
+        page.click("#builtInView button:has-text('Instalar el equipo recomendado')"); page.wait_for_timeout(700)
+        notice = page.inner_text("#toast") if page.is_visible("#toast") else ""
         check(notice.startswith("Instalados: Sabio 1, Sabio 2"), f"the notice in Spanish: «{notice[:60]}»")
         tech = next(a for a in state(page)["agents"] if a["id"] == "techie")
         check(tech["instructions"].startswith("Eres Tecno, el técnico del edificio"), "the team is installed in Spanish")
-        page.click("#vistaSerie .volver-btn"); page.wait_for_selector("#vistaSerie", state="hidden")
+        page.click("#builtInView .back-btn"); page.wait_for_selector("#builtInView", state="hidden")
         # ---------- Building, strips ----------
         page.wait_for_timeout(400)
         check(not english(page, "body", "edificio"), f"the whole building in Spanish: {leftovers.get('building')}")
         photo(page, "2-edificio")
-        page.click("#verFranjas"); page.wait_for_selector(".fila-ag"); page.wait_for_timeout(300)
+        page.click("#showStrips"); page.wait_for_selector(".agent-row"); page.wait_for_timeout(300)
         check(not english(page, "body", "franjas"), f"«Franjas» and the directory in Spanish: {leftovers.get('franjas')}")
-        page.click("#verDibujo"); page.wait_for_selector(".tramo.storey:not(.franja)")
+        page.click("#showDrawing"); page.wait_for_selector(".tier.storey:not(.strip)")
         # ---------- Profiles (every tab) ----------
         for ag in ["boss", "sage1", "techie", "artie", "creator", "jev", "controller", "memory"]:
             for tab in range(4):
                 profile_es(page, ag, tab)
-                english(page, "#ficha", f"ficha {ag} {tab}")
+                english(page, "#profile", f"ficha {ag} {tab}")
         check(not any(k.startswith("ficha") for k in leftovers), "every profile (identity, work, brain, capabilities) in Spanish: " + "; ".join(f"{k}: {v}" for k, v in leftovers.items() if k.startswith("ficha"))[:1500])
         profile_es(page, "techie", 0); photo(page, "3-ficha")
         # ---------- Drawers ----------
-        page.click("#abrirAjustes"); page.wait_for_selector("#cajonCuerpo h4"); page.wait_for_timeout(300)
-        check(not english(page, "#cajon", "ajustes"), f"Settings in Spanish: {leftovers.get('settings')}")
-        photo(page, "4-ajustes"); page.click("#cerrarCajon")
-        page.click("#medidor"); page.wait_for_selector("#cajonCuerpo .quien-gasta"); page.wait_for_timeout(200)
-        check(not english(page, "#cajon", "gasto"), f"Spending in Spanish: {leftovers.get('spending')}")
-        page.click("#cerrarCajon")
-        page.click("#crearAgente"); page.wait_for_selector("#cajon:not([hidden])"); page.wait_for_timeout(300)
-        check(not english(page, "#cajon", "crear agente"), f"Create agent in Spanish: {leftovers.get('crear agente')}")
-        page.click("#cerrarCajon")
-        page.click("#crearPiso"); page.wait_for_selector("#cajon:not([hidden])"); page.wait_for_timeout(200)
-        check(not english(page, "#cajon", "crear piso"), f"Create floor in Spanish: {leftovers.get('crear piso')}")
-        page.click("#cerrarCajon")
-        profile_es(page, "techie", 0); page.click("#ficha .campo button.btn.mini >> nth=0"); page.wait_for_selector("#cajonCuerpo .pick4")
-        check(page.inner_text("#cajonTitulo") == "Foto y nombre de Tecno" and not english(page, "#cajon", "foto"), f"Photo and name in Spanish: {page.inner_text('#cajonTitulo')} {leftovers.get('foto')}")
-        eyes = page.get_attribute("#cajonCuerpo [aria-label='Ojos: verdes']", "title")
-        check(eyes == "Ojos: verdes" and page.is_visible("#cajonCuerpo [aria-label='Ropa: verde']") and page.is_visible("#cajonCuerpo [aria-label='Pelo: canoso']"),
+        page.click("#openSettings"); page.wait_for_selector("#drawerBody h4"); page.wait_for_timeout(300)
+        check(not english(page, "#drawer", "ajustes"), f"Settings in Spanish: {leftovers.get('settings')}")
+        photo(page, "4-ajustes"); page.click("#closeDrawer")
+        page.click("#meter"); page.wait_for_selector("#drawerBody .who-spends"); page.wait_for_timeout(200)
+        check(not english(page, "#drawer", "gasto"), f"Spending in Spanish: {leftovers.get('spending')}")
+        page.click("#closeDrawer")
+        page.click("#createAgent"); page.wait_for_selector("#drawer:not([hidden])"); page.wait_for_timeout(300)
+        check(not english(page, "#drawer", "crear agente"), f"Create agent in Spanish: {leftovers.get('crear agente')}")
+        page.click("#closeDrawer")
+        page.click("#createFloor"); page.wait_for_selector("#drawer:not([hidden])"); page.wait_for_timeout(200)
+        check(not english(page, "#drawer", "crear piso"), f"Create floor in Spanish: {leftovers.get('crear piso')}")
+        page.click("#closeDrawer")
+        profile_es(page, "techie", 0); page.click("#profile .field button.btn.mini >> nth=0"); page.wait_for_selector("#drawerBody .pick4")
+        check(page.inner_text("#drawerTitle") == "Foto y nombre de Tecno" and not english(page, "#drawer", "foto"), f"Photo and name in Spanish: {page.inner_text('#drawerTitle')} {leftovers.get('foto')}")
+        eyes = page.get_attribute("#drawerBody [aria-label='Ojos: verdes']", "title")
+        check(eyes == "Ojos: verdes" and page.is_visible("#drawerBody [aria-label='Ropa: verde']") and page.is_visible("#drawerBody [aria-label='Pelo: canoso']"),
               f"colours agree in Spanish (ojos verdes, ropa verde, pelo canoso): {eyes}")
-        page.click("#cerrarCajon")
+        page.click("#closeDrawer")
         # ---------- Screens ----------
-        for button, view, name in [("#abrirBandeja", "#vistaBandeja", "bandeja"), ("#abrirMes", "#vistaMes", "mes"), ("#abrirSalas", "#vistaSalas", "salas"), ("#abrirActividad", None, "actividad")]:
+        for button, view, name in [("#openInbox", "#inboxView", "bandeja"), ("#openMonth", "#monthView", "mes"), ("#openRooms", "#roomsView", "salas"), ("#openActivity", None, "actividad")]:
             page.click(button); page.wait_for_timeout(500)
             english(page, view or "body", name)
-            if view: page.click(f"{view} .volver-btn"); page.wait_for_timeout(200)
+            if view: page.click(f"{view} .back-btn"); page.wait_for_timeout(200)
         check(not any(k in leftovers for k in ["inbox", "month", "rooms", "actividad"]), "Bandeja, Agente del mes, Reuniones and Actividad in Spanish: " + "; ".join(f"{k}: {leftovers[k]}" for k in ["inbox", "month", "rooms", "actividad"] if k in leftovers)[:1200])
         # ---------- Chat with the boss: what is said to it, in Spanish ----------
-        page.click("#hablarJefe"); page.wait_for_selector("#vistaChat:not([hidden])")
-        page.fill("#texto", "Hola, ¿quién eres?"); page.keyboard.press("Enter")
-        page.wait_for_selector("#mensajes .msg.bot:not(.saludo) .meta", timeout=15000)
+        page.click("#talkToBoss"); page.wait_for_selector("#chatView:not([hidden])")
+        page.fill("#messageInput", "Hola, ¿quién eres?"); page.keyboard.press("Enter")
+        page.wait_for_selector("#messages .msg.bot:not(.greeting) .meta", timeout=15000)
         s0 = next((x["sys"] for x in reversed(requests) if x["sys"].startswith("Eres el jefe del edificio")), "")
         check(s0 and "Te llamas Jefe" in s0 and "Regla: no inventes datos" in s0, "the boss is spoken to in Spanish (instructions, name, rule against making things up)")
         forbidden = [w for w in ["You are ", "Your name", "Rule:", "Date and time", "Org chart", "You can use tools"] if w in s0]
         check(not forbidden, f"and with no English pieces: {forbidden}")
-        check(not english(page, "#vistaChat", "chat"), f"the chat in Spanish (not counting what they write): {leftovers.get('chat')}")
+        check(not english(page, "#chatView", "chat"), f"the chat in Spanish (not counting what they write): {leftovers.get('chat')}")
         photo(page, "5-chat")
-        page.click("#mensajes .msg.bot:not(.saludo) .moneda-btn >> nth=0")
-        page.fill(".motivo-fila input", "Lo explicó muy claro"); page.click(".motivo-fila .btn.primario")
+        page.click("#messages .msg.bot:not(.greeting) .coin-btn >> nth=0")
+        page.fill(".reason-row input", "Lo explicó muy claro"); page.click(".reason-row .btn.primary")
         page.wait_for_selector("text=Lección propuesta", timeout=15000)
-        check(not english(page, "#vistaChat", "chat2"), f"the chat, with coins, in Spanish: {leftovers.get('chat2')}")
-        page.click("#cerrarChat")
-        page.click("#abrirBandeja"); page.wait_for_selector("#vistaBandeja .peticion")
-        check(not english(page, "#vistaBandeja", "bandeja lección"), f"the inbox with the lesson, in Spanish: {leftovers.get('bandeja lección')}")
-        page.click("#vistaBandeja .volver-btn")
+        check(not english(page, "#chatView", "chat2"), f"the chat, with coins, in Spanish: {leftovers.get('chat2')}")
+        page.click("#closeChat")
+        page.click("#openInbox"); page.wait_for_selector("#inboxView .request")
+        check(not english(page, "#inboxView", "bandeja lección"), f"the inbox with the lesson, in Spanish: {leftovers.get('bandeja lección')}")
+        page.click("#inboxView .back-btn")
         # ---------- The Creator designs an agent (in Spanish) ----------
-        page.click("#crearAgente"); page.fill("#cajonCuerpo .creador textarea", "Quiero uno que planifique el menú de la semana")
-        page.click("#cajonCuerpo .creador button"); page.wait_for_selector("#cajonCuerpo .porque")
-        check(not english(page, "#cajon", "creator"), f"the profile the Creator proposes, in Spanish: {leftovers.get('creator')}")
-        page.click("#cajonCuerpo button:text-is('Crear agente')"); page.wait_for_timeout(600)
+        page.click("#createAgent"); page.fill("#drawerBody .creator textarea", "Quiero uno que planifique el menú de la semana")
+        page.click("#drawerBody .creator button"); page.wait_for_selector("#drawerBody .why")
+        check(not english(page, "#drawer", "creator"), f"the profile the Creator proposes, in Spanish: {leftovers.get('creator')}")
+        page.click("#drawerBody button:text-is('Crear agente')"); page.wait_for_timeout(600)
         try:
-            if page.is_visible(".volver"): page.click(".volver", timeout=2000)
+            if page.is_visible(".back"): page.click(".back", timeout=2000)
         except Exception: pass
-        page.click("#abrirMes"); page.wait_for_timeout(400)
-        check(not english(page, "#vistaMes", "mes2"), f"«Agente del mes» with coins, in Spanish: {leftovers.get('mes2')}")
-        page.click("#vistaMes .volver-btn")
+        page.click("#openMonth"); page.wait_for_timeout(400)
+        check(not english(page, "#monthView", "mes2"), f"«Agente del mes» with coins, in Spanish: {leftovers.get('mes2')}")
+        page.click("#monthView .back-btn")
         # ---------- A meeting ----------
-        page.click("#abrirSalas"); page.wait_for_selector("#vistaSalas:not([hidden]) .form-osc")
-        page.fill(".form-osc input >> nth=0", "Plan de la semana"); page.fill(".form-osc textarea", "Qué publicamos y con qué presupuesto.")
-        page.click(".elegir-asistentes label:has-text('Sabio 1') input"); page.fill(".form-osc input[type=number]", "1")
-        page.click(".form-osc .btn.primario"); page.wait_for_selector(".mesa .asiento")
-        page.click(".form-osc .btn.primario"); page.wait_for_selector("#vistaSalas .acta", timeout=20000)
-        check(not english(page, "#vistaSalas", "sala"), f"the meeting room in Spanish: {leftovers.get('sala')}")
+        page.click("#openRooms"); page.wait_for_selector("#roomsView:not([hidden]) .form-dark")
+        page.fill(".form-dark input >> nth=0", "Plan de la semana"); page.fill(".form-dark textarea", "Qué publicamos y con qué presupuesto.")
+        page.click(".choose-attendees label:has-text('Sabio 1') input"); page.fill(".form-dark input[type=number]", "1")
+        page.click(".form-dark .btn.primary"); page.wait_for_selector(".table .seat")
+        page.click(".form-dark .btn.primary"); page.wait_for_selector("#roomsView .minutes", timeout=20000)
+        check(not english(page, "#roomsView", "sala"), f"the meeting room in Spanish: {leftovers.get('sala')}")
         photo(page, "6-sala")
-        page.click("#vistaSalas .volver-btn")
+        page.click("#roomsView .back-btn")
         # ---------- Activity, after all of the above ----------
-        page.click("#abrirActividad"); page.wait_for_timeout(500)
+        page.click("#openActivity"); page.wait_for_timeout(500)
         check(not english(page, "body", "actividad2"), f"the activity (what the engine notes) in Spanish: {leftovers.get('actividad2')}")
         photo(page, "7-actividad")
         # ---------- Nothing the engine said was missing from the Spanish dictionary ----------
         without = page.evaluate("async () => { const m = await import('./engine.js'); return [...m.UNTRANSLATED]; }")
         check([x for x in without if x not in ("min", "h")] == [], f"the engine asked for no text missing from textos/es.js: {without[:8]}")
-        med = page.inner_text("#medHoy")
+        med = page.inner_text("#meterToday")
         check(re.search(r"\d,\d+ \$", med), f"money in Spanish format (0,0012 $): «{med}»")
         check(not errors, f"no errors on the page: {errors}")
         b.close()

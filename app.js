@@ -95,7 +95,7 @@ const idb = {
 // What people or an agent write (messages, tasks, notes, reasons, titles) goes as it is: it doesn't go through the dictionary
 const raw = (t) => document.createTextNode(String(t ?? ""));
 // For whoever has never used OpenRouter: how to get the key
-const howToGetKey = () => h("div", { class: "como-clave" }, h("b", {}, "No key yet? You can get one in a few minutes:"),
+const howToGetKey = () => h("div", { class: "how-key" }, h("b", {}, "No key yet? You can get one in a few minutes:"),
   h("ol", {},
     h("li", {}, "Create an OpenRouter account: with your email, Google or GitHub. ", h("a", { href: "https://openrouter.ai", target: "_blank", rel: "noopener" }, "openrouter.ai")),
     h("li", {}, "In “Credits”, add some balance. You pay in advance and only what your agents use is spent. ", h("a", { href: "https://openrouter.ai/credits", target: "_blank", rel: "noopener" }, "openrouter.ai/credits")),
@@ -176,7 +176,7 @@ async function refreshHome() {
     if (!refreshHome.language) { refreshHome.language = true; syncLanguage(); }   // the first time: this person's language or the building's
   } catch {}
 }
-function askPin() { if ($("cajon").hidden) openDrawer("settings"); }
+function askPin() { if ($("drawer").hidden) openDrawer("settings"); }
 const apiBase = () => (mode === "local" ? OR : "./api/or");
 const apiCab = (json) => { const c = mode === "local" ? { Authorization: "Bearer " + store.get(K.key) } : { "X-Fer-Pin": pin }; if (json) c["Content-Type"] = "application/json"; return c; };
 const hasAccess = () => (mode === "home" ? !!pin && !(isApp() && homeInfo.key === false) : !!store.get(K.key));
@@ -260,20 +260,20 @@ function modelPicker(type, current, { empty, extra, onChange, filter } = {}) {
   if (onChange) sel.addEventListener("change", () => onChange(sel.value));
   if (allModels.length > MAX_RECOMMENDED) {
     // also, «Search all»: you type part of the name and choose (the same as finding it in the drop-down, but faster)
-    const button = h("button", { type: "button", class: "btn mini buscar-modelo" }, tr(`Search all (${allModels.length})`));
+    const button = h("button", { type: "button", class: "btn mini search-model" }, tr(`Search all (${allModels.length})`));
     let box = null;
     button.onclick = (ev) => {
       ev.preventDefault();
       if (box && box.isConnected) { box.remove(); box = null; return; }
       const q = h("input", { type: "search", placeholder: tr("Type part of the name: claude, gpt, gemini, flux…"), "aria-label": "Search model" });
-      const res = h("div", { class: "busca-modelos" });
+      const res = h("div", { class: "model-search" });
       const renderResults = () => {
         const t = withoutAccents(q.value.trim()), hall = allModels.filter((m) => !t || withoutAccents(m.id + " " + (m.name || "")).includes(t)).slice(0, 40);
-        res.replaceChildren(...hall.map((m) => h("button", { type: "button", class: "modelo-res", onclick: (e2) => { e2.preventDefault(); fillIn(m.id); box.remove(); box = null; sel.dispatchEvent(new Event("change")); } }, modelLabel(m))),
-          hall.length ? h("small", { class: "nota" }, tr(hall.length === 40 ? "There are more: type a bit more of the name." : `${hall.length} found`)) : h("small", { class: "nota" }, tr("None with that name.")));
+        res.replaceChildren(...hall.map((m) => h("button", { type: "button", class: "model-result", onclick: (e2) => { e2.preventDefault(); fillIn(m.id); box.remove(); box = null; sel.dispatchEvent(new Event("change")); } }, modelLabel(m))),
+          hall.length ? h("small", { class: "note" }, tr(hall.length === 40 ? "There are more: type a bit more of the name." : `${hall.length} found`)) : h("small", { class: "note" }, tr("None with that name.")));
       };
       q.oninput = renderResults;
-      box = h("div", { class: "buscador-modelos" }, q, res);
+      box = h("div", { class: "model-search-box" }, q, res);
       button.after(box); renderResults(); q.focus();
     };
     requestAnimationFrame(() => { if (sel.isConnected && sel.nextElementSibling !== button) sel.after(button); });
@@ -282,9 +282,9 @@ function modelPicker(type, current, { empty, extra, onChange, filter } = {}) {
 }
 // What Artie proposes for this type of model (you decide)
 function proposalsFor(type) {
-  return (ed.e.modelProposals || []).filter((x) => x.type === type && x.state === "pending").map((pm) => h("div", { class: "propuesta-modelo" },
+  return (ed.e.modelProposals || []).filter((x) => x.type === type && x.state === "pending").map((pm) => h("div", { class: "model-proposal" },
     h("span", {}, `${tr("Artie proposes")} ${pm.model} ${tr("for the level")} ${tr(LEVEL_NAME[pm.level] || pm.level)}: ${pm.reason}`),
-    h("button", { class: "btn mini primario", onclick: () => Motor.run({ type: "model.accept", proposal: pm.id }).then(() => render(true)).catch(warn) }, "Accept"),
+    h("button", { class: "btn mini primary", onclick: () => Motor.run({ type: "model.accept", proposal: pm.id }).then(() => render(true)).catch(warn) }, "Accept"),
     h("button", { class: "btn mini", onclick: () => Motor.run({ type: "model.discard", proposal: pm.id }).then(() => render(true)).catch(warn) }, "Dismiss")));
 }
 
@@ -399,8 +399,8 @@ function setAccent(hex) {
   const r = parseInt(hex.slice(1, 3), 16), g = parseInt(hex.slice(3, 5), 16), b = parseInt(hex.slice(5, 7), 16);
   const lin = (c) => { c /= 255; return c <= 0.03928 ? c / 12.92 : Math.pow((c + 0.055) / 1.055, 2.4); };
   const lum = 0.2126 * lin(r) + 0.7152 * lin(g) + 0.0722 * lin(b);
-  document.documentElement.style.setProperty("--acento", hex);
-  document.documentElement.style.setProperty("--sobre-acento", 1.05 / (lum + 0.05) >= (lum + 0.05) / 0.0637 ? "#FFFFFF" : "#1D2140");
+  document.documentElement.style.setProperty("--accent", hex);
+  document.documentElement.style.setProperty("--on-accent", 1.05 / (lum + 0.05) >= (lum + 0.05) / 0.0637 ? "#FFFFFF" : "#1D2140");
 }
 let accentSet = "";
 function renderAccent() {
@@ -419,8 +419,8 @@ function ensureBigFigure(look) {
 // Look picker: character and colours (used by «Create agent» and «Look»)
 function lookPicker(current, onChange) {
   let A = normLook(current);
-  const box = h("div", { class: "aspecto" });
-  const view = h("img", { class: "vista-pj", alt: "Preview" });
+  const box = h("div", { class: "look" });
+  const view = h("img", { class: "fig-preview", alt: "Preview" });
   const refreshView = () => { ensureFigure(A).then((u) => { view.src = u; }); };
   const renderSelection = () => {
     box.innerHTML = "";
@@ -429,11 +429,11 @@ function lookPicker(current, onChange) {
       pick.append(h("button", { type: "button", role: "radio", "aria-checked": String(A.p === name), onclick: () => { A = normLook({ p: name }); onChange(A); renderSelection(); } },
         h("img", { src: CHARACTERS[name].img, alt: "" }), h("span", {}, CHARACTER_NAME[name])));
     }
-    const colours = h("div", { class: "colores" });
-    if (!CHARACTERS[A.p].regions) colours.append(h("small", { class: "nota" }, tr("This character keeps its own colours.")));
+    const colours = h("div", { class: "colours" });
+    if (!CHARACTERS[A.p].regions) colours.append(h("small", { class: "note" }, tr("This character keeps its own colours.")));
     else for (const zone of ["clothes", "eyes", "hair", "skin"]) {
       const original = CHARACTERS[A.p].regions[zone].original;
-      const row = h("div", { class: "muestras", role: "radiogroup", "aria-label": ZONE_NAME[zone] });
+      const row = h("div", { class: "swatches", role: "radiogroup", "aria-label": ZONE_NAME[zone] });
       for (const [hex, name] of [[null, "original"], ...PALETTES[zone]]) {
         row.append(h("button", { type: "button", class: "sw" + (hex ? "" : " orig"), style: { "--c": hex || original }, title: `${ZONE_NAME[zone]}: ${name}`, role: "radio", "aria-label": `${ZONE_NAME[zone]}: ${name}`, "aria-checked": String((A[zone] || null) === hex),
           onclick: () => { A = normLook(Object.assign({}, A, { [zone]: hex })); onChange(A); renderSelection(); } }));
@@ -442,10 +442,10 @@ function lookPicker(current, onChange) {
       const inp = h("input", { type: "color", value: A[zone] || original, "aria-label": `${ZONE_NAME[zone]}: another colour` });
       inp.oninput = () => { A = normLook(Object.assign({}, A, { [zone]: inp.value.toUpperCase() })); refreshView(); };
       inp.onchange = () => { onChange(A); renderSelection(); };
-      row.append(h("label", { class: "libre", title: "Another colour", style: customColour ? { background: A[zone], borderStyle: "solid" } : {} }, inp, h("span", {}, customColour ? "" : "+")));
-      colours.append(h("div", { class: "campo" }, h("span", {}, ZONE_NAME[zone]), row));
+      row.append(h("label", { class: "custom", title: "Another colour", style: customColour ? { background: A[zone], borderStyle: "solid" } : {} }, inp, h("span", {}, customColour ? "" : "+")));
+      colours.append(h("div", { class: "field" }, h("span", {}, ZONE_NAME[zone]), row));
     }
-    box.append(h("div", { class: "aspecto-cab" }, h("div", { class: "marco-vista" }, view), h("div", { class: "campo", style: { flex: 1 } }, h("span", {}, "Character"), pick)), colours);
+    box.append(h("div", { class: "look-head" }, h("div", { class: "view-frame" }, view), h("div", { class: "field", style: { flex: 1 } }, h("span", {}, "Character"), pick)), colours);
     refreshView();
   };
   renderSelection();
@@ -488,33 +488,33 @@ function render() {
     if (chatId) { renderChatHeader(); renderChat(); }
     if (tab === "profile") renderProfile(); if (tab === "actividad") renderLog();
     if (screen === "month") renderMonth(); if (screen === "rooms") renderMeetingRooms(); if (screen === "inbox") renderInbox(); if (screen === "builtIn") renderBuiltIn();
-    if (!$("cajon").hidden && drawerType === "spending") renderSpendingDrawer(true);
+    if (!$("drawer").hidden && drawerType === "spending") renderSpendingDrawer(true);
   });
 }
-function phaseClass() { return { normal: "", freeze1: "c1", freeze2: "c2", cap: "tope" }[ed.e.phase || "normal"] || ""; }
+function phaseClass() { return { normal: "", freeze1: "c1", freeze2: "c2", cap: "at-cap" }[ed.e.phase || "normal"] || ""; }
 function renderTop() {
   const aj = ed.e.settings, today = ed.buildingSpending("today"), usage = ed.budgetUsage(), j = ed.boss();
-  $("nombreEdificio").textContent = ed.e.name || tr("My building");
+  $("buildingName").textContent = ed.e.name || tr("My building");
   // the counter always in view; at zero, «Today, no spending» instead of «$0.0000»
-  $("medHoy").textContent = today > 0 ? tr(`Today ${fmt(today)}`) : tr("Today, no spending");
-  $("medTope").textContent = n0(aj.dailyCap) ? tr(`cap ${fmtCap(n0(aj.dailyCap))}`) : tr("no cap");
-  const b = $("medBarra"); b.style.width = Math.min(100, usage * 100) + "%"; b.className = phaseClass();
-  $("modo").textContent = tr(isApp() ? "In this app · works while it's open" : mode === "home" ? "Connected to Fer Home · works 24 h" : "In this browser · works while it's open");
-  $("modo").classList.toggle("casa", mode === "home");
-  $("hablarJefe").textContent = tr(`Talk to ${j ? j.name : "the boss"}`);
+  $("meterToday").textContent = today > 0 ? tr(`Today ${fmt(today)}`) : tr("Today, no spending");
+  $("meterCap").textContent = n0(aj.dailyCap) ? tr(`cap ${fmtCap(n0(aj.dailyCap))}`) : tr("no cap");
+  const b = $("meterBar"); b.style.width = Math.min(100, usage * 100) + "%"; b.className = phaseClass();
+  $("mode").textContent = tr(isApp() ? "In this app · works while it's open" : mode === "home" ? "Connected to Fer Home · works 24 h" : "In this browser · works while it's open");
+  $("mode").classList.toggle("home", mode === "home");
+  $("talkToBoss").textContent = tr(`Talk to ${j ? j.name : "the boss"}`);
   const pend = (ed.e.coins || []).filter((m) => m.state === "proposed").length;
-  $("globoMes").hidden = !pend; $("globoMes").textContent = pend;
-  $("globoMes").title = tr(pend === 1 ? "1 proposed coin is waiting for your decision" : `${pend} proposed coins are waiting for your decision`);
+  $("monthBadge").hidden = !pend; $("monthBadge").textContent = pend;
+  $("monthBadge").title = tr(pend === 1 ? "1 proposed coin is waiting for your decision" : `${pend} proposed coins are waiting for your decision`);
   // the inbox: everything waiting for your yes
   const nb = ed.inbox().length;
-  $("globoBandeja").hidden = !nb; $("globoBandeja").textContent = nb;
-  $("abrirBandeja").title = tr(nb ? (nb === 1 ? "1 thing is waiting for your yes" : `${nb} things are waiting for your yes`) : "Nothing is waiting for your yes");
+  $("inboxBadge").hidden = !nb; $("inboxBadge").textContent = nb;
+  $("openInbox").title = tr(nb ? (nb === 1 ? "1 thing is waiting for your yes" : `${nb} things are waiting for your yes`) : "Nothing is waiting for your yes");
   // the master switch
   const pause = aj.pause !== false, spenders = ed.whoSpends().filter((x) => x.auto && x.est.spends && !x.a.off);
-  $("pausa").setAttribute("aria-pressed", String(pause));
-  $("pausaTxt").textContent = tr(pause ? "Paused" : "Automatic");
-  $("pausaSub").textContent = tr(pause ? "nothing spends on its own" : (spenders.length === 1 ? "1 agent can spend on its own" : `${spenders.length} agents can spend on their own`));
-  $("pausa").title = tr(pause ? "General pause: no agent that spends wakes up on its own. Press to start." : "Running: heartbeats are on. Press to stop everything automatic.");
+  $("pause").setAttribute("aria-pressed", String(pause));
+  $("pauseTxt").textContent = tr(pause ? "Paused" : "Automatic");
+  $("pauseSub").textContent = tr(pause ? "nothing spends on its own" : (spenders.length === 1 ? "1 agent can spend on its own" : `${spenders.length} agents can spend on their own`));
+  $("pause").title = tr(pause ? "General pause: no agent that spends wakes up on its own. Press to start." : "Running: heartbeats are on. Press to stop everything automatic.");
   renderBackupTop();
 }
 // «Save backup»: when the last one was made (downloaded or in the brain folder)
@@ -528,9 +528,9 @@ function howLongAgo(ts) {
 }
 function renderBackupTop() {
   const t = lastBackup(), oldOne = !t || Date.now() - t > 7 * 86400e3;
-  $("copiaCuando").textContent = tr(`last: ${howLongAgo(t)}`);
-  $("copiaRapida").classList.toggle("vieja", oldOne);
-  $("copiaRapida").title = tr(t ? `Last backup: ${new Date(t).toLocaleString(LOCALE)}. Press to save another one now.` : "There's no backup yet. Press to save one now.");
+  $("backupWhen").textContent = tr(`last: ${howLongAgo(t)}`);
+  $("quickBackup").classList.toggle("stale", oldOne);
+  $("quickBackup").title = tr(t ? `Last backup: ${new Date(t).toLocaleString(LOCALE)}. Press to save another one now.` : "There's no backup yet. Press to save one now.");
 }
 function visibleState(a) {
   if (a.state === "working" || ed.busyIds.has(a.id)) return "working";
@@ -549,22 +549,22 @@ const namesUpToDate = () => { if (ed && ed.e) setNames([ed.e.name, ...ed.e.agent
 const converses = (a) => !!(a && a.brain && a.role !== "jev" && !["controller", "memory"].includes(a.role));
 const spendingTxt = (g) => (g > 0 ? fmt(g) : "");   // spending is only shown when there is some
 // The profile (and the activity) go in a panel on the right that only opens when you touch an agent or go into a floor
-const panelOpen = () => document.body.classList.contains("con-panel");
-function openPanel(tab) { if (window.innerWidth > 900) document.body.classList.add("con-panel"); showTab(tab || "profile"); render(); }
-function closePanel() { if (!panelOpen()) return; document.body.classList.remove("con-panel"); render(); }
+const panelOpen = () => document.body.classList.contains("with-panel");
+function openPanel(tab) { if (window.innerWidth > 900) document.body.classList.add("with-panel"); showTab(tab || "profile"); render(); }
+function closePanel() { if (!panelOpen()) return; document.body.classList.remove("with-panel"); render(); }
 function choose(a) { selection = a.id; openPanel("profile"); }
 
 // A figure placed on a piece of the drawing. x0 and width: the stretch of drawing the container takes up.
 function character(a, T, x, x0, width, withName) {
   const est = visibleState(a);
   return h("button", {
-    class: `pj ${est}${selection === a.id && (panelOpen() || window.innerWidth <= 900) ? " sel" : ""}${a.role === "boss" ? " jefe" : ""}`, "data-id": a.id, type: "button",
+    class: `fig ${est}${selection === a.id && (panelOpen() || window.innerWidth <= 900) ? " sel" : ""}${a.role === "boss" ? " jefe" : ""}`, "data-id": a.id, type: "button",
     style: { left: pct((x - x0) / width), top: pct((T.ground - T.fig) / T.high), height: pct(T.fig / T.high) },
     title: `${a.name} · ${roleTxt(a)} · ${tr(STATUS_TXT[est])}${a.statusReason ? " (" + a.statusReason + ")" : ""}`,
     "aria-label": `${a.name}, ${roleTxt(a)}, ${tr(STATUS_TXT[est])}`,
     onclick: (ev) => { ev.stopPropagation(); choose(a); }
-  }, h("img", { src: figure(a.look), alt: "", draggable: "false" }), est === "active" ? h("span", { class: "pendiente", "aria-hidden": "true" }) : null,
-    figureCoins(a), h("span", { class: "etiqueta" + (withName ? "" : " al-pasar"), "aria-hidden": "true" }, a.name));
+  }, h("img", { src: figure(a.look), alt: "", draggable: "false" }), est === "active" ? h("span", { class: "pending", "aria-hidden": "true" }) : null,
+    figureCoins(a), h("span", { class: "label" + (withName ? "" : " on-hover"), "aria-hidden": "true" }, a.name));
 }
 // The gold and red coin counter, on the figure
 let coinTally = null, coinsSignature = "";
@@ -579,11 +579,11 @@ function coinsOf(a) {
 function figureCoins(a) {
   const c = coinsOf(a);
   if (!c.gold && !c.red) return null;
-  return h("span", { class: "monedas-pj", "aria-label": `${c.gold} gold and ${c.red} red` },
-    c.gold ? h("span", {}, h("i", { class: "moneda oro" }), String(c.gold)) : null, c.red ? h("span", {}, h("i", { class: "moneda roja" }), String(c.red)) : null);
+  return h("span", { class: "coins-fig", "aria-label": `${c.gold} gold and ${c.red} red` },
+    c.gold ? h("span", {}, h("i", { class: "coin gold" }), String(c.gold)) : null, c.red ? h("span", {}, h("i", { class: "coin red" }), String(c.red)) : null);
 }
 function slot(T, x, x0, width, floor, seat) {
-  return h("button", { class: "hueco", type: "button", title: "Put a new agent here", "aria-label": `Create an agent: ${SEAT_NAME[seat]}`,
+  return h("button", { class: "slot", type: "button", title: "Put a new agent here", "aria-label": `Create an agent: ${SEAT_NAME[seat]}`,
     style: { left: pct((x - x0) / width), top: pct((T.ground - T.fig * 0.62) / T.high), height: pct(T.fig * 0.5 / T.high) },
     onclick: (ev) => { ev.stopPropagation(); openDrawer("agent", { floor: floor.id, seat }); } }, "+");
 }
@@ -598,36 +598,36 @@ function buildingView() {
 }
 let tower = null, dirCab = null, dirList = null, floorBefore = "";
 function renderCity() {
-  const cont = $("edificio");
+  const cont = $("building");
   if (openFloorId && !ed.e.floors.some((p) => p.id === openFloorId)) openFloorId = "";
-  if (floorBefore && !openFloorId) document.body.classList.remove("con-panel");   // when leaving a floor, the whole building again
+  if (floorBefore && !openFloorId) document.body.classList.remove("with-panel");   // when leaving a floor, the whole building again
   floorBefore = openFloorId;
-  cont.classList.toggle("abierta", !!openFloorId);
-  $("ciudadBarra").hidden = !!openFloorId;
+  cont.classList.toggle("open", !!openFloorId);
+  $("cityBar").hidden = !!openFloorId;
   if (openFloorId) return renderFloor(cont, ed.e.floors.find((p) => p.id === openFloorId));
   const v = buildingView();
-  $("verDibujo").setAttribute("aria-pressed", String(v === "drawing")); $("verFranjas").setAttribute("aria-pressed", String(v === "strips"));
-  if (!tower) { tower = h("div", { class: "torre" }); dirList = h("div", { class: "dir-lista" }); directoryHeader(); }
+  $("showDrawing").setAttribute("aria-pressed", String(v === "drawing")); $("showStrips").setAttribute("aria-pressed", String(v === "strips"));
+  if (!tower) { tower = h("div", { class: "tower" }); dirList = h("div", { class: "dir-list" }); directoryHeader(); }
   // the directory, only in «Strips» (in the drawing you already see everyone)
   const withDir = v === "strips";
   if (cont.children[0] !== tower || (cont.children.length > 1) !== withDir) cont.replaceChildren(...(withDir ? [tower, dirCab, dirList] : [tower]));   // the search box isn't rebuilt: it doesn't lose what was typed
-  tower.replaceChildren(...ed.e.floors.map((p) => (v === "strips" && p.type === "storey" ? storeyStrip(p) : buildingSection(p))), h("div", { class: "suelo-calle" }));
+  tower.replaceChildren(...ed.e.floors.map((p) => (v === "strips" && p.type === "storey" ? storeyStrip(p) : buildingSection(p))), h("div", { class: "street" }));
   if (withDir) renderDirectory();
 }
 function buildingSection(p) {
   const T = SECTION[p.type], r = seating(ed.e, p.id), places = PLACES[p.type];
-  const el = h("div", { class: "tramo " + p.type, style: { aspectRatio: `${WIDTH} / ${T.high}` } });
-  el.append(h("img", { class: "fondo", src: T.img, alt: "", draggable: "false" }));
-  if (p.type === "dome") el.append(h("span", { class: "luz", id: "luzAntena", style: { left: pct(717 / WIDTH), top: pct(12 / T.high) }, "aria-hidden": "true" }));
-  el.append(h("button", { class: "entrar", type: "button", "aria-label": `Go into ${p.name}`, title: `Go into ${p.name}${p.job ? ": " + p.job : ""}`, onclick: () => openFloor(p.id) }));
+  const el = h("div", { class: "tier " + p.type, style: { aspectRatio: `${WIDTH} / ${T.high}` } });
+  el.append(h("img", { class: "backdrop", src: T.img, alt: "", draggable: "false" }));
+  if (p.type === "dome") el.append(h("span", { class: "beacon", id: "antennaLight", style: { left: pct(717 / WIDTH), top: pct(12 / T.high) }, "aria-hidden": "true" }));
+  el.append(h("button", { class: "enter", type: "button", "aria-label": `Go into ${p.name}`, title: `Go into ${p.name}${p.job ? ": " + p.job : ""}`, onclick: () => openFloor(p.id) }));
   let outside = 0;
   for (const [seat, ags] of Object.entries(r)) {
     const xs = (places[seat] || []).slice(0, p.type === "storey" && seat === "pool" ? Math.min(PER_POOL, (p.pools || 0) * PER_POOL) : undefined);
     ags.forEach((a, i) => { if (i < xs.length) el.append(character(a, T, xs[i], 0, WIDTH)); else outside++; });
   }
-  if (outside) el.append(h("button", { class: "mas", type: "button", onclick: () => openFloor(p.id), title: "See all" }, `+${outside}`));
+  if (outside) el.append(h("button", { class: "more", type: "button", onclick: () => openFloor(p.id), title: "See all" }, `+${outside}`));
   const g = floorSpending(p);
-  el.append(h("button", { class: "placa", type: "button", style: { "--arriba": pct(T.sign / T.high), "--movil": pct((T.mobileSign || T.sign) / T.high) }, onclick: () => openFloor(p.id), title: p.job || "" },
+  el.append(h("button", { class: "sign", type: "button", style: { "--top": pct(T.sign / T.high), "--mobile": pct((T.mobileSign || T.sign) / T.high) }, onclick: () => openFloor(p.id), title: p.job || "" },
     h("b", {}, p.name), g > 0 ? h("span", {}, fmt(g)) : null));
   return el;
 }
@@ -636,26 +636,26 @@ function storeyStrip(p) {
   const ags = ed.e.agents.filter((a) => a.floor === p.id), est = ags.map(visibleState);
   const workingCount = est.filter((x) => x === "working").length, g = floorSpending(p);
   const data = tr(ags.length === 1 ? "1 agent" : `${ags.length} agents`) + " · " + tr(`${workingCount} working`) + (g > 0 ? " · " + fmt(g) : "");
-  return h("div", { class: "tramo piso franja" },
-    h("img", { class: "fondo", src: SECTION.storey.img, alt: "", draggable: "false" }),
-    h("button", { class: "entrar", type: "button", "aria-label": `Go into ${p.name}`, title: `Go into ${p.name}${p.job ? ": " + p.job : ""}`, onclick: () => openFloor(p.id) }),
-    h("div", { class: "franja-txt" },
-      h("span", { class: "f-nombre" }, h("b", {}, p.name), p.job ? h("small", {}, p.job) : null),
-      h("span", { class: "f-datos" }, data, ags.length ? h("span", { class: "puntos", "aria-hidden": "true" }, ags.map((a, i) => h("i", { class: est[i] }))) : null)));
+  return h("div", { class: "tier storey strip" },
+    h("img", { class: "backdrop", src: SECTION.storey.img, alt: "", draggable: "false" }),
+    h("button", { class: "enter", type: "button", "aria-label": `Go into ${p.name}`, title: `Go into ${p.name}${p.job ? ": " + p.job : ""}`, onclick: () => openFloor(p.id) }),
+    h("div", { class: "strip-txt" },
+      h("span", { class: "f-name" }, h("b", {}, p.name), p.job ? h("small", {}, p.job) : null),
+      h("span", { class: "f-data" }, data, ags.length ? h("span", { class: "dots", "aria-hidden": "true" }, ags.map((a, i) => h("i", { class: est[i] }))) : null)));
 }
 
 // ---------------- Directory: every agent, with a search box and filters ----------------
 const FILTERS = [["", "All"], ["working", "Working"], ["active", "With pending tasks"], ["frozen", "Frozen"], ["off", "Off"]];
 const withoutAccents = (t) => String(t || "").toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g, "");
 function directoryHeader() {
-  const search = h("input", { class: "buscador", type: "search", placeholder: "Search by name, role or floor", "aria-label": "Find an agent", oninput: (ev) => { searchQuery = ev.target.value; renderDirectory(); } });
-  dirCab = h("div", { class: "dir-cabecera" }, h("div", { class: "dir-cab" }, h("h3", {}, "Directory"), search), h("div", { class: "filtros", role: "group", "aria-label": "Filter by status" }));
+  const search = h("input", { class: "search-box", type: "search", placeholder: "Search by name, role or floor", "aria-label": "Find an agent", oninput: (ev) => { searchQuery = ev.target.value; renderDirectory(); } });
+  dirCab = h("div", { class: "dir-header" }, h("div", { class: "dir-head" }, h("h3", {}, "Directory"), search), h("div", { class: "filters", role: "group", "aria-label": "Filter by status" }));
 }
 function renderDirectory() {
-  const filters = dirCab.querySelector(".filtros"), est = new Map(ed.e.agents.map((a) => [a.id, visibleState(a)]));
+  const filters = dirCab.querySelector(".filters"), est = new Map(ed.e.agents.map((a) => [a.id, visibleState(a)]));
   filters.replaceChildren(...FILTERS.map(([k, t]) => {
     const n = k ? [...est.values()].filter((x) => x === k).length : est.size;
-    return h("button", { type: "button", "aria-pressed": String(dirFilter === k), onclick: () => { dirFilter = dirFilter === k ? "" : k; renderDirectory(); } }, k ? h("i", { class: "est-punto " + k }) : null, `${tr(t)} (${n})`);
+    return h("button", { type: "button", "aria-pressed": String(dirFilter === k), onclick: () => { dirFilter = dirFilter === k ? "" : k; renderDirectory(); } }, k ? h("i", { class: "state-dot " + k }) : null, `${tr(t)} (${n})`);
   }));
   const q = withoutAccents(searchQuery.trim());
   const groups = [];
@@ -664,17 +664,17 @@ function renderDirectory() {
     const ags = allItems.filter((a) => (!dirFilter || est.get(a.id) === dirFilter) && (!q || withoutAccents(`${a.name} ${roleTxt(a)} ${p.name} ${p.job}`).includes(q)));
     if (!ags.length && (q || dirFilter)) continue;
     const g = floorSpending(p);
-    groups.push(h("div", { class: "grupo-dir" },
+    groups.push(h("div", { class: "dir-group" },
       h("button", { type: "button", onclick: () => openFloor(p.id), title: p.job || "" }, p.name, h("small", {}, `${allItems.length === 1 ? "1 agent" : `${allItems.length} agents`}${g > 0 ? " · " + fmt(g) : ""}`)),
       ags.length ? ags.map((a) => {
         const e = est.get(a.id), ga = ed.agentSpending(a, "today");
-        return h("button", { class: "fila-ag" + (selection === a.id ? " sel" : ""), type: "button", onclick: () => choose(a) },
+        return h("button", { class: "agent-row" + (selection === a.id ? " sel" : ""), type: "button", onclick: () => choose(a) },
           h("img", { src: figure(a.look), alt: "" }),
           h("span", { class: "fa-txt" }, h("b", {}, a.name), h("small", {}, `${roleTxt(a)} · ${tr(STATUS_TXT[e])}${a.statusReason && e === "frozen" ? " · " + a.statusReason : ""}`)),
-          h("span", { class: "fa-der" }, spendingTxt(ga), h("i", { class: "est-punto " + e, "aria-hidden": "true" })));
-      }) : h("p", { class: "sin-resultados" }, p.type === "storey" ? "Empty floor." : "Empty.")));
+          h("span", { class: "fa-right" }, spendingTxt(ga), h("i", { class: "state-dot " + e, "aria-hidden": "true" })));
+      }) : h("p", { class: "no-results" }, p.type === "storey" ? "Empty floor." : "Empty.")));
   }
-  dirList.replaceChildren(...(groups.length ? groups : [h("p", { class: "sin-resultados" }, "No agent matches the search or the filter.")]));
+  dirList.replaceChildren(...(groups.length ? groups : [h("p", { class: "no-results" }, "No agent matches the search or the filter.")]));
 }
 let pendingCentre = false;
 function openFloor(id) {
@@ -682,10 +682,10 @@ function openFloor(id) {
     pendingCentre = true;   // when going in, the floor is shown centred on the chosen agent
     // the profile shown beside it is that floor's section head's (or the first one's); if it's empty, no profile is shown
     const r = seating(ed.e, id), who = (r.head_office || [])[0] || (r.center || [])[0] || (r.reception || [])[0] || ed.e.agents.find((a) => a.floor === id);
-    if (who) { selection = who.id; if (window.innerWidth > 900) document.body.classList.add("con-panel"); }
+    if (who) { selection = who.id; if (window.innerWidth > 900) document.body.classList.add("with-panel"); }
   }
   openFloorId = id; showTab(window.innerWidth <= 900 ? "building" : tab === "actividad" ? "actividad" : "profile"); render();
-  const c = $("edificio").closest(".ciudad"); if (c) c.scrollTop = 0;
+  const c = $("building").closest(".city"); if (c) c.scrollTop = 0;
   markNav();
 }
 
@@ -693,26 +693,26 @@ function openFloor(id) {
 function renderFloor(cont, p) {
   const focus = document.activeElement;
   if (cont.contains(focus) && (focus.tagName === "INPUT" || focus.tagName === "TEXTAREA")) return;
-  const scrollStrip = (cont.querySelector(".tira") || {}).scrollLeft || 0;
+  const scrollStrip = (cont.querySelector(".rail") || {}).scrollLeft || 0;
   cont.innerHTML = "";
   const T = SECTION[p.type], r = seating(ed.e, p.id), ags = ed.e.agents.filter((a) => a.floor === p.id);
   const run = (acc) => Motor.run(acc).then(render).catch(warn);
   // header: back, name and job (changed by typing)
-  const name = h("input", { class: "nombre-planta", value: p.name, "aria-label": "Name of the floor", onchange: (ev) => run({ type: "editFloor", id: p.id, name: ev.target.value }) });
-  const job = h("textarea", { class: "funcion-planta", rows: "1", maxlength: "300", placeholder: "What is this floor for?", "aria-label": "What the floor does", onchange: (ev) => run({ type: "editFloor", id: p.id, job: ev.target.value.replace(/\s*\n\s*/g, " ") }) });
+  const name = h("input", { class: "floor-name", value: p.name, "aria-label": "Name of the floor", onchange: (ev) => run({ type: "editFloor", id: p.id, name: ev.target.value }) });
+  const job = h("textarea", { class: "floor-job", rows: "1", maxlength: "300", placeholder: "What is this floor for?", "aria-label": "What the floor does", onchange: (ev) => run({ type: "editFloor", id: p.id, job: ev.target.value.replace(/\s*\n\s*/g, " ") }) });
   job.value = p.job || "";
-  cont.append(h("div", { class: "planta-cab" },
-    h("button", { class: "volver", type: "button", onclick: goBack }, "← Back to the whole building"),
+  cont.append(h("div", { class: "floor-head" },
+    h("button", { class: "back", type: "button", onclick: goBack }, "← Back to the whole building"),
     name, job,
-    h("p", { class: "planta-datos" }, tr(ags.length === 1 ? "1 agent" : `${ags.length} agents`) + (floorSpending(p) > 0 ? " · " + tr(`today ${fmt(floorSpending(p))}`) : "") + (p.type === "storey" ? " · " + tr(p.offices === 1 ? "1 office" : `${p.offices} offices`) + " · " + tr(p.pools === 1 ? "1 pool" : `${p.pools} pools`) : ""))));
+    h("p", { class: "floor-data" }, tr(ags.length === 1 ? "1 agent" : `${ags.length} agents`) + (floorSpending(p) > 0 ? " · " + tr(`today ${fmt(floorSpending(p))}`) : "") + (p.type === "storey" ? " · " + tr(p.offices === 1 ? "1 office" : `${p.offices} offices`) + " · " + tr(p.pools === 1 ? "1 pool" : `${p.pools} pools`) : ""))));
   // the drawn floor
-  const strip = h("div", { class: "tira " + p.type });
+  const strip = h("div", { class: "rail " + p.type });
   if (p.type === "storey") {
     for (const m of storeyModules(p, r, T, true)) strip.append(m);
   } else {
     // dome and lobby: a crop of the big drawing, to see them up close
     const [x0, x1, y0, y1] = CUT[p.type], Tc = Object.assign({}, T, { ground: T.ground - y0, high: y1 - y0 });
-    const canvas = h("div", { class: "lienzo", style: { "--x0": x0, "--x1": x1, "--y0": y0, "--y1": y1, "--W": WIDTH, "--A": T.high, backgroundImage: `url(${T.img2})` } });
+    const canvas = h("div", { class: "canvas", style: { "--x0": x0, "--x1": x1, "--y0": y0, "--y1": y1, "--W": WIDTH, "--A": T.high, backgroundImage: `url(${T.img2})` } });
     for (const [seat, xs] of Object.entries(PLACES[p.type])) {
       const a = (r[seat] || [])[0];
       if (a) canvas.append(character(a, Tc, xs[0], x0, x1 - x0, true));
@@ -720,24 +720,24 @@ function renderFloor(cont, p) {
     }
     strip.append(canvas);
   }
-  const frame = h("div", { class: "marco-tira" }, strip,
-    h("button", { class: "flecha izq", type: "button", "aria-label": "See more to the left", onclick: () => strip.scrollBy({ left: -strip.clientWidth * 0.8, behavior: "smooth" }) }, "‹"),
-    h("button", { class: "flecha der", type: "button", "aria-label": "See more to the right", onclick: () => strip.scrollBy({ left: strip.clientWidth * 0.8, behavior: "smooth" }) }, "›"));
+  const frame = h("div", { class: "rail-frame" }, strip,
+    h("button", { class: "arrow left", type: "button", "aria-label": "See more to the left", onclick: () => strip.scrollBy({ left: -strip.clientWidth * 0.8, behavior: "smooth" }) }, "‹"),
+    h("button", { class: "arrow right", type: "button", "aria-label": "See more to the right", onclick: () => strip.scrollBy({ left: strip.clientWidth * 0.8, behavior: "smooth" }) }, "›"));
   const containerWidth = Math.max(280, cont.clientWidth || 700);
   if (p.type === "dome") frame.style.setProperty("--h", Math.min(270, Math.floor(containerWidth * (CUT.dome[3] - CUT.dome[2]) / (CUT.dome[1] - CUT.dome[0]))) + "px");
   let mapWindow = null, miniMap = null;
   const move = () => {
     const sw = strip.scrollWidth || 1;
     if (miniMap) { const w = miniMap.scrollWidth || 1; mapWindow.style.left = (strip.scrollLeft / sw * w) + "px"; mapWindow.style.width = (strip.clientWidth / sw * w) + "px"; }
-    frame.classList.toggle("hay-izq", strip.scrollLeft > 4); frame.classList.toggle("hay-der", strip.scrollLeft + strip.clientWidth < sw - 4);
+    frame.classList.toggle("more-left", strip.scrollLeft > 4); frame.classList.toggle("more-right", strip.scrollLeft + strip.clientWidth < sw - 4);
   };
   strip.addEventListener("scroll", move, { passive: true });
   if (p.type === "storey") {
     // a small map of the whole floor: shows where you are and takes you to each place with a tap
     const total = (MODULE.head_office[1] - MODULE.head_office[0]) * 2 + p.pools * (MODULE.pool[1] - MODULE.pool[0]) * 2 + Math.max(p.offices, r.office.length) * (MODULE.office[1] - MODULE.office[0]) * 2 + (MODULE.end[1] - MODULE.end[0]) * 2;
     const height = Math.min(84, Math.max(34, containerWidth * 260 / total));
-    miniMap = h("div", { class: "plano", style: { "--h": height + "px" }, "aria-hidden": "true" }, storeyModules(p, r, T, false));
-    mapWindow = h("span", { class: "ventana-plano" });
+    miniMap = h("div", { class: "map", style: { "--h": height + "px" }, "aria-hidden": "true" }, storeyModules(p, r, T, false));
+    mapWindow = h("span", { class: "map-window" });
     miniMap.append(mapWindow);
     miniMap.addEventListener("click", (ev) => { const b = miniMap.getBoundingClientRect(); strip.scrollTo({ left: (ev.clientX - b.left) / b.width * strip.scrollWidth - strip.clientWidth / 2, behavior: "smooth" }); });
     cont.append(miniMap);
@@ -747,14 +747,14 @@ function renderFloor(cont, p) {
     strip.scrollLeft = scrollStrip;
     if (pendingCentre) {
       pendingCentre = false;
-      const focus = strip.querySelector(".pj.sel") || (p.type === "lobby" ? strip.querySelector(".pj") : null);
+      const focus = strip.querySelector(".fig.sel") || (p.type === "lobby" ? strip.querySelector(".fig") : null);
       if (focus) { const bt = strip.getBoundingClientRect(), bf = focus.getBoundingClientRect(); strip.scrollLeft += bf.left + bf.width / 2 - bt.left - strip.clientWidth / 2; }
     }
     move();
   });
   // the floor's actions
-  const acc = h("div", { class: "planta-acciones" },
-    p.type === "dome" && r.left.length && r.right.length ? null : h("button", { class: "btn primario mini", onclick: () => openDrawer("agent", { floor: p.id, seat: p.type === "dome" ? (r.left.length ? "right" : "left") : "" }) }, p.type === "dome" ? "+ Sage" : "+ Agent on this floor"));
+  const acc = h("div", { class: "floor-actions" },
+    p.type === "dome" && r.left.length && r.right.length ? null : h("button", { class: "btn primary mini", onclick: () => openDrawer("agent", { floor: p.id, seat: p.type === "dome" ? (r.left.length ? "right" : "left") : "" }) }, p.type === "dome" ? "+ Sage" : "+ Agent on this floor"));
   if (p.type === "storey") {
     acc.append(...[
       h("button", { class: "btn mini", disabled: p.offices >= MAX_OFFICES, onclick: () => run({ type: "enlargeFloor", id: p.id, what: "office", delta: 1 }) }, "+ Office"),
@@ -763,33 +763,33 @@ function renderFloor(cont, p) {
       h("button", { class: "btn mini", disabled: !p.pools || (p.pools - 1) * PER_POOL < r.pool.length, onclick: () => run({ type: "enlargeFloor", id: p.id, what: "pool", delta: -1 }) }, "− Pool"),
       h("button", { class: "btn mini", onclick: () => run({ type: "moveFloorUp", id: p.id }) }, "Move up"),
       h("button", { class: "btn mini", onclick: () => run({ type: "moveFloorDown", id: p.id }) }, "Move down"),
-      ags.length ? null : h("button", { class: "btn mini peligro", onclick: (ev) => confirm(ev.target, "Delete the floor? Press again", () => Motor.run({ type: "deleteFloor", id: p.id }).then(() => { openFloorId = ""; render(); }).catch(warn)) }, "Delete floor")].filter(Boolean));
+      ags.length ? null : h("button", { class: "btn mini danger", onclick: (ev) => confirm(ev.target, "Delete the floor? Press again", () => Motor.run({ type: "deleteFloor", id: p.id }).then(() => { openFloorId = ""; render(); }).catch(warn)) }, "Delete floor")].filter(Boolean));
   }
   cont.append(acc);
   // who works here
-  const list = h("div", { class: "quienes" });
+  const list = h("div", { class: "who-list" });
   const order = { center: 0, head_office: 0, reception: 0, left: 1, right: 2, office: 3, pool: 4 };
   for (const a of ags.slice().sort((x, y) => (order[x.seat] ?? 9) - (order[y.seat] ?? 9))) {
     const est = visibleState(a);
-    list.append(h("button", { class: "quien " + est + (selection === a.id ? " sel" : ""), type: "button", onclick: () => choose(a) },
+    list.append(h("button", { class: "who " + est + (selection === a.id ? " sel" : ""), type: "button", onclick: () => choose(a) },
       h("img", { src: figure(a.look), alt: "" }),
       h("span", { class: "q-txt" }, h("b", {}, a.name), h("small", {}, `${roleTxt(a)} · ${SEAT_NAME[a.seat] || a.seat}`), h("small", {}, `${tr(STATUS_TXT[est])} · ${["controller", "memory"].includes(a.role) ? tr("doesn't spend") : heartbeatText(a.heartbeat)}${ed.agentSpending(a, "today") > 0 ? " · " + tr(`today ${fmt(ed.agentSpending(a, "today"))}`) : ""}`))));
   }
-  cont.append(ags.length ? list : h("p", { class: "planta-vacia" }, p.type === "storey" ? "Empty floor. Put a section head in the head office and their sub-agents in the offices or the pool." : "This floor is empty."));
+  cont.append(ags.length ? list : h("p", { class: "floor-empty" }, p.type === "storey" ? "Empty floor. Put a section head in the head office and their sub-agents in the offices or the pool." : "This floor is empty."));
 }
 // A floor's modules: head office, one or more pools, the offices and the glass end.
 function storeyModules(p, r, T, big) {
-  const mod = (type, x0, x1, content) => h("div", { class: "modulo " + type, style: { "--x0": x0 * 2, "--w": (x1 - x0) * 2 } }, content);
+  const mod = (type, x0, x1, content) => h("div", { class: "module " + type, style: { "--x0": x0 * 2, "--w": (x1 - x0) * 2 } }, content);
   const fig = (a, x, x0, width, seat) => a ? character(a, T, x, x0, width, big) : big ? slot(T, x, x0, width, p, seat) : null;
   const [d0, d1] = MODULE.head_office, [p0, p1] = MODULE.pool, [o0, o1] = MODULE.office, [f0, f1] = MODULE.end;
-  const out = [mod("despacho", d0, d1, fig(r.head_office[0], PLACES.storey.head_office[0], d0, d1 - d0, "head_office"))];
+  const out = [mod("head-office", d0, d1, fig(r.head_office[0], PLACES.storey.head_office[0], d0, d1 - d0, "head_office"))];
   for (let k = 0; k < p.pools; k++) out.push(mod("pool", p0, p1, PLACES.storey.pool.map((x, i) => fig(r.pool[k * PER_POOL + i], x, p0, p1 - p0, "pool"))));
   const nOf = Math.max(p.offices, r.office.length);
-  for (let k = 0; k < nOf; k++) out.push(mod("oficina", o0, o1, fig(r.office[k], PLACES.storey.office[0], o0, o1 - o0, "office")));
-  out.push(mod("fin", f0, f1));
+  for (let k = 0; k < nOf; k++) out.push(mod("office", o0, o1, fig(r.office[k], PLACES.storey.office[0], o0, o1 - o0, "office")));
+  out.push(mod("end", f0, f1));
   return out;
 }
-function beatAntenna() { const l = $("luzAntena"); if (!l) return; l.classList.remove("late"); void l.offsetWidth; l.classList.add("late"); }
+function beatAntenna() { const l = $("antennaLight"); if (!l) return; l.classList.remove("beat"); void l.offsetWidth; l.classList.add("beat"); }
 // Errors: in the chat if it's open; if not, a notice at the bottom that goes away by itself.
 function warn(err) {
   const t = err && err.shown ? err.message : `Something went wrong: ${(err && err.message) || err}`;
@@ -797,17 +797,17 @@ function warn(err) {
   toast(t);
 }
 function toast(t) {
-  let el = $("avisoFlotante");
-  if (!el) { el = h("div", { id: "avisoFlotante", class: "aviso-flotante", role: "status" }); document.body.append(el); el.onclick = () => { el.hidden = true; }; }
+  let el = $("toast");
+  if (!el) { el = h("div", { id: "toast", class: "toast", role: "status" }); document.body.append(el); el.onclick = () => { el.hidden = true; }; }
   el.textContent = tr(t); el.hidden = false; clearTimeout(toast.t); toast.t = setTimeout(() => { el.hidden = true; }, 8000);
 }
 
 // ---------------- The panel's tabs ----------------
 function showTab(p) {
-  if (p === "building") { document.body.classList.add("ver-edificio"); $("tabEdificio").setAttribute("aria-selected", "true"); for (const id of ["tabFicha", "tabActividad"]) $(id).setAttribute("aria-selected", "false"); return; }
-  document.body.classList.remove("ver-edificio"); $("tabEdificio").setAttribute("aria-selected", "false");
+  if (p === "building") { document.body.classList.add("show-building"); $("tabBuilding").setAttribute("aria-selected", "true"); for (const id of ["tabProfile", "tabActivity"]) $(id).setAttribute("aria-selected", "false"); return; }
+  document.body.classList.remove("show-building"); $("tabBuilding").setAttribute("aria-selected", "false");
   tab = p;
-  for (const [id, v, n] of [["tabFicha", "vistaFicha", "profile"], ["tabActividad", "vistaActividad", "actividad"]]) {
+  for (const [id, v, n] of [["tabProfile", "profileView", "profile"], ["tabActivity", "activityView", "actividad"]]) {
     $(id).setAttribute("aria-selected", String(p === n)); $(v).hidden = p !== n;
   }
   if (p === "profile") renderProfile(true);
@@ -826,9 +826,9 @@ const WHAT_IT_DOES = {
 };
 const PROFILE_TABS = [["identity", "Identity"], ["work", "Work"], ["brain", "Brain and spending"], ["capabilities", "Capabilities"]];
 const date = (ts, op) => new Date(ts).toLocaleString(LOCALE, op || { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" });
-const field = (txt, el, help) => h("label", { class: "campo" }, h("span", {}, txt), el, help ? h("small", {}, help) : null);
+const field = (txt, el, help) => h("label", { class: "field" }, h("span", {}, txt), el, help ? h("small", {}, help) : null);
 function renderProfile(force) {
-  const box = $("ficha");
+  const box = $("profile");
   const focus = document.activeElement;   // it isn't repainted while you type or choose in a drop-down
   if (!force && box.contains(focus) && (focus.tagName === "TEXTAREA" || focus.tagName === "SELECT" || (focus.tagName === "INPUT" && !["checkbox", "radio"].includes(focus.type)))) return;
   const a = ed.exactAgent(selection) || ed.boss();
@@ -840,23 +840,23 @@ function renderProfile(force) {
   const est = visibleState(a), brainless = a.role === "controller" || a.role === "memory";
   const pl = ed.e.floors.find((x) => x.id === a.floor);
   // header: figure, name, state and the essentials
-  box.append(h("div", { class: "ficha-cab" },
-    h("button", { class: "marco-ficha", type: "button", title: "Change their photo and name", onclick: () => openDrawer("look", { id: a.id }) }, h("img", { src: figure(a.look), alt: "" })),
-    h("div", { style: { flex: 1, minWidth: 0, display: "grid", gap: "4px" } }, h("h3", { class: "ficha-nombre" }, a.name),
-      h("div", { class: "fila-c" }, h("span", { class: "estado-pill " + est }, tr(STATUS_TXT[est]) + (a.statusReason ? " · " + a.statusReason : "")),
-        h("span", { class: "nota" }, `${roleTxt(a)} · ${pl ? pl.name : ""}`)))));
-  box.append(h("div", { class: "fila-c", style: { marginTop: "12px" } },
-    converses(a) ? h("button", { class: "btn primario mini", onclick: () => openChat(a.id) }, `Talk to ${a.name}`) : null,
+  box.append(h("div", { class: "profile-head" },
+    h("button", { class: "profile-frame", type: "button", title: "Change their photo and name", onclick: () => openDrawer("look", { id: a.id }) }, h("img", { src: figure(a.look), alt: "" })),
+    h("div", { style: { flex: 1, minWidth: 0, display: "grid", gap: "4px" } }, h("h3", { class: "profile-name" }, a.name),
+      h("div", { class: "row-c" }, h("span", { class: "state-pill " + est }, tr(STATUS_TXT[est]) + (a.statusReason ? " · " + a.statusReason : "")),
+        h("span", { class: "note" }, `${roleTxt(a)} · ${pl ? pl.name : ""}`)))));
+  box.append(h("div", { class: "row-c", style: { marginTop: "12px" } },
+    converses(a) ? h("button", { class: "btn primary mini", onclick: () => openChat(a.id) }, `Talk to ${a.name}`) : null,
     brainless || a.role === "jev" ? null : h("button", { class: "btn mini", onclick: () => { Motor.run({ type: "wakeUp", id: a.id }).then(render).catch(warn); render(); } }, "Wake up now"),
     h("button", { class: "btn mini", onclick: () => change({ off: !a.off }) }, a.off ? "Turn on" : "Turn off"),
     pl ? h("button", { class: "btn mini", onclick: () => openFloor(pl.id) }, "See their floor") : null,
-    a.role === "boss" ? null : h("button", { class: "btn mini peligro", onclick: (ev) => confirm(ev.target, "Delete? Press again", () => Motor.run({ type: "deleteAgent", id: a.id }).then(() => { selection = "boss"; render(); showTab("profile"); }).catch(warn)) }, "Delete")));
-  if (WHAT_IT_DOES[a.role]) box.append(h("p", { class: "que-hace" }, WHAT_IT_DOES[a.role]));
-  if (a.missing) box.append(h("div", { class: "aviso-falta" }, h("b", {}, "Says it's missing something and won't move on alone"), h("span", {}, inQuotes(a.missing.text)),
-    h("small", { class: "nota" }, "Give it what it asks for (capabilities, skills, data) or change its objective. Changing its profile marks it as handled."),
+    a.role === "boss" ? null : h("button", { class: "btn mini danger", onclick: (ev) => confirm(ev.target, "Delete? Press again", () => Motor.run({ type: "deleteAgent", id: a.id }).then(() => { selection = "boss"; render(); showTab("profile"); }).catch(warn)) }, "Delete")));
+  if (WHAT_IT_DOES[a.role]) box.append(h("p", { class: "what-it-does" }, WHAT_IT_DOES[a.role]));
+  if (a.missing) box.append(h("div", { class: "missing-notice" }, h("b", {}, "Says it's missing something and won't move on alone"), h("span", {}, inQuotes(a.missing.text)),
+    h("small", { class: "note" }, "Give it what it asks for (capabilities, skills, data) or change its objective. Changing its profile marks it as handled."),
     h("div", {}, h("button", { class: "btn mini", type: "button", onclick: () => Motor.run({ type: "inbox.decide", kind: "missing", id: a.id, yes: true }).then(render).catch(warn) }, "It has it now"))));
-  box.append(h("div", { class: "ficha-pestanas", role: "tablist" }, PROFILE_TABS.map(([k, t]) =>
-    h("button", { role: "tab", type: "button", "aria-selected": String(profileTab === k), onclick: () => { profileTab = k; renderProfile(true); $("ficha").scrollTop = 0; } }, t))));
+  box.append(h("div", { class: "profile-tabs", role: "tablist" }, PROFILE_TABS.map(([k, t]) =>
+    h("button", { role: "tab", type: "button", "aria-selected": String(profileTab === k), onclick: () => { profileTab = k; renderProfile(true); $("profile").scrollTop = 0; } }, t))));
   const paint = { identity: profileIdentity, work: profileWork, brain: profileBrain, capabilities: profileCapabilities }[profileTab] || profileIdentity;
   paint(box, a, change, { brainless, pl });
   box.scrollTop = sc;
@@ -879,34 +879,34 @@ function profileIdentity(box, a, change, { pl }) {
     selReportsTo.value = a.reportsTo || "";
   };
   fillReportsTo("");
-  const selBoss = others.length > 6 ? h("div", { class: "informa-a" }, h("input", { type: "search", placeholder: "Type their name to find them", "aria-label": "Search who they report to", oninput: (ev) => fillReportsTo(ev.target.value) }), selReportsTo) : selReportsTo;
+  const selBoss = others.length > 6 ? h("div", { class: "reports-to" }, h("input", { type: "search", placeholder: "Type their name to find them", "aria-label": "Search who they report to", oninput: (ev) => fillReportsTo(ev.target.value) }), selReportsTo) : selReportsTo;
   const changeable = ["section_head", "subagent"].includes(a.role);
   const selRole = h("select", { onchange: (ev) => change({ role: ev.target.value }) }, [["section_head", "Section head"], ["subagent", "Sub-agent"]].map(([k, v]) => h("option", { value: k }, v)));
   selRole.value = a.role;
-  box.append(h("div", { class: "bloque" },
+  box.append(h("div", { class: "block" },
     field("Name", name),
-    h("div", { class: "campo" }, h("span", {}, "Appearance"), h("div", { class: "fila-c" }, h("img", { class: "mini-pj", src: figure(a.look), alt: "" }), h("button", { class: "btn mini", onclick: () => openDrawer("look", { id: a.id }) }, "Change their photo and name"))),
-    h("div", { class: "dos" }, changeable ? field("Role", selRole) : h("div", { class: "campo" }, h("span", {}, "Role"), h("span", { class: "nota" }, roleTxt(a))),
+    h("div", { class: "field" }, h("span", {}, "Appearance"), h("div", { class: "row-c" }, h("img", { class: "mini-fig", src: figure(a.look), alt: "" }), h("button", { class: "btn mini", onclick: () => openDrawer("look", { id: a.id }) }, "Change their photo and name"))),
+    h("div", { class: "two" }, changeable ? field("Role", selRole) : h("div", { class: "field" }, h("span", {}, "Role"), h("span", { class: "note" }, roleTxt(a))),
       a.role === "boss" ? null : field("Reports to", selBoss)),
-    h("div", { class: "dos" }, field("Floor", selFloor), field("Spot", selSeat))));
+    h("div", { class: "two" }, field("Floor", selFloor), field("Spot", selSeat))));
   box.append(coinsBlock(a));
 }
 // Coins: gold (good work) and red (making things up, wasting money). Each one with its reason in one line.
 function coinsBlock(a) {
   const mine = (ed.e.coins || []).filter((m) => m.agent === a.id);
   const gold = mine.filter((m) => m.type === "gold" && m.state === "confirmed").length, reds = mine.filter((m) => m.type === "red" && m.state === "confirmed").length;
-  const box = h("div", { class: "bloque" }, h("h4", {}, "Coins"),
-    h("div", { class: "fila-c" }, h("span", { class: "moneda oro" }), h("b", {}, gold), h("span", { class: "nota" }, gold === 1 ? "gold coin" : "gold coins"), h("span", { class: "moneda roja" }), h("b", {}, reds), h("span", { class: "nota" }, reds === 1 ? "red coin" : "red coins")),
-    h("div", { class: "fila-c" }, coinButton(a, "gold"), coinButton(a, "red")),
-    h("small", { class: "nota" }, `A cheap model turns the reason into a concrete rule; when you approve it in the inbox, ${a.name} and everyone with the same role (${roleTxt(a)}) learn it.`));
+  const box = h("div", { class: "block" }, h("h4", {}, "Coins"),
+    h("div", { class: "row-c" }, h("span", { class: "coin gold" }), h("b", {}, gold), h("span", { class: "note" }, gold === 1 ? "gold coin" : "gold coins"), h("span", { class: "coin red" }), h("b", {}, reds), h("span", { class: "note" }, reds === 1 ? "red coin" : "red coins")),
+    h("div", { class: "row-c" }, coinButton(a, "gold"), coinButton(a, "red")),
+    h("small", { class: "note" }, `A cheap model turns the reason into a concrete rule; when you approve it in the inbox, ${a.name} and everyone with the same role (${roleTxt(a)}) learn it.`));
   for (const m of mine.filter((x) => x.state === "proposed")) box.append(proposedCoinRow(m));
   const latest = mine.filter((m) => m.state === "confirmed").slice(-5).reverse();
-  if (latest.length) box.append(h("div", { class: "lista" }, latest.map((m) => h("div", { class: "item" }, h("div", { class: "cab" }, h("span", {}, h("span", { class: "moneda " + m.type }), " ", date(m.ts)), h("span", {}, m.proposedBy === "you" ? "from you" : tr(`proposed by ${whoProposes(m.proposedBy)}, confirmed`))), h("div", { class: "txt" }, raw(m.reason))))));
+  if (latest.length) box.append(h("div", { class: "list" }, latest.map((m) => h("div", { class: "item" }, h("div", { class: "head" }, h("span", {}, h("span", { class: "coin " + m.type }), " ", date(m.ts)), h("span", {}, m.proposedBy === "you" ? "from you" : tr(`proposed by ${whoProposes(m.proposedBy)}, confirmed`))), h("div", { class: "txt" }, raw(m.reason))))));
   return box;
 }
 // Coin button: when pressed it asks for the reason in one line
 function coinButton(a, type, onGive) {
-  const b = h("button", { class: "moneda-btn", type: "button", title: type === "gold" ? "Gold coin: it did well" : "Red coin: it made things up or wasted money" }, h("span", { class: "moneda " + type }), type === "gold" ? "Gold coin" : "Red coin");
+  const b = h("button", { class: "coin-btn", type: "button", title: type === "gold" ? "Gold coin: it did well" : "Red coin: it made things up or wasted money" }, h("span", { class: "coin " + type }), type === "gold" ? "Gold coin" : "Red coin");
   b.onclick = () => {
     const inp = h("input", { maxlength: "160", placeholder: type === "gold" ? "What did it do well? (one line)" : "What did it do wrong? (one line)" });
     const give = async () => {
@@ -915,29 +915,29 @@ function coinButton(a, type, onGive) {
         inp.disabled = true;
         const r = await Motor.run({ type: "coin.give", id: a.id, coinType: type, reason: inp.value.trim() });
         const doneMsg = tr(`${type === "gold" ? "Gold coin" : "Red coin"} for ${a.name}.`) + (r.lesson ? " " + tr(`Proposed lesson: “${r.lesson.text}”. Approve it or tweak it in the inbox.`) : "");
-        row.replaceWith(h("span", { class: "nota" }, doneMsg)); toast(doneMsg); if (onGive) onGive(); render();
+        row.replaceWith(h("span", { class: "note" }, doneMsg)); toast(doneMsg); if (onGive) onGive(); render();
       }
       catch (err) { inp.disabled = false; warn(err); }
     };
     inp.onkeydown = (ev) => { if (ev.key === "Enter") { ev.preventDefault(); give(); } if (ev.key === "Escape") row.replaceWith(b); };
-    const row = h("span", { class: "motivo-fila" }, h("span", { class: "moneda " + type }), inp, h("button", { class: "btn mini primario", type: "button", onclick: give }, "Give"), h("button", { class: "btn mini", type: "button", onclick: () => row.replaceWith(b) }, "Cancel"));
+    const row = h("span", { class: "reason-row" }, h("span", { class: "coin " + type }), inp, h("button", { class: "btn mini primary", type: "button", onclick: give }, "Give"), h("button", { class: "btn mini", type: "button", onclick: () => row.replaceWith(b) }, "Cancel"));
     b.replaceWith(row); inp.focus();
   };
   return b;
 }
 function proposedCoinRow(m) {
-  return h("div", { class: "fila-moneda" }, h("span", { class: "moneda " + m.type }),
+  return h("div", { class: "coin-row" }, h("span", { class: "coin " + m.type }),
     h("span", { class: "grow" }, h("b", {}, m.name), " · " + tr(`${whoProposes(m.proposedBy)} proposes:`) + " ", raw(m.reason)),
-    h("button", { class: "btn mini primario", onclick: () => Motor.run({ type: "coin.confirm", coin: m.id }).then(render).catch(warn) }, "Confirm"),
+    h("button", { class: "btn mini primary", onclick: () => Motor.run({ type: "coin.confirm", coin: m.id }).then(render).catch(warn) }, "Confirm"),
     h("button", { class: "btn mini", onclick: () => Motor.run({ type: "coin.discard", coin: m.id }).then(render).catch(warn) }, "Dismiss"));
 }
 // Work: instructions, objective, lessons, heartbeat, tasks and short memory
 function profileWork(box, a, change, { brainless }) {
   if (!brainless) {
     const per = h("textarea", { rows: "2", maxlength: String(MAX_PERSONALITY), placeholder: "Its tone, its humour and whether it gets to the point. For example: “Friendly and funny, but brief and to the point.”", onchange: (ev) => change({ personality: ev.target.value.trim() }) }, a.personality || "");
-    const tally = h("span", { class: "contador" }, `${(a.personality || "").length}/${MAX_PERSONALITY}`);
+    const tally = h("span", { class: "counter" }, `${(a.personality || "").length}/${MAX_PERSONALITY}`);
     per.oninput = () => { tally.textContent = `${per.value.length}/${MAX_PERSONALITY}`; };
-    box.append(h("div", { class: "bloque" },
+    box.append(h("div", { class: "block" },
       field("Instructions (who it is and how it works)", h("textarea", { rows: "6", onchange: (ev) => change({ instructions: ev.target.value }) }, a.instructions)),
       a.role === "jev" ? null : field("Personality", per, "Sent with every call: that way its character doesn't depend on the brain you give it."), a.role === "jev" ? null : tally,
       a.role === "jev" ? null : field("Objective", h("textarea", { rows: "2", onchange: (ev) => change({ objective: ev.target.value }) }, a.objective))));
@@ -946,13 +946,13 @@ function profileWork(box, a, change, { brainless }) {
   const pendLecc = (ed.e.lessons || []).filter((l) => l.role === a.role && l.state === "proposed");
   const roleLessons = ed.lessonsOf(a.role).slice().sort((x, y) => (y.fixed - x.fixed) || (y.ts - x.ts));
   const max = ed.e.settings.lessonsPerRole || 5;
-  box.append(h("div", { class: "bloque" }, h("h4", {}, `Lessons for its role (${roleTxt(a)})`),
-    roleLessons.length ? h("div", { class: "lista" }, roleLessons.map((l) => h("div", { class: "item leccion" + (l.fixed ? " fija" : "") }, h("span", { class: "moneda " + l.type }), h("span", { class: "txt" }, raw(l.text)),
+  box.append(h("div", { class: "block" }, h("h4", {}, `Lessons for its role (${roleTxt(a)})`),
+    roleLessons.length ? h("div", { class: "list" }, roleLessons.map((l) => h("div", { class: "item lesson" + (l.fixed ? " pinned" : "") }, h("span", { class: "coin " + l.type }), h("span", { class: "txt" }, raw(l.text)),
       h("button", { class: "btn mini", title: l.fixed ? "Let it go when new lessons come in" : "Never let it go, even when it's old", onclick: () => Motor.run({ type: "lesson.pin", lesson: l.id, fixed: !l.fixed }).then(render).catch(warn) }, l.fixed ? "Unpin" : "Pin"),
       h("button", { class: "btn mini", onclick: () => Motor.run({ type: "lesson.delete", lesson: l.id }).then(render).catch(warn) }, "Remove"))))
-      : h("p", { class: "nota", style: { margin: 0 } }, "None yet. They come from coins: a cheap model turns the reason into a rule and you approve it in the inbox."),
-    pendLecc.length ? h("div", { class: "fila-c" }, h("span", { class: "nota" }, pendLecc.length === 1 ? "1 new lesson is waiting for your yes." : `${pendLecc.length} new lessons are waiting for your yes.`), h("button", { class: "btn mini", type: "button", onclick: () => openScreen("inbox") }, "Go to the inbox")) : null,
-    h("small", { class: "nota" }, `Everyone with this role learns them. ${max} are kept per role (change it in Settings); when a new one comes in, the oldest goes, except pinned ones.`)));
+      : h("p", { class: "note", style: { margin: 0 } }, "None yet. They come from coins: a cheap model turns the reason into a rule and you approve it in the inbox."),
+    pendLecc.length ? h("div", { class: "row-c" }, h("span", { class: "note" }, pendLecc.length === 1 ? "1 new lesson is waiting for your yes." : `${pendLecc.length} new lessons are waiting for your yes.`), h("button", { class: "btn mini", type: "button", onclick: () => openScreen("inbox") }, "Go to the inbox")) : null,
+    h("small", { class: "note" }, `Everyone with this role learns them. ${max} are kept per role (change it in Settings); when a new one comes in, the oldest goes, except pinned ones.`)));
   // heartbeat
   const num = h("input", { type: "number", min: "1", step: "1", value: a.heartbeat.every, disabled: a.heartbeat.unit === "on_request" });
   const uni = h("select", {}, [["min", "minutes"], ["h", "hours"], ["d", "days"], ["on_request", "on request only"]].map(([v, t]) => h("option", { value: v }, t)));
@@ -962,43 +962,43 @@ function profileWork(box, a, change, { brainless }) {
   const selOnWake = h("select", { onchange: (ev) => change({ onWake: ev.target.value }) }, h("option", { value: "tasks" }, "Does its pending tasks (if there are none, it doesn't spend)"), h("option", { value: "objective" }, "Does its tasks and, if there are none, works on its objective (spends)"));
   selOnWake.value = a.onWake || "tasks";
   const upcoming = a.next && a.next < 9e14 ? date(a.next, { weekday: "short", hour: "2-digit", minute: "2-digit" }) : "—";
-  box.append(h("div", { class: "bloque" }, h("h4", {}, "Heartbeat"),
-    h("div", { class: "campo" }, h("span", {}, "Resting, it wakes up"), h("div", { class: "fila-c" }, h("span", {}, "every"), num, uni)),
+  box.append(h("div", { class: "block" }, h("h4", {}, "Heartbeat"),
+    h("div", { class: "field" }, h("span", {}, "Resting, it wakes up"), h("div", { class: "row-c" }, h("span", {}, "every"), num, uni)),
     brainless || a.role === "sage" || a.role === "jev" ? null : field("When it wakes up", selOnWake),
-    h("small", { class: "nota" }, a.heartbeat.unit === "on_request" ? "Only works when someone gives it a job." : `Next heartbeat: ${upcoming}. Last: ${a.last ? date(a.last) : "never"}.`)));
+    h("small", { class: "note" }, a.heartbeat.unit === "on_request" ? "Only works when someone gives it a job." : `Next heartbeat: ${upcoming}. Last: ${a.last ? date(a.last) : "never"}.`)));
   // tasks
   if (!brainless && a.role !== "jev") {
     const txt = h("input", { placeholder: "Give it a job…" }), now = h("input", { type: "checkbox" });
-    const list = h("div", { class: "lista" });
+    const list = h("div", { class: "list" });
     for (const t of a.tasks.slice().reverse().slice(0, 15)) {
-      list.append(h("div", { class: "item" }, h("div", { class: "cab" }, h("span", {}, date(t.created) + " · " + (t.from ? tr(`from ${(ed.exactAgent(t.from) || {}).name || t.from}`) : tr("from you"))), h("span", { class: "est " + t.state }, t.state)),
+      list.append(h("div", { class: "item" }, h("div", { class: "head" }, h("span", {}, date(t.created) + " · " + (t.from ? tr(`from ${(ed.exactAgent(t.from) || {}).name || t.from}`) : tr("from you"))), h("span", { class: "status " + t.state }, t.state)),
         h("div", { class: "txt" }, raw(t.text)), t.result ? h("details", {}, h("summary", {}, "Result"), h("div", { class: "txt", html: markdown(t.result) })) : null));
     }
-    box.append(h("div", { class: "bloque" }, h("h4", {}, "Tasks"),
-      h("div", { class: "fila-c" }, txt, h("label", { class: "fila-c nota" }, now, "now"), h("button", { class: "btn mini", onclick: () => { if (!txt.value.trim()) return; Motor.run({ type: "assignTask", id: a.id, text: txt.value.trim(), now: now.checked }).then(() => { txt.value = ""; render(); }).catch(warn); } }, "Assign")),
-      a.tasks.length ? list : h("p", { class: "nota", style: { margin: 0 } }, "No tasks.")));
+    box.append(h("div", { class: "block" }, h("h4", {}, "Tasks"),
+      h("div", { class: "row-c" }, txt, h("label", { class: "row-c note" }, now, "now"), h("button", { class: "btn mini", onclick: () => { if (!txt.value.trim()) return; Motor.run({ type: "assignTask", id: a.id, text: txt.value.trim(), now: now.checked }).then(() => { txt.value = ""; render(); }).catch(warn); } }, "Assign")),
+      a.tasks.length ? list : h("p", { class: "note", style: { margin: 0 } }, "No tasks.")));
   }
   // short-term memory
-  const mc = h("div", { class: "lista" });
-  for (const m of a.shortMemory.slice().reverse().slice(0, 10)) mc.append(h("div", { class: "item" }, h("div", { class: "cab" }, h("span", {}, date(m.ts)), h("span", {}, m.type)), h("div", { class: "txt" }, raw(m.text))));
-  box.append(h("div", { class: "bloque" }, h("h4", {}, "Short memory"), a.shortMemory.length ? mc : h("p", { class: "nota", style: { margin: 0 } }, "Still empty.")));
+  const mc = h("div", { class: "list" });
+  for (const m of a.shortMemory.slice().reverse().slice(0, 10)) mc.append(h("div", { class: "item" }, h("div", { class: "head" }, h("span", {}, date(m.ts)), h("span", {}, m.type)), h("div", { class: "txt" }, raw(m.text))));
+  box.append(h("div", { class: "block" }, h("h4", {}, "Short memory"), a.shortMemory.length ? mc : h("p", { class: "note", style: { margin: 0 } }, "Still empty.")));
   // Memory: the building's long-term memory
   if (a.role === "memory") {
-    const ml = h("div", { class: "lista" });
-    for (const n of ed.e.longMemory.slice().reverse()) ml.append(h("div", { class: "item" }, h("div", { class: "cab" }, h("span", {}, new Date(n.ts).toLocaleDateString(LOCALE) + (n.tags && n.tags.length ? " · " + n.tags.join(", ") : "")),
+    const ml = h("div", { class: "list" });
+    for (const n of ed.e.longMemory.slice().reverse()) ml.append(h("div", { class: "item" }, h("div", { class: "head" }, h("span", {}, new Date(n.ts).toLocaleDateString(LOCALE) + (n.tags && n.tags.length ? " · " + n.tags.join(", ") : "")),
       h("button", { class: "btn mini", onclick: () => Motor.run({ type: "memory.delete", noteId: n.id }).then(render) }, "Delete")), h("div", { class: "txt" }, raw(n.text))));
     const nt = h("textarea", { rows: "2", placeholder: "Something the building should remember…" }), et = h("input", { placeholder: "tags, separated by commas" });
-    box.append(h("div", { class: "bloque" }, h("h4", {}, `Building's long-term memory (${ed.e.longMemory.length})`),
-      h("p", { class: "nota", style: { margin: 0 } }, "When you say “remember…” to the boss, Memory searches here by keywords and passes it on. It uses no brain: it doesn't spend. Later on it will be able to live in Google Drive."),
+    box.append(h("div", { class: "block" }, h("h4", {}, `Building's long-term memory (${ed.e.longMemory.length})`),
+      h("p", { class: "note", style: { margin: 0 } }, "When you say “remember…” to the boss, Memory searches here by keywords and passes it on. It uses no brain: it doesn't spend. Later on it will be able to live in Google Drive."),
       nt, et, h("div", {}, h("button", { class: "btn mini", onclick: () => { if (!nt.value.trim()) return; Motor.run({ type: "memory.save", text: nt.value.trim(), tags: et.value.split(",").map((x) => x.trim()).filter(Boolean) }).then(render).catch(warn); } }, "Save memory")), ml));
   }
 }
 // Brain and spending: which model thinks for it, its priority, its cap and what it has spent
 function profileBrain(box, a, change, { brainless }) {
-  if (brainless) box.append(h("div", { class: "bloque" }, h("h4", {}, "Brain"), h("p", { class: "nota", style: { margin: 0 } }, "Works with fixed rules, no brain: it doesn't spend.")));
+  if (brainless) box.append(h("div", { class: "block" }, h("h4", {}, "Brain"), h("p", { class: "note", style: { margin: 0 } }, "Works with fixed rules, no brain: it doesn't spend.")));
   else if (a.role === "jev") {
     const sel = modelPicker("decisions", a.brain, { extra: [[JEV_MODEL, "Jev Latest · always the latest version of Jev"]], onChange: (v) => change({ brain: v }) });
-    box.append(h("div", { class: "bloque" }, h("h4", {}, "Brain"), field("Decision model", sel, "JEV decides with OpenRouter's decisions API. “Jev Latest” always points to the latest version, without changing it by hand.")));
+    box.append(h("div", { class: "block" }, h("h4", {}, "Brain"), field("Decision model", sel, "JEV decides with OpenRouter's decisions API. “Jev Latest” always points to the latest version, without changing it by hand.")));
   } else {
     // What it thinks with: OpenRouter (pay per use) or one of your other APIs (Settings → Other APIs), one from a subscription you already pay for
     const prov = ed.brainOf(a).provider, conx = ed.connections();
@@ -1010,15 +1010,15 @@ function profileBrain(box, a, change, { brainless }) {
       change({ provider: fresh, brain });
     } }, options.map(([k, t]) => h("option", { value: k }, t)));
     selProv.value = prov;
-    const block = h("div", { class: "bloque" }, h("h4", {}, "Brain"), field("Thinks with", selProv));
-    if (!conx.length) block.append(h("small", { class: "nota" }, "Do you have a subscription that includes API access (for example, Claude or ChatGPT credits, Gemini or a model on your computer)? Add it in Settings → Other APIs and you'll be able to pick it here. Anything paid separately is better through OpenRouter."));
+    const block = h("div", { class: "block" }, h("h4", {}, "Brain"), field("Thinks with", selProv));
+    if (!conx.length) block.append(h("small", { class: "note" }, "Do you have a subscription that includes API access (for example, Claude or ChatGPT credits, Gemini or a model on your computer)? Add it in Settings → Other APIs and you'll be able to pick it here. Anything paid separately is better through OpenRouter."));
     if (prov === "openrouter") {
       block.append(field("Brain", modelPicker("text", a.brain, { onChange: (v) => change({ brain: v }) }), "At the top, the recommended ones by price level (not quality); below, all of OpenRouter's text models. Or type the name with “Search all”. Prices in dollars per million tokens (input / output). “sees” = can look at images."),
         proposalsFor("text"));
     } else {
       const P = ed.provider(prov) || { short: prov };
       block.append(directPicker(prov, a.brain, (v) => change({ brain: v })),
-        h("small", { class: "nota" }, tr(hasApiKey(prov) ? `Comes out of your ${P.short} subscription: it doesn't count towards the spending cap (it's tracked separately, so you can see it).` : `The ${P.short} key is missing: add it in Settings → Other APIs.`) + " " +
+        h("small", { class: "note" }, tr(hasApiKey(prov) ? `Comes out of your ${P.short} subscription: it doesn't count towards the spending cap (it's tracked separately, so you can see it).` : `The ${P.short} key is missing: add it in Settings → Other APIs.`) + " " +
           tr("Internet search only works with OpenRouter.")));
       const selExhausted = h("select", { onchange: (ev) => change({ onExhausted: ev.target.value }) }, h("option", { value: "openrouter" }, "Carry on with OpenRouter"), h("option", { value: "stop" }, "Stop working"));
       selExhausted.value = a.onExhausted || "openrouter";
@@ -1028,47 +1028,47 @@ function profileBrain(box, a, change, { brainless }) {
         block.append(field("Its brain on OpenRouter in the meantime", modelPicker("text", a.fallbackBrain, { empty: eq ? `The same model on OpenRouter (${eq.name || eq.id})` : "The one its role would get", onChange: (v) => change({ fallbackBrain: v }) })));
       }
       const subs = Object.entries(a.subscription || {}).sort().at(-1);
-      if (subs) block.append(h("small", { class: "nota" }, tr(`From your subscription, on ${subs[0]}: ${subs[1].tokens.toLocaleString(LOCALE)} tokens`) + (subs[1].usd ? " " + tr(`(on OpenRouter it would be ≈${fmt(subs[1].usd)})`) : "") + "."));
+      if (subs) block.append(h("small", { class: "note" }, tr(`From your subscription, on ${subs[0]}: ${subs[1].tokens.toLocaleString(LOCALE)} tokens`) + (subs[1].usd ? " " + tr(`(on OpenRouter it would be ≈${fmt(subs[1].usd)})`) : "") + "."));
     }
     const est = ed.estimateHeartbeat(a);
     // each piece is translated separately (that way each language orders it its own way)
-    block.append(h("small", { class: "nota" }, [tr(`When it wakes up: ${est.how}`), est.spends && est.perTime > 0 ? tr(`· ≈${fmt(est.perTime)} per heartbeat`) + (est.perDay ? " " + tr(`(≈${fmt(est.perDay)} a day)`) : "") : est.spends && est.perTask ? tr(`· ≈${fmt(est.perTask)} per task`) : "",
+    block.append(h("small", { class: "note" }, [tr(`When it wakes up: ${est.how}`), est.spends && est.perTime > 0 ? tr(`· ≈${fmt(est.perTime)} per heartbeat`) + (est.perDay ? " " + tr(`(≈${fmt(est.perDay)} a day)`) : "") : est.spends && est.perTask ? tr(`· ≈${fmt(est.perTask)} per task`) : "",
       est.tokens ? tr(`· reads about ${est.tokens.toLocaleString(LOCALE)} tokens each time`) : "", est.subscription ? tr(`· from your ${est.subscription} subscription`) : est.noPrice ? tr("· no known price") : ""].filter(Boolean).join(" ")));
     box.append(block);
   }
-  box.append(h("div", { class: "bloque" }, h("h4", {}, "Priority"),
-    h("div", { class: "prioridad" }, [1, 2, 3, 4, 5].map((n) => h("button", { "aria-pressed": String(a.priority === n), onclick: () => change({ priority: n }) }, n))),
-    h("small", { class: "nota" }, "When spending gets close to the cap, low-priority agents are frozen first: at 80 % those with 1 and 2; at 90 %, everyone except those with 5.")));
-  box.append(h("div", { class: "bloque" }, h("h4", {}, "Spending"),
-    h("div", { class: "gastos3" }, ["today", "week", "month"].map((p) => h("div", {}, h("b", {}, ed.agentSpending(a, p) > 0 ? fmt(ed.agentSpending(a, p)) : "—"), h("small", {}, { today: "today", week: "7 days", month: "this month" }[p])))),
+  box.append(h("div", { class: "block" }, h("h4", {}, "Priority"),
+    h("div", { class: "priority" }, [1, 2, 3, 4, 5].map((n) => h("button", { "aria-pressed": String(a.priority === n), onclick: () => change({ priority: n }) }, n))),
+    h("small", { class: "note" }, "When spending gets close to the cap, low-priority agents are frozen first: at 80 % those with 1 and 2; at 90 %, everyone except those with 5.")));
+  box.append(h("div", { class: "block" }, h("h4", {}, "Spending"),
+    h("div", { class: "spending3" }, ["today", "week", "month"].map((p) => h("div", {}, h("b", {}, ed.agentSpending(a, p) > 0 ? fmt(ed.agentSpending(a, p)) : "—"), h("small", {}, { today: "today", week: "7 days", month: "this month" }[p])))),
     brainless ? null : field("Own daily cap (USD)", h("input", { type: "number", min: "0", step: "0.05", value: a.dailyCap || "", placeholder: "no own cap", onchange: (ev) => change({ dailyCap: Math.max(0, parseFloat(ev.target.value) || 0) }) }), "If it goes over, it's frozen until tomorrow. The building's cap applies too (Spending)."),
     a.role === "controller" ? h("div", {}, h("button", { class: "btn mini", onclick: () => openDrawer("spending") }, "Building caps")) : null));
 }
 // Capabilities: each one, with its own model when it needs one
 function profileCapabilities(box, a, change, { brainless }) {
-  if (brainless || a.role === "jev") { box.append(h("div", { class: "bloque" }, h("p", { class: "nota", style: { margin: 0 } }, a.role === "jev" ? "JEV only decides: it doesn't use capabilities." : "Works with fixed rules: it doesn't use capabilities."))); return; }
+  if (brainless || a.role === "jev") { box.append(h("div", { class: "block" }, h("p", { class: "note", style: { margin: 0 } }, a.role === "jev" ? "JEV only decides: it doesn't use capabilities." : "Works with fixed rules: it doesn't use capabilities."))); return; }
   const aj = ed.e.settings, has = (id) => a.capabilities.includes(id);
   const mark = (id, yes) => Motor.run({ type: "editAgent", id: a.id, changes: { capabilities: yes ? [...new Set([...a.capabilities, id])] : a.capabilities.filter((x) => x !== id) } }).then(() => { render(); renderProfile(true); }).catch(warn);
   const fromBuilding = (id) => (id ? `The building's model (${modelName(id)})` : "The building's model (none chosen in Settings)");
   const extraFor = {
     create_images: () => [modelPicker("image", a.imageModel, { empty: fromBuilding(aj.imageModel), onChange: (v) => change({ imageModel: v }) }), proposalsFor("image")],
-    create_music: () => [modelPicker("music", a.musicModel, { empty: fromBuilding(aj.musicModel), onChange: (v) => change({ musicModel: v }) }), h("small", { class: "nota" }, "Music and audio from OpenRouter (for example, Lyria). Paid per song."), proposalsFor("music")],
+    create_music: () => [modelPicker("music", a.musicModel, { empty: fromBuilding(aj.musicModel), onChange: (v) => change({ musicModel: v }) }), h("small", { class: "note" }, "Music and audio from OpenRouter (for example, Lyria). Paid per song."), proposalsFor("music")],
     speak: () => voicePicker(a, change),
     hear: () => [modelPicker("hearing", a.hearing, { empty: fromBuilding(aj.hearingModel === BROWSER ? "" : aj.hearingModel).replace("none chosen in Settings", "browser hearing"), extra: [[BROWSER, "Browser hearing · free (Chrome, Edge, Safari)"]], onChange: (v) => change({ hearing: v }) }), proposalsFor("hearing")],
-    see: () => h("small", { class: "nota" }, aj.visionModel ? `If its brain can't see, ${modelName(aj.visionModel)} describes the images (Settings).` : "If its brain can't see, you need a brain with vision in Settings."),
+    see: () => h("small", { class: "note" }, aj.visionModel ? `If its brain can't see, ${modelName(aj.visionModel)} describes the images (Settings).` : "If its brain can't see, you need a brain with vision in Settings."),
     skills: () => skillsBlock(a, change)
   };
   const caps = h("div", { class: "caps" });
   for (const c of CAPABILITIES) {
     const avz = c.type === "advanced", marked = has(c.id) && !avz;
-    caps.append(h("div", { class: "cap-bloque" + (marked ? " on" : "") },
-      h("label", { class: "cap" + (avz ? " avz" : "") },
+    caps.append(h("div", { class: "cap-block" + (marked ? " on" : "") },
+      h("label", { class: "cap" + (avz ? " adv" : "") },
         h("input", { type: "checkbox", checked: marked || c.id === "write", disabled: avz || c.id === "write", onchange: (ev) => mark(c.id, ev.target.checked) }),
-        h("span", {}, c.name, avz ? h("span", { class: "enchufe" }, "plug pending") : null, h("small", {}, avz ? `${tr(c.how)} ${tr("Needs:")} ${tr(c.requires)}` : c.how))),
-      marked && extraFor[c.id] ? h("div", { class: "cap-modelo" }, extraFor[c.id]()) : null));
+        h("span", {}, c.name, avz ? h("span", { class: "plug" }, "plug pending") : null, h("small", {}, avz ? `${tr(c.how)} ${tr("Needs:")} ${tr(c.requires)}` : c.how))),
+      marked && extraFor[c.id] ? h("div", { class: "cap-model" }, extraFor[c.id]()) : null));
   }
-  box.append(h("div", { class: "bloque" }, h("h4", {}, "Capabilities"), caps,
-    h("small", { class: "nota" }, "The advanced ones are described but not connected: each needs one more piece and always your authorisation.")));
+  box.append(h("div", { class: "block" }, h("h4", {}, "Capabilities"), caps,
+    h("small", { class: "note" }, "The advanced ones are described but not connected: each needs one more piece and always your authorisation.")));
 }
 // ---------------- Other APIs: one from a subscription you already pay for, with your own key ----------------
 const directModels = {};   // the list each API gives with your key (asked for when you press «Load the list»)
@@ -1116,20 +1116,20 @@ function directPicker(prov, current, onChange) {
   if (current && !list.includes(current)) sel.prepend(h("option", { value: current }, current));
   sel.value = current || "";
   const other = h("input", { placeholder: "Exact model name (for example, claude-opus-5-5)", hidden: true, onchange: (ev) => { if (ev.target.value.trim()) onChange(ev.target.value.trim()); } });
-  const msg = h("small", { class: "nota" });
+  const msg = h("small", { class: "note" });
   const load = h("button", { class: "btn mini", type: "button", onclick: async () => { load.disabled = true; msg.textContent = tr("Getting the list…"); try { const l = await loadDirectModels(prov); msg.textContent = tr(`${l.length} models in your account.`); renderProfile(true); } catch (err) { msg.textContent = err.shown ? err.message : err.message; load.disabled = false; } } }, `Load the list from ${P.short}`);
-  return h("div", { class: "campo" }, h("span", {}, "Model"), sel, other, h("div", { class: "fila-c" }, load, msg));
+  return h("div", { class: "field" }, h("span", {}, "Model"), sel, other, h("div", { class: "row-c" }, load, msg));
 }
 // ---------------- Hands: the Fer Home skills this agent can use ----------------
 const catalog = () => (mode === "home" ? homeSkills : ed.skillsCatalog());
 function skillsBlock(a, change) {
   const cat = catalog();
-  if (!cat.length) return h("small", { class: "nota" }, mode === "home" ? "Fer Home has no skills yet (“skills” folder next to fer-casa.mjs)." :
+  if (!cat.length) return h("small", { class: "note" }, mode === "home" ? "Fer Home has no skills yet (“skills” folder next to fer-casa.mjs)." :
     "Hands work with Fer Home running on your computer: the agents' Chrome, their folder on the Mac and the skills. On this website, without Fer Home, they do nothing. How to set it up: README in the ZIP.");
   const has = (n) => a.skills.includes(n);
-  const list = h("div", { class: "skills-lista" }, cat.map((k) => h("label", { class: "cap" },
+  const list = h("div", { class: "skills-list" }, cat.map((k) => h("label", { class: "cap" },
     h("input", { type: "checkbox", checked: has(k.name), onchange: (ev) => change({ skills: ev.target.checked ? [...new Set([...a.skills, k.name])] : a.skills.filter((x) => x !== k.name) }) }),
-    h("span", {}, k.title || k.name, k.effect === "external" ? h("span", { class: "enchufe" }, "asks for your permission") : null, h("small", {}, k.description)))));
+    h("span", {}, k.title || k.name, k.effect === "external" ? h("span", { class: "plug" }, "asks for your permission") : null, h("small", {}, k.description)))));
   const fixed = a.fixedSkill && a.fixedSkill.skill;
   const selFixed = h("select", { onchange: (ev) => { const n = ev.target.value; const k = cat.find((x) => x.name === n); change({ fixedSkill: n ? { skill: n, settings: defaultValues(k) } : null, skills: n ? [...new Set([...a.skills, n])] : a.skills }); } },
     h("option", { value: "" }, "None: it works with its brain"), cat.filter((k) => k.fixed !== false).map((k) => h("option", { value: k.name }, k.title || k.name)));
@@ -1137,14 +1137,14 @@ function skillsBlock(a, change) {
   const out = [list, field("On every heartbeat, without a brain (doesn't spend)", selFixed, "If you pick one, on every heartbeat it runs that skill and leaves what it finds in its chat. Example: the X Watcher every 10 minutes.")];
   const k = fixed && cat.find((x) => x.name === fixed);
   if (k && (k.settings || []).length) out.push(skillSettingsEditor(a, k, change));
-  if (fixed && !k) out.push(h("small", { class: "nota" }, `Fer Home doesn't have the “${fixed}” skill right now.`));
+  if (fixed && !k) out.push(h("small", { class: "note" }, `Fer Home doesn't have the “${fixed}” skill right now.`));
   return out;
 }
 function defaultValues(k) { const o = {}; for (const x of (k && k.settings) || []) o[x.key] = x.default; return o; }
 function skillSettingsEditor(a, k, change) {
   const val = Object.assign(defaultValues(k), (a.fixedSkill && a.fixedSkill.settings) || {});
   const save = (key, v) => { val[key] = v; change({ fixedSkill: { skill: k.name, settings: Object.assign({}, val) } }); };
-  const box = h("div", { class: "ajustes-skill" }, h("b", {}, `Settings for ${k.title || k.name}`));
+  const box = h("div", { class: "skill-settings" }, h("b", {}, `Settings for ${k.title || k.name}`));
   for (const x of k.settings) {
     if (x.type === "list") {
       const ta = h("textarea", { rows: String(Math.min(12, Math.max(4, (val[x.key] || []).length + 1))), onchange: (ev) => save(x.key, ev.target.value.split("\n").map((l) => l.trim()).filter(Boolean)) });
@@ -1173,9 +1173,9 @@ function voicePicker(a, change) {
   fill();
   selM.onchange = () => { own.voice = ""; fill(); change({ voice: { model: selM.value, voice: "" } }); };
   selV.onchange = () => change({ voice: { model: selM.value, voice: selV.value } });
-  const meta = h("span", { class: "nota" });
+  const meta = h("span", { class: "note" });
   return [field("Voice model", selM), field("Its voice", selV), proposalsFor("voice"),
-    h("div", { class: "fila-c" }, h("button", { class: "btn mini", type: "button", onclick: () => { unlockAudio(); speakText(tr(`Hi, I'm ${a.name}. This is how I sound.`), meta, a); } }, "Try its voice"), meta)];
+    h("div", { class: "row-c" }, h("button", { class: "btn mini", type: "button", onclick: () => { unlockAudio(); speakText(tr(`Hi, I'm ${a.name}. This is how I sound.`), meta, a); } }, "Try its voice"), meta)];
 }
 function confirm(button, text, action) {
   if (button.dataset.armed) { action(); return; }
@@ -1186,25 +1186,25 @@ function confirm(button, text, action) {
 // ---------------- Activity: everything, and the questions to JEV ----------------
 const DECISION_NAME = { go_ahead: "go ahead", reuse: "reuse what's already there", stop: "stop", ask_boss: "ask the boss" };
 function renderLog() {
-  $("actTodo").setAttribute("aria-selected", String(activityView === "all")); $("actJev").setAttribute("aria-selected", String(activityView === "jev"));
-  const r = $("registro"); r.innerHTML = "";
+  $("actAll").setAttribute("aria-selected", String(activityView === "all")); $("actJev").setAttribute("aria-selected", String(activityView === "jev"));
+  const r = $("log"); r.innerHTML = "";
   if (activityView === "jev") {
     const rows = (ed.e.jevQueries || []).slice().reverse().slice(0, 150);
-    if (!rows.length) { r.append(h("p", { class: "nota" }, "Every question to JEV shows up here: the time, the agent, what it was going to do, what JEV said, what it did in the end, what it cost and whether it helped.")); return; }
+    if (!rows.length) { r.append(h("p", { class: "note" }, "Every question to JEV shows up here: the time, the agent, what it was going to do, what JEV said, what it did in the end, what it cost and whether it helped.")); return; }
     for (const c of rows) {
       const prob = c.probabilities ? Object.entries(c.probabilities).sort((x, y) => y[1] - x[1]).map(([k, v]) => `${tr(DECISION_NAME[k] || k)} ${Math.round(v * 100)} %`).join(" · ") : "";
       const helped = (v, t) => h("button", { class: "btn mini", "aria-pressed": String(c.helped === v), onclick: () => Motor.run({ type: "jev.helped", query: c.id, helped: c.helped === v ? null : v }).then(renderLog).catch(warn) }, t);
-      r.append(h("div", { class: "item jev-consulta" },
-        h("div", { class: "jev-fila" }, h("span", { class: "hora" }, date(c.ts)), h("span", {}, h("b", {}, c.name), ": ", c.action), h("span", { class: "coste" }, (c.jevCost || 0) + (c.cost || 0) > 0 ? fmt((c.jevCost || 0) + (c.cost || 0)) : "")),
-        h("div", { class: "jev-fila" }, h("span", {}, "JEV:"), h("span", {}, h("span", { class: "dec " + (c.decision || "") }, c.decision ? tr(DECISION_NAME[c.decision] || c.decision) : "no answer"), prob ? h("small", { class: "nota" }, " · " + prob) : null, c.text && !c.decision ? h("small", { class: "nota" }, " · " + c.text) : null), h("span", {})),
-        h("div", { class: "jev-fila" }, h("span", {}, "Did:"), h("span", {}, c.did || tr(DECISION_NAME[c.final] || c.final || "—")), h("span", { class: "fila-c" }, h("small", { class: "nota" }, "Did it help?"), helped(true, "Yes"), helped(false, "No")))));
+      r.append(h("div", { class: "item jev-query" },
+        h("div", { class: "jev-row" }, h("span", { class: "time" }, date(c.ts)), h("span", {}, h("b", {}, c.name), ": ", c.action), h("span", { class: "cost" }, (c.jevCost || 0) + (c.cost || 0) > 0 ? fmt((c.jevCost || 0) + (c.cost || 0)) : "")),
+        h("div", { class: "jev-row" }, h("span", {}, "JEV:"), h("span", {}, h("span", { class: "dec " + (c.decision || "") }, c.decision ? tr(DECISION_NAME[c.decision] || c.decision) : "no answer"), prob ? h("small", { class: "note" }, " · " + prob) : null, c.text && !c.decision ? h("small", { class: "note" }, " · " + c.text) : null), h("span", {})),
+        h("div", { class: "jev-row" }, h("span", {}, "Did:"), h("span", {}, c.did || tr(DECISION_NAME[c.final] || c.final || "—")), h("span", { class: "row-c" }, h("small", { class: "note" }, "Did it help?"), helped(true, "Yes"), helped(false, "No")))));
     }
     return;
   }
   const rows = ed.e.log.slice().reverse().slice(0, 150);
-  if (!rows.length) { r.append(h("p", { class: "nota" }, "Everything the agents do will show up here: heartbeats, tasks, questions to JEV, coins, meetings, Memory searches and spending.")); return; }
-  for (const x of rows) r.append(h("div", { class: "item" }, h("span", { class: "hora" }, date(x.ts)),
-    h("span", {}, h("b", {}, x.name + " "), x.text), h("span", { class: "coste" }, x.cost ? fmt(x.cost) : "")));
+  if (!rows.length) { r.append(h("p", { class: "note" }, "Everything the agents do will show up here: heartbeats, tasks, questions to JEV, coins, meetings, Memory searches and spending.")); return; }
+  for (const x of rows) r.append(h("div", { class: "item" }, h("span", { class: "time" }, date(x.ts)),
+    h("span", {}, h("b", {}, x.name + " "), x.text), h("span", { class: "cost" }, x.cost ? fmt(x.cost) : "")));
 }
 
 // =====================================================================
@@ -1215,17 +1215,17 @@ let pendingErrors = [], thinking = false, sessionImages = new Map(), sessionAudi
 const chatAgent = () => (chatId && ed.exactAgent(chatId)) || ed.boss();
 function openChat(id) {
   const a = ed.exactAgent(id) || ed.boss(); if (!a) return;
-  if (chatId && chatId !== a.id) { if (conv.on) hangUp(); stopAudio(); pendingErrors = []; removeAttachment(); $("texto").value = ""; grow(); }
+  if (chatId && chatId !== a.id) { if (conv.on) hangUp(); stopAudio(); pendingErrors = []; removeAttachment(); $("messageInput").value = ""; grow(); }
   chatId = a.id; screen = "";
-  $("vistaMes").hidden = true; $("vistaSalas").hidden = true; $("vistaChat").hidden = false;
-  document.body.classList.add("con-pantalla");
+  $("monthView").hidden = true; $("roomsView").hidden = true; $("chatView").hidden = false;
+  document.body.classList.add("with-screen");
   renderAccent(); renderChatHeader(); renderChat(true); microUI();
-  setTimeout(() => { if (!$("texto").disabled) $("texto").focus(); }, 30);
+  setTimeout(() => { if (!$("messageInput").disabled) $("messageInput").focus(); }, 30);
   markNav();
 }
 function closeChat() {
   if (conv.on) hangUp(); stopAudio();
-  chatId = ""; pendingErrors = []; $("vistaChat").hidden = true; if (!screen) document.body.classList.remove("con-pantalla");
+  chatId = ""; pendingErrors = []; $("chatView").hidden = true; if (!screen) document.body.classList.remove("with-screen");
   renderAccent(); render(); replaceNav();
 }
 // The first message is a greeting from the agent (not saved or paid for); if the key is missing, it comes afterwards, calmly.
@@ -1250,36 +1250,36 @@ function renderChat(force) {
   const signature = [a.id, conv.length, (conv.at(-1) || {}).ts, thinking, pendingErrors.length, hasAccess(), (ed.e.proposals || []).map((y) => y.state[0]).join(""), (ed.e.meetings || []).map((r) => r.state[0]).join(""), a.name, a.capabilities.join()].join("|");
   if (!force && signature === lastChat) return;
   lastChat = signature;
-  const m = $("mensajes"); m.innerHTML = "";
-  m.append(h("div", { class: "msg bot saludo" }, h("div", { class: "burbuja" }, greetingOf(a))));
-  if (converses(a) && !hasAccess()) m.append(h("div", { class: "msg bot saludo" }, h("div", { class: "burbuja" },
+  const m = $("messages"); m.innerHTML = "";
+  m.append(h("div", { class: "msg bot greeting" }, h("div", { class: "bubble" }, greetingOf(a))));
+  if (converses(a) && !hasAccess()) m.append(h("div", { class: "msg bot greeting" }, h("div", { class: "bubble" },
     h("p", {}, isApp() ? "So I can answer you, paste your OpenRouter key in Settings. It stays only on this computer." : mode === "home" ? "So I can reply, enter in Settings the PIN you set when you started Fer Home." : "So I can reply, paste your OpenRouter key in Settings. It stays only in this browser."),
     h("button", { class: "btn mini", onclick: () => openDrawer("settings") }, "Open Settings"))));
   const speaks = a.capabilities.includes("speak");
   for (const x of conv) {
-    if (x.role === "user") m.append(h("div", { class: "msg me" }, h("div", { class: "burbuja" }, raw(x.content)), x.voice ? h("div", { class: "meta" }, x.voice) : null));
+    if (x.role === "user") m.append(h("div", { class: "msg me" }, h("div", { class: "bubble" }, raw(x.content)), x.voice ? h("div", { class: "meta" }, x.voice) : null));
     else if (x.role === "assistant") {
       const meta = h("div", { class: "meta" }, h("span", {}, x.provider ? tr(`${x.model || ""} · ${((ed.provider(x.provider) || {}).short) || x.provider}: your subscription`) + (x.subscription ? ` (≈${fmt(x.subscription)})` : "") : `${x.model || ""} · ${fmt(x.cost || 0)}`),
         speaks ? h("button", { onclick: (ev) => { unlockAudio(); speakText(x.content, ev.target.parentElement, a); } }, "▶ Listen") : null,
-        h("span", { class: "monedas-msg" }, coinButton(a, "gold"), coinButton(a, "red")));
-      m.append(h("div", { class: "msg bot" }, h("div", { class: "burbuja", html: markdown(x.content) }, media(x)),
+        h("span", { class: "coins-msg" }, coinButton(a, "gold"), coinButton(a, "red")));
+      m.append(h("div", { class: "msg bot" }, h("div", { class: "bubble", html: markdown(x.content) }, media(x)),
         (x.events || []).length ? h("div", { class: "chips" }, x.events.map((e) => h("span", { class: "chip" }, e))) : null,
         x.meeting ? meetingCard(x.meeting) : null, meta));
     } else if (x.role === "report") {
       const author = ed.exactAgent(x.agent);
       const pr = x.proposal && (ed.e.proposals || []).find((y) => y.id === x.proposal);
-      const buttons = pr ? (pr.state === "pending" ? h("div", { class: "fila-c propuesta" },
-        h("button", { class: "btn primario mini", onclick: () => Motor.run({ type: "acceptProposal", proposal: pr.id }).then((r) => { const n = ed.exactAgent(r.id); if (n) { selection = n.id; profileTab = "identity"; } render(); renderChat(true); }).catch(warn) }, tr(`Create ${pr.profile.name || tr("this agent")}`)),
+      const buttons = pr ? (pr.state === "pending" ? h("div", { class: "row-c proposal" },
+        h("button", { class: "btn primary mini", onclick: () => Motor.run({ type: "acceptProposal", proposal: pr.id }).then((r) => { const n = ed.exactAgent(r.id); if (n) { selection = n.id; profileTab = "identity"; } render(); renderChat(true); }).catch(warn) }, tr(`Create ${pr.profile.name || tr("this agent")}`)),
         h("button", { class: "btn mini", onclick: () => openDrawer("agent", { profile: Object.assign({}, pr.profile, { floor: pr.profile.floor || "new", newFloor: pr.profile.newFloor || { name: "", job: "" } }), proposal: pr.id }) }, "See it and tweak it"),
         h("button", { class: "btn mini", onclick: () => Motor.run({ type: "discardProposal", proposal: pr.id }).then(() => renderChat(true)).catch(warn) }, "Dismiss"))
         : h("div", { class: "meta" }, pr.state === "created" ? "Created." : "Dismissed.")) : null;
-      m.append(h("div", { class: "msg informe" }, h("span", { class: "quien" }, tr(`Report from ${x.name}`)), h("div", { class: "burbuja", html: markdown(x.content) }, media(x)), buttons,
+      m.append(h("div", { class: "msg report" }, h("span", { class: "who" }, tr(`Report from ${x.name}`)), h("div", { class: "bubble", html: markdown(x.content) }, media(x)), buttons,
         x.meeting ? h("div", { class: "meta" }, h("button", { onclick: () => openMeetingRooms(x.meeting) }, "See the meeting")) : null,
-        author && author.role !== "boss" && !x.meeting ? h("div", { class: "meta" }, h("span", { class: "monedas-msg" }, coinButton(author, "gold"), coinButton(author, "red"))) : null));
+        author && author.role !== "boss" && !x.meeting ? h("div", { class: "meta" }, h("span", { class: "coins-msg" }, coinButton(author, "gold"), coinButton(author, "red"))) : null));
     }
   }
-  for (const e of pendingErrors) m.append(h("div", { class: "msg error" }, h("div", { class: "burbuja" }, e)));
-  if (thinking) m.append(h("div", { class: "msg bot escribiendo" }, writing ? h("div", { class: "burbuja", html: markdown(writing) }) : h("div", { class: "burbuja" }, h("span", { class: "pensando", "aria-label": "Thinking" }, h("i"), h("i"), h("i")))));
+  for (const e of pendingErrors) m.append(h("div", { class: "msg error" }, h("div", { class: "bubble" }, e)));
+  if (thinking) m.append(h("div", { class: "msg bot typing" }, writing ? h("div", { class: "bubble", html: markdown(writing) }) : h("div", { class: "bubble" }, h("span", { class: "thinking", "aria-label": "Thinking" }, h("i"), h("i"), h("i")))));
   $("chat").scrollTop = $("chat").scrollHeight;
 }
 // Images and music: saved apart (in this browser, IndexedDB; in Fer Home, its «datos/medios» folder), so they aren't lost on reload
@@ -1297,7 +1297,7 @@ function media(x) {
     const el = m.type === "audio" ? h("audio", { controls: true, preload: "none" }) : h("img", { alt: m.text || "Image created" });
     const already = mediaCache.get(m.id) || (m.type === "audio" ? sessionAudios : sessionImages).get(m.text);
     if (already) el.src = already;
-    else mediaUrl(m).then((u) => { if (u) el.src = u; else if (el.isConnected) el.replaceWith(h("small", { class: "nota" }, m.type === "audio" ? "(the music isn't on this device)" : "(the image isn't on this device)")); });
+    else mediaUrl(m).then((u) => { if (u) el.src = u; else if (el.isConnected) el.replaceWith(h("small", { class: "note" }, m.type === "audio" ? "(the music isn't on this device)" : "(the image isn't on this device)")); });
     return el;
   });
   // from version 6: only this session's
@@ -1308,15 +1308,15 @@ function media(x) {
 function meetingCard(id) {
   const r = (ed.e.meetings || []).find((x) => x.id === id); if (!r) return null;
   const names = r.participants.map((pid) => (ed.exactAgent(pid) || {}).name).filter(Boolean).join(", ");
-  if (r.state !== "proposed") return h("div", { class: "tarjeta-reunion" }, h("b", {}, `Meeting “${r.title}”`), h("span", { class: "nota" }, `${MEETING_STATUS[r.state] || r.state} · ${names}`), h("div", {}, h("button", { class: "btn mini", onclick: () => openMeetingRooms(r.id) }, "See it in the room")));
+  if (r.state !== "proposed") return h("div", { class: "meeting-card" }, h("b", {}, `Meeting “${r.title}”`), h("span", { class: "note" }, `${MEETING_STATUS[r.state] || r.state} · ${names}`), h("div", {}, h("button", { class: "btn mini", onclick: () => openMeetingRooms(r.id) }, "See it in the room")));
   const rounds = h("input", { type: "number", min: "1", step: "1", value: r.rounds });
-  const est = h("span", { class: "nota" });
+  const est = h("span", { class: "note" });
   const calc = () => { const e = ed.estimateMeeting(Object.assign({}, r, { rounds: Math.max(1, parseInt(rounds.value, 10) || 1) })); est.textContent = tr(`Estimated cost: ≈${fmt(e.cost)} (${e.calls} calls)`); };
   rounds.oninput = calc; calc();
-  return h("div", { class: "tarjeta-reunion" }, h("b", {}, `The boss proposes the meeting “${r.title}”`), h("span", { class: "nota" }, `At the table: ${names}`),
-    h("div", { class: "orden" }, raw(r.agenda)),
-    h("div", { class: "fila-c" }, h("span", {}, "Rounds"), rounds, est),
-    h("div", { class: "fila-c" }, h("button", { class: "btn primario mini", onclick: () => startMeeting(r.id, parseInt(rounds.value, 10) || r.rounds) }, "Start the meeting"),
+  return h("div", { class: "meeting-card" }, h("b", {}, `The boss proposes the meeting “${r.title}”`), h("span", { class: "note" }, `At the table: ${names}`),
+    h("div", { class: "agenda" }, raw(r.agenda)),
+    h("div", { class: "row-c" }, h("span", {}, "Rounds"), rounds, est),
+    h("div", { class: "row-c" }, h("button", { class: "btn primary mini", onclick: () => startMeeting(r.id, parseInt(rounds.value, 10) || r.rounds) }, "Start the meeting"),
       h("button", { class: "btn mini", onclick: () => Motor.run({ type: "meeting.cancel", meeting: r.id }).then(() => { render(); renderChat(true); }).catch(warn) }, "Don't hold it")));
 }
 const CHAT_STATES = { idle: "Ready to talk", loading: "Getting the hearing ready…", listening: "I'm listening. Speak whenever you like", hearing: "I can hear you…", transcribing: "Understanding what you said…", thinking: "Thinking…", speaking: "Talking. Press “Stop” or speak to cut it off" };
@@ -1326,27 +1326,27 @@ function renderChatHeader() {
   if (!chatId) return;
   const a = chatAgent(); if (!a) return;
   const pl = ed.e.floors.find((p) => p.id === a.floor), est = visibleState(a);
-  $("jefeNombre").textContent = a.name;
-  $("jefeRol").textContent = `${roleTxt(a)}${pl ? " · " + pl.name : ""}`;
-  $("jefeEstado").textContent = tr(est === "frozen" || est === "off" ? `${STATUS_TXT[est]}${a.statusReason ? " · " + a.statusReason : ""}`
+  $("bossName").textContent = a.name;
+  $("bossRole").textContent = `${roleTxt(a)}${pl ? " · " + pl.name : ""}`;
+  $("bossState").textContent = tr(est === "frozen" || est === "off" ? `${STATUS_TXT[est]}${a.statusReason ? " · " + a.statusReason : ""}`
     : bossState === "thinking" && a.role === "boss" ? "Thinking and sharing out the work…" : CHAT_STATES[bossState]);
-  $("jefeCab").classList.toggle("hablando", bossState === "speaking");
-  $("pararVoz").hidden = bossState !== "speaking";
+  $("bossHead").classList.toggle("speaking", bossState === "speaking");
+  $("stopVoice").hidden = bossState !== "speaking";
   const avatar = $("avatar");
   if (avatar.dataset.who !== a.id) { avatar.dataset.who = a.id; avatar.src = figure(a.look); }   // the small figure at once; right after, the big one
   ensureBigFigure(a.look).then((u) => { if (avatar.dataset.who === a.id && avatar.getAttribute("src") !== u) avatar.src = u; });
   // what can be done in this chat
   const speaks = converses(a), hears = speaks && a.capabilities.includes("hear"), talks = speaks && a.capabilities.includes("speak"), sees = speaks && a.capabilities.includes("see");
-  $("texto").disabled = !speaks; $("enviar").disabled = !speaks;
-  $("texto").placeholder = tr(speaks ? `Write to ${a.name}…` : `${a.name} doesn't chat`);
-  $("micro").disabled = !hears; $("clip").disabled = !sees; $("altavoz").disabled = !talks;
+  $("messageInput").disabled = !speaks; $("send").disabled = !speaks;
+  $("messageInput").placeholder = tr(speaks ? `Write to ${a.name}…` : `${a.name} doesn't chat`);
+  $("micro").disabled = !hears; $("clip").disabled = !sees; $("speaker").disabled = !talks;
   if (!hears) $("micro").title = tr(speaks ? `${a.name} doesn't have the “Hear” capability. Turn it on in its profile.` : "Doesn't chat");
   if (!sees) $("clip").title = tr(speaks ? `${a.name} doesn't have the “See images” capability.` : "Doesn't chat"); else $("clip").title = tr("Attach an image for it to see");
-  $("altavoz").title = tr(talks ? "Read the replies out loud" : `${a.name} doesn't have the “Speak” capability.`);
-  $("verFichaChat").hidden = false;
+  $("speaker").title = tr(talks ? "Read the replies out loud" : `${a.name} doesn't have the “Speak” capability.`);
+  $("showProfileChat").hidden = false;
 }
 async function send(voiceText, voice) {
-  const text = typeof voiceText === "string" ? voiceText : $("texto").value.trim();
+  const text = typeof voiceText === "string" ? voiceText : $("messageInput").value.trim();
   const a = chatAgent();
   if ((!text && !attachment) || thinking || !converses(a)) return;
   if (!hasAccess()) { openDrawer("settings"); return; }
@@ -1354,7 +1354,7 @@ async function send(voiceText, voice) {
   if (own) { conv.processing = true; await pauseHearing(); }
   pendingErrors = [];
   thinking = true; stopAudio(); setBossState("thinking");
-  const image = attachment; if (!voice) { $("texto").value = ""; grow(); } removeAttachment();
+  const image = attachment; if (!voice) { $("messageInput").value = ""; grow(); } removeAttachment();
   writing = ""; renderChat(true);
   // Does it answer out loud? Then short answers and the voice sentence by sentence while it writes
   const inVoice = a.capabilities.includes("speak") && (voice ? (ed.e.settings.answerByVoiceIfMic !== false) || speakerOn() : speakerOn());
@@ -1373,7 +1373,7 @@ async function send(voiceText, voice) {
     for (const im of r.images || []) { sessionImages.set(im.text, im.url); if (im.id) mediaCache.set(im.id, im.url); }
     for (const au of r.audios || []) { sessionAudios.set(au.text, au.url); if (au.id) mediaCache.set(au.id, au.url); }
     thinking = false; writing = ""; setBossState(conv.on ? "listening" : "idle"); render(); renderChat(true);
-    const goals = $("mensajes").querySelectorAll(".msg.bot .meta"), meta = goals[goals.length - 1];
+    const goals = $("messages").querySelectorAll(".msg.bot .meta"), meta = goals[goals.length - 1];
     if (inVoice && r.reply && chatId === a.id) {
       if (voiceEnd && inParts) { queue.meta = meta; voiceEndNow(); }   // it was already speaking while writing
       else voiceEnd = speakText(r.reply, meta, a);           // if it arrived whole (for example, with an image), it's read sentence by sentence
@@ -1384,17 +1384,17 @@ async function send(voiceText, voice) {
   }
   // hearing comes back at once (even if it's still speaking): if you talk, it goes quiet
   if (own) { conv.processing = false; await resumeHearing(); if (bossState !== "speaking" && conv.on) setBossState("listening"); }
-  if (!voice && chatId) $("texto").focus();
+  if (!voice && chatId) $("messageInput").focus();
 }
 // What the agent is writing, live (only in this browser; Fer Home sends the whole reply)
 let writing = "";
 function renderDraft() {
-  const el = $("mensajes").querySelector(".msg.bot.escribiendo .burbuja");
+  const el = $("messages").querySelector(".msg.bot.typing .bubble");
   if (el) { el.innerHTML = markdown(writing); $("chat").scrollTop = $("chat").scrollHeight; }
 }
-function grow() { const t = $("texto"); t.style.height = "auto"; t.style.height = Math.min(t.scrollHeight, 160) + "px"; }
-function removeAttachment() { attachment = null; $("adjunto").hidden = true; }
-const speakerOn = () => $("altavoz").getAttribute("aria-pressed") === "true";
+function grow() { const t = $("messageInput"); t.style.height = "auto"; t.style.height = Math.min(t.scrollHeight, 160) + "px"; }
+function removeAttachment() { attachment = null; $("attachment").hidden = true; }
+const speakerOn = () => $("speaker").getAttribute("aria-pressed") === "true";
 
 // =====================================================================
 // Voice (mouth) — each agent with its model and its voice; OpenRouter or the browser
@@ -1407,7 +1407,7 @@ let voiceEndTs = 0;   // when the agent stopped speaking (for the echo filter)
 function endVoice() { const f = endSpeaking; endSpeaking = null; voiceEndTs = Date.now(); if (bossState === "speaking") setBossState(conv.on ? "listening" : "idle"); if (f) f(); }
 function stopAudio() { voiceTurn++; queue.sentences = []; queue.playing = false; queue.closed = true; try { player.pause(); } catch {} try { if (window.speechSynthesis) speechSynthesis.cancel(); } catch {} endVoice(); }
 // (each sentence signals when it ends; the voice ends when there are no sentences left)
-function note(metaEl, t) { if (!metaEl) return; let n = metaEl.querySelector(".nota-voz"); if (!n) { n = h("span", { class: "nota-voz" }); metaEl.append(n); } n.textContent = tr(t); }
+function note(metaEl, t) { if (!metaEl) return; let n = metaEl.querySelector(".voice-note"); if (!n) { n = h("span", { class: "voice-note" }); metaEl.append(n); } n.textContent = tr(t); }
 function pcmAWav(buf, rate = 24000) {
   const pcm = new Uint8Array(buf), head = new ArrayBuffer(44), v = new DataView(head);
   const w = (o, s) => { for (let i = 0; i < s.length; i++) v.setUint8(o + i, s.charCodeAt(i)); };
@@ -1569,7 +1569,7 @@ function microUI() {
   const a = chatId ? chatAgent() : null;
   $("micro").setAttribute("aria-pressed", String(conv.on));
   if (!$("micro").disabled) $("micro").title = tr(conv.on ? "Hang up (end the voice conversation)" : `Talk to ${a ? a.name : "the agent"} through the mic (conversation mode)`);
-  $("pista").textContent = conv.on ? tr("Voice conversation: speak and pause; it sends on its own. Tap the mic to hang up.") : "";
+  $("hint").textContent = conv.on ? tr("Voice conversation: speak and pause; it sends on its own. Tap the mic to hang up.") : "";
 }
 async function pauseHearing() { try { if (conv.vad) await conv.vad.pause(); } catch {} try { if (conv.rec) conv.rec.abort(); } catch {} }
 async function resumeHearing() { if (!conv.on) return; try { if (conv.vad) await conv.vad.start(); } catch {} try { if (conv.rec) conv.rec.start(); } catch {} if (bossState !== "speaking") setBossState("listening"); }
@@ -1647,7 +1647,7 @@ async function hangUp() {
 const KIND_TXT = { action: "Action outside the website", agent: "New agent", meeting: "Meeting", coin: "Coin", lesson: "New lesson", model: "Recommended model", missing: "Missing something" };
 let inboxSignature = "";
 function renderInbox(force) {
-  const v = $("vistaBandeja");
+  const v = $("inboxView");
   if (screen !== "inbox") return;
   if (!force && inUse(v)) return;
   const items = ed.inbox();
@@ -1655,12 +1655,12 @@ function renderInbox(force) {
   if (!force && signature === inboxSignature) return;
   inboxSignature = signature;
   const sc = v.scrollTop;
-  v.replaceChildren(screenHeader("What's waiting for your yes"), h("div", { class: "bandeja" },
+  v.replaceChildren(screenHeader("What's waiting for your yes"), h("div", { class: "inbox" },
     h("h1", {}, "Approval inbox"),
-    h("p", { class: "nota-osc" }, "Everything waiting for your yes arrives here: who asks for it, what it is and what it costs. None of this happens without you."),
-    h("p", { class: "nota-osc" }, mode === "home" ? (homeInfo.telegram ? "With Fer Home and Telegram, it also reaches your phone with buttons to approve or reject." : "From your phone: open the Fer Home address on your home network, or connect Telegram (README) to approve from anywhere.")
+    h("p", { class: "note-dark" }, "Everything waiting for your yes arrives here: who asks for it, what it is and what it costs. None of this happens without you."),
+    h("p", { class: "note-dark" }, mode === "home" ? (homeInfo.telegram ? "With Fer Home and Telegram, it also reaches your phone with buttons to approve or reject." : "From your phone: open the Fer Home address on your home network, or connect Telegram (README) to approve from anywhere.")
       : "From your phone: with the brain folder in Google Drive connected on both devices, the phone sees the same inbox."),
-    items.length ? items.map(requestCard) : h("p", { class: "bandeja-vacia" }, "Nothing pending. When an agent wants to do something involving money or outside the website, or there's something to approve, it will show up here.")));
+    items.length ? items.map(requestCard) : h("p", { class: "inbox-empty" }, "Nothing pending. When an agent wants to do something involving money or outside the website, or there's something to approve, it will show up here.")));
   v.scrollTop = sc;
 }
 function requestCard(x) {
@@ -1670,41 +1670,41 @@ function requestCard(x) {
       .then((r) => { if (r && r.state) toast(r.state === "done" ? `Done: ${String(r.result || "").slice(0, 160)}` : `It couldn't be done: ${String(r.result || "").slice(0, 160)}`); render(); renderInbox(true); })
       .catch((err) => { if (button) button.disabled = false; warn(err); });
   };
-  const b = (txt, f, primary) => { const el = h("button", { class: "btn mini" + (primary ? " primario" : ""), type: "button" }, txt); el.onclick = () => f(el); return el; };
+  const b = (txt, f, primary) => { const el = h("button", { class: "btn mini" + (primary ? " primary" : ""), type: "button" }, txt); el.onclick = () => f(el); return el; };
   const noCost = ["missing", "coin", "lesson", "model"].includes(x.kind);
   const cost = noCost ? "" : x.cost > 0 ? (x.perDay ? `≈${fmt(x.cost)} a day` : `≈${fmt(x.cost)}`) : x.kind === "action" ? "no cost" : "≈0 $";
-  const parts = [h("div", { class: "p-cab" }, h("span", { class: "clase-pet" }, KIND_TXT[x.kind] || x.kind), h("span", { class: "p-quien" }, x.who), h("span", { class: "nota-osc" }, date(x.ts)), cost ? h("span", { class: "p-coste" }, cost) : null),
-    h("div", { class: "p-que" }, x.what)];
+  const parts = [h("div", { class: "p-head" }, h("span", { class: "request-kind" }, KIND_TXT[x.kind] || x.kind), h("span", { class: "p-who" }, x.who), h("span", { class: "note-dark" }, date(x.ts)), cost ? h("span", { class: "p-cost" }, cost) : null),
+    h("div", { class: "p-what" }, x.what)];
   let acc = [];
   if (x.kind === "lesson") {
     const ta = h("textarea", { rows: "2", maxlength: "300", "aria-label": "Lesson text" }); ta.value = x.detail;
-    parts.push(h("p", { class: "p-det" }, tr(`Reason for the coin: “${x.reason}”.`) + " " + tr(x.writtenUp ? "A cheap model has turned it into a rule; tweak it if you like." : "The cheap model couldn't write it: tweak it yourself.")), ta);
+    parts.push(h("p", { class: "p-detail" }, tr(`Reason for the coin: “${x.reason}”.`) + " " + tr(x.writtenUp ? "A cheap model has turned it into a rule; tweak it if you like." : "The cheap model couldn't write it: tweak it yourself.")), ta);
     acc = [b("Approve", (el) => decide(true, { text: ta.value }, el), true),
       b("Write it again", (el) => { el.disabled = true; Motor.run({ type: "lesson.draft", lesson: x.id }).then(() => renderInbox(true)).catch(warn); }),
       b("Dismiss", (el) => decide(false, null, el))];
   } else if (x.kind === "meeting") {
     const rounds = h("input", { type: "number", min: "1", step: "1", value: x.rounds, "aria-label": "Rounds" });
-    const est = h("span", { class: "nota-osc" });
+    const est = h("span", { class: "note-dark" });
     const calc = () => { const r = ed.e.meetings.find((y) => y.id === x.id); if (!r) return; const e = ed.estimateMeeting(Object.assign({}, r, { rounds: Math.max(1, parseInt(rounds.value, 10) || 1) })); est.textContent = tr(`≈${fmt(e.cost)} (${e.calls} calls)`); };
     rounds.oninput = calc; calc();
-    parts.push(h("p", { class: "p-det" }, x.detail), h("div", { class: "p-acc" }, h("span", {}, "Rounds"), rounds, est));
+    parts.push(h("p", { class: "p-detail" }, x.detail), h("div", { class: "p-actions" }, h("span", {}, "Rounds"), rounds, est));
     acc = [b("Start the meeting", (el) => decide(true, { rounds: parseInt(rounds.value, 10) || x.rounds }, el).then(() => openMeetingRooms(x.id)), true), b("Don't hold it", (el) => decide(false, null, el)), b("See it in the room", () => openMeetingRooms(x.id))];
   } else if (x.kind === "agent") {
-    parts.push(h("p", { class: "p-det" }, x.detail));
+    parts.push(h("p", { class: "p-detail" }, x.detail));
     const pr = (ed.e.proposals || []).find((y) => y.id === x.id);
     acc = [b("Create", (el) => decide(true, null, el), true),
       pr ? b("See it and tweak it", () => openDrawer("agent", { profile: Object.assign({}, pr.profile, { floor: pr.profile.floor || "new", newFloor: pr.profile.newFloor || { name: "", job: "" } }), proposal: pr.id })) : null,
       b("Dismiss", (el) => decide(false, null, el))];
   } else if (x.kind === "missing") {
-    parts.push(h("p", { class: "p-det" }, inQuotes(x.detail)), h("p", { class: "nota-osc", style: { margin: 0 } }, "Meanwhile it won't move on alone towards its objective (it doesn't spend). Give it what it asks for in its profile, or change its objective."));
+    parts.push(h("p", { class: "p-detail" }, inQuotes(x.detail)), h("p", { class: "note-dark", style: { margin: 0 } }, "Meanwhile it won't move on alone towards its objective (it doesn't spend). Give it what it asks for in its profile, or change its objective."));
     const a = ed.exactAgent(x.id);
     acc = [b("It has it now", (el) => decide(true, null, el), true), a ? b("See their profile", () => { closeScreen(); profileTab = "capabilities"; choose(a); }) : null];
   } else {
-    if (x.detail) parts.push(h("p", { class: "p-det" }, x.detail));
+    if (x.detail) parts.push(h("p", { class: "p-detail" }, x.detail));
     acc = [b(x.kind === "action" ? "Approve and do it" : x.kind === "coin" ? "Confirm" : "Accept", (el) => decide(true, null, el), true), b(x.kind === "action" ? "Reject" : "Dismiss", (el) => decide(false, null, el))];
   }
-  parts.push(h("div", { class: "p-acc" }, acc.filter(Boolean)));
-  return h("article", { class: "peticion" + (x.external ? " externo" : "") }, parts);
+  parts.push(h("div", { class: "p-actions" }, acc.filter(Boolean)));
+  return h("article", { class: "request" + (x.external ? " external" : "") }, parts);
 }
 
 // =====================================================================
@@ -1712,7 +1712,7 @@ function requestCard(x) {
 // =====================================================================
 let builtInSignature = "";
 function renderBuiltIn(force) {
-  const v = $("vistaSerie");
+  const v = $("builtInView");
   if (screen !== "builtIn") return;
   const list = ed.builtInCatalog(), missingOnes = list.filter((x) => !x.installed);
   const signature = list.map((x) => x.id + (x.installed ? 1 : 0) + x.currentName).join("|");
@@ -1720,45 +1720,45 @@ function renderBuiltIn(force) {
   builtInSignature = signature;
   const sc = v.scrollTop;
   const onDone = (r) => { const n = (r.returned || []).length, without = r.noRoom || []; toast((n ? tr(n === 1 ? `Installed ${r.returned.join(", ")}.` : `Installed: ${r.returned.join(", ")}.`) : tr("None was missing.")) + (without.length ? " " + tr(`No room for: ${without.join("; ")}.`) : "")); render(); renderBuiltIn(true); };
-  const card = (x) => h("article", { class: "serie-ag" + (x.installed ? " instalado" : "") },
-    (() => { const im = h("img", { src: figure(x.look), alt: "", class: "serie-pj" }); ensureFigure(x.look).then((u) => { im.src = u; }); return im; })(),
-    h("div", { class: "serie-txt" },
-      h("div", { class: "p-cab" }, h("b", { class: "serie-nombre" }, x.installed && x.currentName ? x.currentName : x.name), h("span", { class: "clase-pet" }, x.roleLabel),
-        x.installed ? h("span", { class: "serie-estado" }, x.id === "boss" ? "Always there" : "In your building") : null),
-      h("p", { class: "p-det" }, x.description),
-      h("div", { class: "p-acc" },
+  const card = (x) => h("article", { class: "builtin-agent" + (x.installed ? " installed" : "") },
+    (() => { const im = h("img", { src: figure(x.look), alt: "", class: "builtin-fig" }); ensureFigure(x.look).then((u) => { im.src = u; }); return im; })(),
+    h("div", { class: "builtin-txt" },
+      h("div", { class: "p-head" }, h("b", { class: "builtin-name" }, x.installed && x.currentName ? x.currentName : x.name), h("span", { class: "request-kind" }, x.roleLabel),
+        x.installed ? h("span", { class: "builtin-state" }, x.id === "boss" ? "Always there" : "In your building") : null),
+      h("p", { class: "p-detail" }, x.description),
+      h("div", { class: "p-actions" },
         x.installed
           ? (x.id === "boss" ? null : [h("button", { class: "btn mini", type: "button", onclick: () => { closeScreen(); const a = ed.exactAgent(x.id); if (a) choose(a); } }, "See their profile"),
-              h("button", { class: "btn mini peligro", type: "button", onclick: (ev) => confirm(ev.target, "Remove it? It's deleted along with its short memory. Press again", () => Motor.run({ type: "deleteAgent", id: x.id }).then(() => { render(); renderBuiltIn(true); }).catch(warn)) }, "Remove from the building")])
-          : h("button", { class: "btn mini primario", type: "button", onclick: (ev) => { ev.target.disabled = true; Motor.run({ type: "installBuiltIn", id: x.id }).then(onDone).catch((err) => { ev.target.disabled = false; warn(err); }); } }, "Install"))));
-  v.replaceChildren(screenHeader("Built-in agents"), h("div", { class: "bandeja catalogo-serie" },
+              h("button", { class: "btn mini danger", type: "button", onclick: (ev) => confirm(ev.target, "Remove it? It's deleted along with its short memory. Press again", () => Motor.run({ type: "deleteAgent", id: x.id }).then(() => { render(); renderBuiltIn(true); }).catch(warn)) }, "Remove from the building")])
+          : h("button", { class: "btn mini primary", type: "button", onclick: (ev) => { ev.target.disabled = true; Motor.run({ type: "installBuiltIn", id: x.id }).then(onDone).catch((err) => { ev.target.disabled = false; warn(err); }); } }, "Install"))));
+  v.replaceChildren(screenHeader("Built-in agents"), h("div", { class: "inbox builtin-catalog" },
     h("h1", {}, "Built-in agents"),
-    h("p", { class: "nota-osc" }, "The agents that come with Fer Agent. A new building starts with just the boss: if you only want one agent, you already have it. Install the ones you want, whenever you want; if you remove one, it's back here."),
-    missingOnes.length ? h("div", { class: "fila-c" }, h("button", { class: "btn primario", type: "button", onclick: (ev) => { ev.target.disabled = true; Motor.run({ type: "installBuiltIn" }).then(onDone).catch((err) => { ev.target.disabled = false; warn(err); }); } },
+    h("p", { class: "note-dark" }, "The agents that come with Fer Agent. A new building starts with just the boss: if you only want one agent, you already have it. Install the ones you want, whenever you want; if you remove one, it's back here."),
+    missingOnes.length ? h("div", { class: "row-c" }, h("button", { class: "btn primary", type: "button", onclick: (ev) => { ev.target.disabled = true; Motor.run({ type: "installBuiltIn" }).then(onDone).catch((err) => { ev.target.disabled = false; warn(err); }); } },
       tr(`Install the recommended team (${missingOnes.length === 1 ? tr("1 missing") : tr(`${missingOnes.length} missing`)})`)),
-      h("span", { class: "nota-osc" }, "Dome: the boss and the two sages. Tech floor: Techie, Artie, the Creator, JEV and the Controller. Lobby: Memory.")) : h("p", { class: "nota-osc" }, "You have the whole recommended team installed."),
-    h("div", { class: "serie-lista" }, list.map(card))));
+      h("span", { class: "note-dark" }, "Dome: the boss and the two sages. Tech floor: Techie, Artie, the Creator, JEV and the Controller. Lobby: Memory.")) : h("p", { class: "note-dark" }, "You have the whole recommended team installed."),
+    h("div", { class: "builtin-list" }, list.map(card))));
   v.scrollTop = sc;
 }
 
 // =====================================================================
 // Agent of the month: ranking by coins and spending
 // =====================================================================
-const VIEWS = { month: "vistaMes", rooms: "vistaSalas", inbox: "vistaBandeja", builtIn: "vistaSerie" };
+const VIEWS = { month: "monthView", rooms: "roomsView", inbox: "inboxView", builtIn: "builtInView" };
 function openScreen(which) {
-  if (chatId) { if (conv.on) hangUp(); stopAudio(); chatId = ""; $("vistaChat").hidden = true; renderAccent(); }
+  if (chatId) { if (conv.on) hangUp(); stopAudio(); chatId = ""; $("chatView").hidden = true; renderAccent(); }
   screen = which;
   for (const [k, id] of Object.entries(VIEWS)) $(id).hidden = k !== which;
-  document.body.classList.add("con-pantalla");
+  document.body.classList.add("with-screen");
   if (which === "month") renderMonth(true); else if (which === "rooms") renderMeetingRooms(true); else if (which === "builtIn") renderBuiltIn(true); else renderInbox(true);
   $(VIEWS[which]).scrollTop = 0;
   markNav();
 }
-function closeScreen() { screen = ""; for (const id of Object.values(VIEWS)) $(id).hidden = true; document.body.classList.remove("con-pantalla"); render(); replaceNav(); }
-const screenHeader = (title) => h("header", { class: "pantalla-cab" }, h("button", { class: "volver-btn", type: "button", onclick: goBack }, "← Back to the building"), h("span", { class: "grow" }), title ? h("span", { class: "nota-osc" }, title) : null);
+function closeScreen() { screen = ""; for (const id of Object.values(VIEWS)) $(id).hidden = true; document.body.classList.remove("with-screen"); render(); replaceNav(); }
+const screenHeader = (title) => h("header", { class: "screen-head" }, h("button", { class: "back-btn", type: "button", onclick: goBack }, "← Back to the building"), h("span", { class: "grow" }), title ? h("span", { class: "note-dark" }, title) : null);
 const inUse = (el) => el.contains(document.activeElement) && /^(INPUT|TEXTAREA|SELECT)$/.test(document.activeElement.tagName);
 function renderMonth(force) {
-  const v = $("vistaMes");
+  const v = $("monthView");
   if (!force && inUse(v)) return;
   const sc = v.scrollTop;
   const ini = new Date(); ini.setDate(1); ini.setHours(0, 0, 0, 0);
@@ -1769,27 +1769,27 @@ function renderMonth(force) {
   }).sort((x, y) => y.balance - x.balance || y.gold - x.gold || x.spending - y.spending || x.a.name.localeCompare(y.a.name));
   const month = new Date().toLocaleDateString(LOCALE, { month: "long", year: "numeric" });
   const podium = rows.filter((f) => f.gold > 0 && f.balance > 0).slice(0, 3);
-  const box = h("div", { class: "mes" }, h("h1", {}, "Agent of the month"), h("p", { class: "nota-osc" }, `${month[0].toUpperCase() + month.slice(1)}. Sorted by coins (gold minus red); on a tie, whoever has spent least wins.`));
+  const box = h("div", { class: "month" }, h("h1", {}, "Agent of the month"), h("p", { class: "note-dark" }, `${month[0].toUpperCase() + month.slice(1)}. Sorted by coins (gold minus red); on a tie, whoever has spent least wins.`));
   if (podium.length) {
     const order = podium.length === 3 ? [podium[1], podium[0], podium[2]] : podium.length === 2 ? [podium[1], podium[0]] : [podium[0]];
-    box.append(h("div", { class: "podio", style: podium.length < 3 ? { gridTemplateColumns: `repeat(${podium.length}, minmax(0, 260px))`, justifyContent: "center" } : {} }, order.map((f) => {
+    box.append(h("div", { class: "podium", style: podium.length < 3 ? { gridTemplateColumns: `repeat(${podium.length}, minmax(0, 260px))`, justifyContent: "center" } : {} }, order.map((f) => {
       const im = h("img", { alt: "", src: figure(f.a.look) }); ensureBigFigure(f.a.look).then((u) => { im.src = u; });
       const seat = podium.indexOf(f) + 1;
-      return h("div", { class: seat === 1 ? "primero" : "" }, h("span", { class: "puesto" }, seat === 1 ? "Agent of the month" : raw(tr("#{1}").replace("{1}", seat))), im, h("b", {}, f.a.name),
+      return h("div", { class: seat === 1 ? "first" : "" }, h("span", { class: "rank" }, seat === 1 ? "Agent of the month" : raw(tr("#{1}").replace("{1}", seat))), im, h("b", {}, f.a.name),
         h("small", {}, `${f.gold} ${tr(f.gold === 1 ? "gold coin" : "gold coins")} · ${f.reds} ${tr(f.reds === 1 ? "red coin" : "red coins")}${f.spending > 0 ? " · " + fmt(f.spending) : ""}`));
     })));
-  } else box.append(h("p", { class: "nota-osc" }, "No coins yet this month. Give them from each agent's chat (below each reply) or from their profile."));
+  } else box.append(h("p", { class: "note-dark" }, "No coins yet this month. Give them from each agent's chat (below each reply) or from their profile."));
   const pend = (ed.e.coins || []).filter((m) => m.state === "proposed");
-  if (pend.length) box.append(h("div", { class: "seccion-osc" }, h("h2", {}, "Proposals waiting for your decision"),
-    h("p", { class: "nota-osc", style: { margin: 0 } }, "JEV and the Controller propose red coins when they see someone failing or overspending. They only count if you confirm them."), pend.map(proposedCoinRow)));
-  box.append(h("div", { class: "seccion-osc" }, h("h2", {}, "Ranking"),
+  if (pend.length) box.append(h("div", { class: "section-dark" }, h("h2", {}, "Proposals waiting for your decision"),
+    h("p", { class: "note-dark", style: { margin: 0 } }, "JEV and the Controller propose red coins when they see someone failing or overspending. They only count if you confirm them."), pend.map(proposedCoinRow)));
+  box.append(h("div", { class: "section-dark" }, h("h2", {}, "Ranking"),
     h("table", { class: "ranking" }, h("thead", {}, h("tr", {}, h("th", {}, "#"), h("th", {}, "Agent"), h("th", {}, "Gold"), h("th", {}, "Red"), h("th", {}, "Balance"), h("th", {}, "Spending this month"), h("th", {}, "Give a coin"))),
-      h("tbody", {}, rows.map((f, i) => h("tr", {}, h("td", {}, i + 1), h("td", {}, h("img", { src: figure(f.a.look), alt: "" }), h("b", {}, f.a.name), " ", h("small", { class: "nota-osc" }, roleTxt(f.a))),
+      h("tbody", {}, rows.map((f, i) => h("tr", {}, h("td", {}, i + 1), h("td", {}, h("img", { src: figure(f.a.look), alt: "" }), h("b", {}, f.a.name), " ", h("small", { class: "note-dark" }, roleTxt(f.a))),
         h("td", {}, f.gold || "—"), h("td", {}, f.reds || "—"), h("td", {}, f.balance > 0 ? "+" + f.balance : f.balance || "—"), h("td", {}, f.spending > 0 ? fmt(f.spending) : "—"),
-        h("td", { class: "dar" }, coinButton(f.a, "gold"), coinButton(f.a, "red"))))))));
+        h("td", { class: "give" }, coinButton(f.a, "gold"), coinButton(f.a, "red"))))))));
   const recent = (ed.e.coins || []).filter((m) => m.state === "confirmed").slice(-12).reverse();
-  if (recent.length) box.append(h("div", { class: "seccion-osc" }, h("h2", {}, "Latest coins"),
-    recent.map((m) => h("div", { class: "fila-moneda" }, h("span", { class: "moneda " + m.type }), h("span", { class: "grow" }, h("b", {}, m.name), " · ", raw(m.reason)), h("small", { class: "nota-osc" }, `${date(m.ts)} · ${m.proposedBy === "you" ? tr("from you") : tr(`proposed by ${whoProposes(m.proposedBy)}`)}`)))));
+  if (recent.length) box.append(h("div", { class: "section-dark" }, h("h2", {}, "Latest coins"),
+    recent.map((m) => h("div", { class: "coin-row" }, h("span", { class: "coin " + m.type }), h("span", { class: "grow" }, h("b", {}, m.name), " · ", raw(m.reason)), h("small", { class: "note-dark" }, `${date(m.ts)} · ${m.proposedBy === "you" ? tr("from you") : tr(`proposed by ${whoProposes(m.proposedBy)}`)}`)))));
   v.replaceChildren(screenHeader("Gold coins: good work · red: making things up or wasting money"), box);
   v.scrollTop = sc;
 }
@@ -1804,17 +1804,17 @@ function startMeeting(id, rounds) {
   Motor.run({ type: "meeting.start", meeting: id, rounds }).then(() => { openMeetingRooms(id); setTimeout(render, 300); }).catch(warn);
 }
 function renderMeetingRooms(force) {
-  const v = $("vistaSalas");
+  const v = $("roomsView");
   if (!force && inUse(v)) return;
   const sc = v.scrollTop;
   const meetingList = (ed.e.meetings || []).slice().sort((x, y) => y.created - x.created);
   if (selectedRoom !== "new" && !meetingList.some((r) => r.id === selectedRoom)) selectedRoom = meetingList.length ? meetingList[0].id : "new";
-  const list = h("div", { class: "salas-lista" }, h("h1", {}, "Meeting rooms"),
-    h("button", { class: "btn primario", onclick: () => { selectedRoom = "new"; renderMeetingRooms(true); } }, "New meeting"),
-    meetingList.map((r) => h("button", { class: "item-sala" + (r.id === selectedRoom ? " sel" : ""), type: "button", onclick: () => { selectedRoom = r.id; renderMeetingRooms(true); } },
+  const list = h("div", { class: "rooms-list" }, h("h1", {}, "Meeting rooms"),
+    h("button", { class: "btn primary", onclick: () => { selectedRoom = "new"; renderMeetingRooms(true); } }, "New meeting"),
+    meetingList.map((r) => h("button", { class: "room-item" + (r.id === selectedRoom ? " sel" : ""), type: "button", onclick: () => { selectedRoom = r.id; renderMeetingRooms(true); } },
       h("b", {}, raw(r.title)), h("small", {}, `${tr(MEETING_STATUS[r.state] || r.state)} · ${date(r.created)} · ${r.participants.length} at the table`))));
   const r = meetingList.find((x) => x.id === selectedRoom);
-  v.replaceChildren(screenHeader("Called by you or the boss · the boss chairs · at the end, the minutes"), h("div", { class: "salas" }, list, r ? meetingView(r) : meetingForm()));
+  v.replaceChildren(screenHeader("Called by you or the boss · the boss chairs · at the end, the minutes"), h("div", { class: "rooms" }, list, r ? meetingView(r) : meetingForm()));
   v.scrollTop = sc;
 }
 // The table: the boss at the centre of the far end and the rest around; whoever is speaking glows
@@ -1823,16 +1823,16 @@ function table(r) {
   const j = ags.find((a) => a.role === "boss"), rest = ags.filter((a) => a !== j);
   const order = []; rest.forEach((a, i) => (i % 2 ? order.push(a) : order.unshift(a)));   // shares them out left and right
   const spot = [...order.slice(0, Math.ceil(order.length / 2)), ...(j ? [j] : []), ...order.slice(Math.ceil(order.length / 2))];
-  const n = spot.length, cont = h("div", { class: "mesa" });
+  const n = spot.length, cont = h("div", { class: "table" });
   const speaks = new Set(r.state === "in_progress" ? [...ed.busyIds].filter((id) => r.participants.includes(id)) : []);
   spot.forEach((a, i) => {
     const t = Math.PI + 0.3 + (Math.PI - 0.6) * (n === 1 ? 0.5 : i / (n - 1));
     const x = 50 + 41 * Math.cos(t), y = 63 + 25 * Math.sin(t) + 13;
     const im = h("img", { alt: "", src: figure(a.look) });
-    cont.append(h("div", { class: "asiento" + (speaks.has(a.id) ? " habla" : ""), style: { left: x + "%", top: y + "%" }, title: a.name }, im));
-    cont.append(h("span", { class: "etq-asiento" + (a.role === "boss" ? " chairs" : ""), style: { left: x + "%", top: (y + 1.5) + "%" } }, a.name));
+    cont.append(h("div", { class: "seat" + (speaks.has(a.id) ? " speaks" : ""), style: { left: x + "%", top: y + "%" }, title: a.name }, im));
+    cont.append(h("span", { class: "seat-label" + (a.role === "boss" ? " chairs" : ""), style: { left: x + "%", top: (y + 1.5) + "%" } }, a.name));
   });
-  const svg = new DOMParser().parseFromString(`<svg class="tablero" viewBox="0 0 160 100" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+  const svg = new DOMParser().parseFromString(`<svg class="tabletop" viewBox="0 0 160 100" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
     <ellipse cx="80" cy="86" rx="66" ry="10" fill="rgba(0,0,0,.28)"/>
     <ellipse cx="80" cy="69" rx="56" ry="17" fill="#5B3A1E"/>
     <ellipse cx="80" cy="65" rx="56" ry="17" fill="#9A6A3C"/>
@@ -1842,25 +1842,25 @@ function table(r) {
   return cont;
 }
 function meetingView(r) {
-  const box = h("div", { class: "sala" }, h("h2", {}, raw(r.title)),
-    h("p", { class: "nota-osc", style: { margin: 0 } }, `${tr(MEETING_STATUS[r.state] || r.state)} · ${tr(r.calledBy === "you" ? "called by you" : "called by the boss")} · ${date(r.created)}${r.cost > 0 ? " · " + tr(`cost ${fmt(r.cost)}`) : ""}${r.state === "in_progress" && r.currentRound ? " · " + tr(`round ${r.currentRound} of ${r.rounds}`) : ""}`),
-    table(r), h("div", { class: "orden" }, h("b", {}, "Agenda"), "\n", raw(String(r.agenda || "").replace(/^\s*\**\s*(orden del d[ií]a|agenda)\s*\**\s*[:.\-–]?\s*/i, ""))));   // if the boss already wrote it with its title, it isn't repeated
+  const box = h("div", { class: "room" }, h("h2", {}, raw(r.title)),
+    h("p", { class: "note-dark", style: { margin: 0 } }, `${tr(MEETING_STATUS[r.state] || r.state)} · ${tr(r.calledBy === "you" ? "called by you" : "called by the boss")} · ${date(r.created)}${r.cost > 0 ? " · " + tr(`cost ${fmt(r.cost)}`) : ""}${r.state === "in_progress" && r.currentRound ? " · " + tr(`round ${r.currentRound} of ${r.rounds}`) : ""}`),
+    table(r), h("div", { class: "agenda" }, h("b", {}, "Agenda"), "\n", raw(String(r.agenda || "").replace(/^\s*\**\s*(orden del d[ií]a|agenda)\s*\**\s*[:.\-–]?\s*/i, ""))));   // if the boss already wrote it with its title, it isn't repeated
   if (r.state === "proposed" || r.state === "ready") {
     const rounds = h("input", { type: "number", min: "1", step: "1", value: r.rounds, style: { width: "70px" } });
-    const est = h("span", { class: "nota-osc" });
+    const est = h("span", { class: "note-dark" });
     const calc = () => { const e = ed.estimateMeeting(Object.assign({}, r, { rounds: Math.max(1, parseInt(rounds.value, 10) || 1) })); est.textContent = tr(`Estimated cost: ≈${fmt(e.cost)} (${e.calls} calls, about 1,500 input tokens and 250 output tokens each)`); };
     rounds.oninput = calc; calc();
-    box.append(h("div", { class: "form-osc" },
-      h("div", { class: "fila-c" }, h("span", {}, "Rounds"), rounds, est),
-      h("div", { class: "fila-c" }, h("button", { class: "btn primario", disabled: !hasAccess(), onclick: () => startMeeting(r.id, parseInt(rounds.value, 10) || r.rounds) }, r.state === "proposed" ? "Yes, start the meeting" : "Start the meeting"),
+    box.append(h("div", { class: "form-dark" },
+      h("div", { class: "row-c" }, h("span", {}, "Rounds"), rounds, est),
+      h("div", { class: "row-c" }, h("button", { class: "btn primary", disabled: !hasAccess(), onclick: () => startMeeting(r.id, parseInt(rounds.value, 10) || r.rounds) }, r.state === "proposed" ? "Yes, start the meeting" : "Start the meeting"),
         h("button", { class: "btn", onclick: () => Motor.run({ type: "meeting.cancel", meeting: r.id }).then(() => renderMeetingRooms(true)).catch(warn) }, "Don't hold it")),
-      hasAccess() ? null : h("small", { class: "nota-osc" }, "Your OpenRouter key is missing (Settings).")));
+      hasAccess() ? null : h("small", { class: "note-dark" }, "Your OpenRouter key is missing (Settings).")));
   }
-  if (r.contributions.length) box.append(h("div", { class: "transcripcion" }, h("h3", {}, "What was said"), r.contributions.map((x) => h("div", { class: "intervencion" + (x.chairs ? " chairs" : "") },
+  if (r.contributions.length) box.append(h("div", { class: "transcript" }, h("h3", {}, "What was said"), r.contributions.map((x) => h("div", { class: "contribution" + (x.chairs ? " chairs" : "") },
     h("div", {}, h("b", {}, x.name), h("small", {}, " · " + tr(`round ${x.round || "—"}`) + (x.chairs ? " · " + tr("chairs") : "") + (x.cost > 0 ? " · " + fmt(x.cost) : ""))), h("div", { html: markdown(x.text) })))));
-  if (r.state === "in_progress") box.append(h("p", { class: "nota-osc" }, "The meeting is going on: each contribution appears here when it's finished."));
-  if (r.minutes) box.append(h("div", { class: "acta" }, h("h2", {}, "Minutes"), h("div", { html: markdown(r.minutes) })));
-  if (r.reason && r.state === "interrupted") box.append(h("p", { class: "nota-osc" }, tr("It was interrupted:") + " ", raw(r.reason)));
+  if (r.state === "in_progress") box.append(h("p", { class: "note-dark" }, "The meeting is going on: each contribution appears here when it's finished."));
+  if (r.minutes) box.append(h("div", { class: "minutes" }, h("h2", {}, "Minutes"), h("div", { html: markdown(r.minutes) })));
+  if (r.reason && r.state === "interrupted") box.append(h("p", { class: "note-dark" }, tr("It was interrupted:") + " ", raw(r.reason)));
   if (r.state !== "in_progress") box.append(h("div", {}, h("button", { class: "btn mini", onclick: (ev) => confirm(ev.target, "Delete it? Press again", () => Motor.run({ type: "meeting.delete", meeting: r.id }).then(() => { selectedRoom = ""; renderMeetingRooms(true); }).catch(warn)) }, "Delete the meeting")));
   return box;
 }
@@ -1871,7 +1871,7 @@ function meetingForm() {
   const title = h("input", { value: b.title, maxlength: "80", placeholder: "For example: Plan for the week", oninput: (ev) => { b.title = ev.target.value; } });
   const agendaBox = h("textarea", { rows: "4", placeholder: "What needs discussing and what needs deciding", oninput: (ev) => { b.order = ev.target.value; } }); agendaBox.value = b.order;
   const rounds = h("input", { type: "number", min: "1", step: "1", value: b.rounds, style: { width: "70px" } });
-  const est = h("span", { class: "nota-osc" }), tally = h("span", { class: "nota-osc" });
+  const est = h("span", { class: "note-dark" }), tally = h("span", { class: "note-dark" });
   const calc = () => {
     b.rounds = Math.max(1, parseInt(rounds.value, 10) || 1);
     tally.textContent = tr(`${b.participants.size} of ${MAX_MEETING_SEATS} at the table, counting the boss`);
@@ -1880,7 +1880,7 @@ function meetingForm() {
   };
   rounds.oninput = calc;
   const possible = ed.e.agents.filter((a) => converses(a));
-  const choose = h("div", { class: "elegir-asistentes" }, possible.map((a) => {
+  const choose = h("div", { class: "choose-attendees" }, possible.map((a) => {
     const chk = h("input", { type: "checkbox", checked: b.participants.has(a.id), disabled: a.role === "boss" });
     chk.onchange = () => {
       if (chk.checked && b.participants.size >= MAX_MEETING_SEATS) { chk.checked = false; toast(`The table seats ${MAX_MEETING_SEATS}, counting the boss.`); return; }
@@ -1897,12 +1897,12 @@ function meetingForm() {
       roomDraft = null; selectedRoom = r.id; renderMeetingRooms(true);
     } catch (err) { warn(err); }
   };
-  return h("div", { class: "sala" }, h("h2", {}, "New meeting"),
-    h("div", { class: "form-osc" },
+  return h("div", { class: "room" }, h("h2", {}, "New meeting"),
+    h("div", { class: "form-dark" },
       h("label", {}, "Title", title), h("label", {}, "Agenda", agendaBox),
-      h("div", { class: "campo-osc" }, h("b", {}, "Who sits at the table"), tally, choose, h("small", { class: "nota-osc" }, "The boss chairs and is always there. Those who don't chat (Controller, Memory, JEV) can't sit down.")),
-      h("div", { class: "fila-c" }, h("span", {}, "Rounds"), rounds, est),
-      h("div", { class: "fila-c" }, h("button", { class: "btn primario", onclick: convene }, "Call"), h("small", { class: "nota-osc" }, "It doesn't start yet: first you'll see the table and the estimated cost."))));
+      h("div", { class: "field-dark" }, h("b", {}, "Who sits at the table"), tally, choose, h("small", { class: "note-dark" }, "The boss chairs and is always there. Those who don't chat (Controller, Memory, JEV) can't sit down.")),
+      h("div", { class: "row-c" }, h("span", {}, "Rounds"), rounds, est),
+      h("div", { class: "row-c" }, h("button", { class: "btn primary", onclick: convene }, "Call"), h("small", { class: "note-dark" }, "It doesn't start yet: first you'll see the table and the estimated cost."))));
 }
 
 // =====================================================================
@@ -1911,27 +1911,27 @@ function meetingForm() {
 let drawerType = "", drawerData = {}, focusBefore = null;
 const TITLES = { settings: "Settings", spending: "Spending", look: "Appearance", agent: "Create agent", storey: "Create floor" };
 function openDrawer(type, data) {
-  if ($("cajon").hidden) focusBefore = document.activeElement;
+  if ($("drawer").hidden) focusBefore = document.activeElement;
   drawerType = type; drawerData = data || {};
-  $("cajonTitulo").textContent = tr(TITLES[type]);
-  $("velo").classList.toggle("claro", type === "look"); $("cajon").classList.toggle("bajo", type === "look");
+  $("drawerTitle").textContent = tr(TITLES[type]);
+  $("overlay").classList.toggle("light", type === "look"); $("drawer").classList.toggle("low", type === "look");
   if (type === "settings") renderSettings(); if (type === "spending") renderSpendingDrawer(); if (type === "look") renderLook();
   if (type === "agent") renderCreateAgent(true); if (type === "storey") renderCreateStorey();
-  $("cajon").hidden = false; $("velo").hidden = false; $("cajonCuerpo").scrollTop = 0; $("cerrarCajon").focus();
+  $("drawer").hidden = false; $("overlay").hidden = false; $("drawerBody").scrollTop = 0; $("closeDrawer").focus();
   markNav();
 }
-function closeDrawer() { $("cajon").hidden = true; $("velo").hidden = true; drawerType = ""; if (focusBefore && focusBefore.focus && focusBefore.isConnected) focusBefore.focus(); replaceNav(); }
+function closeDrawer() { $("drawer").hidden = true; $("overlay").hidden = true; drawerType = ""; if (focusBefore && focusBefore.focus && focusBefore.isConnected) focusBefore.focus(); replaceNav(); }
 
 // =====================================================================
 // Navigation: the logo takes you to the home page, the browser's back arrow works and each screen has «Back»
 // =====================================================================
 let applyingNav = false;
 const navStack = [{ v: "landing" }];   // what was shown at each step of the history (to know where «back» goes)
-const homeVisible = () => !$("portada").hidden && !$("portada").classList.contains("fuera");
+const homeVisible = () => !$("landingPage").hidden && !$("landingPage").classList.contains("outside");
 function navState() {
   if (homeVisible()) return { v: "landing" };
-  if (!$("cajon").hidden && ["settings", "spending"].includes(drawerType)) return { v: "cajon", id: drawerType };
-  if (!$("cajon").hidden && drawerType) return { v: "cajon", id: drawerType, temporary: true };
+  if (!$("drawer").hidden && ["settings", "spending"].includes(drawerType)) return { v: "drawer", id: drawerType };
+  if (!$("drawer").hidden && drawerType) return { v: "drawer", id: drawerType, temporary: true };
   return stateWithoutDrawer();
 }
 function stateWithoutDrawer() {
@@ -1959,7 +1959,7 @@ function replaceNav() {   // closing something from the program (not with «Back
 // «Back»: closes what's on top. If the previous step of the history is exactly that, it's the browser's back arrow.
 function goBack() {
   let objective, close;
-  if (!$("cajon").hidden) { objective = stateWithoutDrawer(); close = closeDrawer; }
+  if (!$("drawer").hidden) { objective = stateWithoutDrawer(); close = closeDrawer; }
   else if (chatId) { objective = screen ? { v: "screen", id: screen } : openFloorId ? { v: "floor", id: openFloorId } : { v: "building" }; close = closeChat; }
   else if (screen) { objective = openFloorId ? { v: "floor", id: openFloorId } : { v: "building" }; close = closeScreen; }
   else if (openFloorId) { objective = { v: "building" }; close = () => { openFloorId = ""; render(); }; }
@@ -1971,22 +1971,22 @@ function goBack() {
 }
 function showHome() {
   if (chatId) { if (conv.on) hangUp(); stopAudio(); }
-  const p = $("portada"); p.hidden = false; void p.offsetWidth; p.classList.remove("fuera"); p.scrollTop = 0;
+  const p = $("landingPage"); p.hidden = false; void p.offsetWidth; p.classList.remove("outside"); p.scrollTop = 0;
   markNav();
 }
-function hideHome() { const p = $("portada"); if (p.hidden) return; p.classList.add("fuera"); setTimeout(() => { if (p.classList.contains("fuera")) p.hidden = true; }, 450); }
+function hideHome() { const p = $("landingPage"); if (p.hidden) return; p.classList.add("outside"); setTimeout(() => { if (p.classList.contains("outside")) p.hidden = true; }, 450); }
 function applyNav(st) {
   st = st || { v: "landing" };
   applyingNav = true;
   try {
     if (st.v === "landing") { showHome(); return; }
     hideHome();
-    if (!(st.v === "cajon" && !st.temporary) && !$("cajon").hidden) closeDrawer();
+    if (!(st.v === "drawer" && !st.temporary) && !$("drawer").hidden) closeDrawer();
     if (st.v !== "chat" && chatId) closeChat();
     if (st.v !== "screen" && screen) closeScreen();
     if (st.v === "chat") openChat(st.id);
     else if (st.v === "screen" && VIEWS[st.id]) { if (screen !== st.id) openScreen(st.id); }
-    else if (st.v === "cajon" && !st.temporary) { if (drawerType !== st.id) openDrawer(st.id); }
+    else if (st.v === "drawer" && !st.temporary) { if (drawerType !== st.id) openDrawer(st.id); }
     else if (st.v === "floor") { if (openFloorId !== st.id) { openFloorId = st.id; render(); } }
     else if (openFloorId && st.v === "building") { openFloorId = ""; render(); }
   } finally { applyingNav = false; }
@@ -2003,7 +2003,7 @@ window.addEventListener("popstate", (ev) => {
 
 // ---------------- Create floor ----------------
 function renderCreateStorey() {
-  const c = $("cajonCuerpo"); c.innerHTML = "";
+  const c = $("drawerBody"); c.innerHTML = "";
   const nom = h("input", { placeholder: "For example: Sales, Home, Studies…", maxlength: "40" });
   const fun = h("textarea", { rows: "3", placeholder: "For example: find customers and prepare quotes", maxlength: "300" });
   const create = async () => {
@@ -2011,10 +2011,10 @@ function renderCreateStorey() {
     try { const r = await Motor.run({ type: "createFloor", name: nom.value.trim(), job: fun.value.trim() }); closeDrawer(); openFloor(r.id); showTab(window.innerWidth <= 900 ? "building" : tab); }
     catch (err) { warn(err); }
   };
-  c.append(h("p", { class: "nota", style: { margin: 0 } }, "Each floor is a team with a job. On the left, its section head's office; on the right, its sub-agents' offices; and if there are many simple ones, the pool. The new floor is built at the top, under the dome."),
-    h("label", { class: "campo" }, h("span", {}, "Floor name"), nom),
-    h("label", { class: "campo" }, h("span", {}, "What it does"), fun),
-    h("div", { class: "fila-c" }, h("button", { class: "btn primario", onclick: create }, "Create floor"), h("button", { class: "btn", onclick: closeDrawer }, "Cancel")));
+  c.append(h("p", { class: "note", style: { margin: 0 } }, "Each floor is a team with a job. On the left, its section head's office; on the right, its sub-agents' offices; and if there are many simple ones, the pool. The new floor is built at the top, under the dome."),
+    h("label", { class: "field" }, h("span", {}, "Floor name"), nom),
+    h("label", { class: "field" }, h("span", {}, "What it does"), fun),
+    h("div", { class: "row-c" }, h("button", { class: "btn primary", onclick: create }, "Create floor"), h("button", { class: "btn", onclick: closeDrawer }, "Cancel")));
   setTimeout(() => nom.focus(), 50);
 }
 
@@ -2030,7 +2030,7 @@ function newDraft(d) {
 }
 function renderCreateAgent(fresh) {
   if (fresh || !draft) draft = drawerData.profile ? Object.assign(newDraft({}), drawerData.profile, { proposal: drawerData.proposal || "" }) : newDraft(drawerData);
-  const b = draft, c = $("cajonCuerpo"), sc = c.scrollTop;
+  const b = draft, c = $("drawerBody"), sc = c.scrollTop;
   c.innerHTML = "";
   // 1. the Creator
   const creator = ed.e.agents.find((x) => x.role === "creator");
@@ -2040,7 +2040,7 @@ function renderCreateAgent(fresh) {
   const who = creator ? (["Agent Creator", "Creador de agentes"].includes(creator.name) || !creator.name.trim() ? "the Creator" : creator.name) : "";
   const requestedPersonality = h("input", { maxlength: String(MAX_PERSONALITY), placeholder: "For example: friendly, funny and to the point", value: b.requestedPersonalityText || "" });
   requestedPersonality.oninput = () => { b.requestedPersonalityText = requestedPersonality.value; };
-  const button = h("button", { class: "btn primario mini" }, `Let ${who} design it`);
+  const button = h("button", { class: "btn primary mini" }, `Let ${who} design it`);
   button.onclick = async () => {
     if (!requested.value.trim()) { requested.focus(); return; }
     if (!hasAccess()) { openDrawer("settings"); return; }
@@ -2050,15 +2050,15 @@ function renderCreateAgent(fresh) {
       const f = r.proposal.profile;
       draft = Object.assign(newDraft({}), f, { floor: f.floor || "new", newFloor: f.newFloor || { name: "", job: "" }, proposal: r.proposal.id, why: f.why, requested: requested.value, requestedPersonalityText: requestedPersonality.value, cost: r.cost });
       renderCreateAgent(false);
-    } catch (err) { button.disabled = false; button.textContent = tr("Try again"); c.querySelector(".error-creador")?.remove(); button.after(h("p", { class: "error-creador" }, err.shown ? err.message : `It couldn't be done: ${err.message}`)); }
+    } catch (err) { button.disabled = false; button.textContent = tr("Try again"); c.querySelector(".creator-error")?.remove(); button.after(h("p", { class: "creator-error" }, err.shown ? err.message : `It couldn't be done: ${err.message}`)); }
   };
-  c.append(h("div", { class: "bloque creador" }, h("h4", {}, "Tell it in your own words"),
-    creator ? h("p", { class: "nota", style: { margin: 0 } }, `${who[0].toUpperCase() + who.slice(1)} fills in the profile for you. Then you review it and change it if you like. It costs one call to its brain (a few cents).`)
-      : h("p", { class: "nota", style: { margin: 0 } }, "You don't have an Agent Creator. Fill in the profile by hand or install it from “Built-in agents”."),
+  c.append(h("div", { class: "block creator" }, h("h4", {}, "Tell it in your own words"),
+    creator ? h("p", { class: "note", style: { margin: 0 } }, `${who[0].toUpperCase() + who.slice(1)} fills in the profile for you. Then you review it and change it if you like. It costs one call to its brain (a few cents).`)
+      : h("p", { class: "note", style: { margin: 0 } }, "You don't have an Agent Creator. Fill in the profile by hand or install it from “Built-in agents”."),
     creator ? requested : null,
-    creator ? h("label", { class: "campo" }, h("span", {}, "What personality do you want it to have? (its tone, its humour and whether it gets to the point)"), requestedPersonality, h("small", {}, "If you leave it blank, the Creator proposes one and you can change it below.")) : null,
+    creator ? h("label", { class: "field" }, h("span", {}, "What personality do you want it to have? (its tone, its humour and whether it gets to the point)"), requestedPersonality, h("small", {}, "If you leave it blank, the Creator proposes one and you can change it below.")) : null,
     creator ? h("div", {}, button) : null,
-    b.proposal ? h("p", { class: "porque" }, tr(b.why || "Profile filled in by the Creator.") + (b.cost ? " " + tr(`Designing it cost ${fmt(b.cost)}.`) : "")) : null));
+    b.proposal ? h("p", { class: "why" }, tr(b.why || "Profile filled in by the Creator.") + (b.cost ? " " + tr(`Designing it cost ${fmt(b.cost)}.`) : "")) : null));
   // 2. the profile
   const name = h("input", { value: b.name, placeholder: "What it's called", maxlength: "40", oninput: (ev) => { b.name = ev.target.value; } });
   const selRole = h("select", { onchange: (ev) => { b.role = ev.target.value; if (b.role === "sage") { b.floor = ed.e.floors[0].id; b.seat = "left"; b.heartbeat = { every: 1, unit: "on_request" }; if (!["grandpa", "grandma"].includes(b.look.p)) b.look = { p: "grandpa" }; } else { if (b.floor === ed.e.floors[0].id) b.floor = (ed.e.floors.find((x) => x.type === "storey") || { id: "new" }).id; b.seat = b.role === "section_head" ? "head_office" : "office"; } renderCreateAgent(false); } },
@@ -2085,21 +2085,21 @@ function renderCreateAgent(fresh) {
   const caps = h("div", { class: "caps" }, CAPABILITIES.filter((x) => x.type === "basic").map((x) => h("label", { class: "cap" },
     h("input", { type: "checkbox", checked: b.capabilities.includes(x.id), disabled: x.id === "write", onchange: (ev) => { b.capabilities = ev.target.checked ? [...new Set([...b.capabilities, x.id])] : b.capabilities.filter((y) => y !== x.id); } }),
     h("span", {}, x.name, h("small", {}, x.how)))));
-  c.append(h("div", { class: "bloque" }, h("h4", {}, "Its profile"),
+  c.append(h("div", { class: "block" }, h("h4", {}, "Its profile"),
     field("Name", name),
-    h("div", { class: "dos" }, field("Role", selRole), field("Floor", selFloor)),
-    h("small", { class: "nota", style: { marginTop: "-6px" } }, { section_head: "The section head runs a floor from the office on the left and shares out the work among its sub-agents.", subagent: "The sub-agent does the work, in an office or, if it's simple and cheap, in the pool.", sage: "The sage sits in the dome and only advises the boss on important decisions. It's expensive." }[b.role]),
-    b.floor === "new" ? h("div", { class: "dos" }, pName, pJob) : null,
+    h("div", { class: "two" }, field("Role", selRole), field("Floor", selFloor)),
+    h("small", { class: "note", style: { marginTop: "-6px" } }, { section_head: "The section head runs a floor from the office on the left and shares out the work among its sub-agents.", subagent: "The sub-agent does the work, in an office or, if it's simple and cheap, in the pool.", sage: "The sage sits in the dome and only advises the boss on important decisions. It's expensive." }[b.role]),
+    b.floor === "new" ? h("div", { class: "two" }, pName, pJob) : null,
     field("Spot", selSeat),
     field("Instructions", instructions), field("Personality", personality, "Sent with every call: its character doesn't depend on the brain."), field("Objective", objective),
     field("Brain", selBrain, "At the top, the recommended ones by level; below, all of them. Prices in dollars per million tokens (input / output), according to OpenRouter."),
-    h("div", { class: "campo" }, h("span", {}, "Resting, it wakes up"), h("div", { class: "fila-c" }, h("span", {}, "every"), num, uni)),
+    h("div", { class: "field" }, h("span", {}, "Resting, it wakes up"), h("div", { class: "row-c" }, h("span", {}, "every"), num, uni)),
     b.role === "sage" ? null : field("When it wakes up", selOnWake),
-    h("div", { class: "campo" }, h("span", {}, "Capabilities"), caps)));
+    h("div", { class: "field" }, h("span", {}, "Capabilities"), caps)));
   // 3. its look
-  c.append(h("div", { class: "bloque" }, h("h4", {}, "Its appearance"), lookPicker(b.look, (A) => { b.look = A; })));
+  c.append(h("div", { class: "block" }, h("h4", {}, "Its appearance"), lookPicker(b.look, (A) => { b.look = A; })));
   // 4. create
-  const create = h("button", { class: "btn primario" }, "Create agent");
+  const create = h("button", { class: "btn primary" }, "Create agent");
   create.onclick = async () => {
     if (b.floor === "new" && !b.newFloor.name.trim()) { pName.focus(); return; }
     const profile = Object.assign({}, b, { floor: b.floor === "new" ? "" : b.floor, newFloor: b.floor === "new" ? b.newFloor : null, level: b.brain ? "" : (b.level || "budget") });
@@ -2109,79 +2109,79 @@ function renderCreateAgent(fresh) {
       draft = null; closeDrawer();
       const fresh = ed.agent(r.id);
       if (fresh) { openFloor(fresh.floor); choose(fresh); }
-    } catch (err) { create.disabled = false; c.querySelector(".error-creador.final")?.remove(); create.parentElement.after(h("p", { class: "error-creador final" }, err.shown ? err.message : `It couldn't be done: ${err.message}`)); }
+    } catch (err) { create.disabled = false; c.querySelector(".creator-error.final")?.remove(); create.parentElement.after(h("p", { class: "creator-error final" }, err.shown ? err.message : `It couldn't be done: ${err.message}`)); }
   };
-  c.append(h("div", { class: "fila-c pie-crear" }, create, h("button", { class: "btn", onclick: () => { draft = null; closeDrawer(); } }, "Cancel")));
+  c.append(h("div", { class: "row-c create-footer" }, create, h("button", { class: "btn", onclick: () => { draft = null; closeDrawer(); } }, "Cancel")));
   c.scrollTop = fresh ? 0 : sc;
 }
 
 // ---------------- An agent's look ----------------
 function renderLook() {
-  const c = $("cajonCuerpo"); c.innerHTML = "";
+  const c = $("drawerBody"); c.innerHTML = "";
   const a = ed.agent(drawerData.id) || ed.boss();
   if (!a) return;
-  $("cajonTitulo").textContent = tr("Photo and name of ") + a.name;
+  $("drawerTitle").textContent = tr("Photo and name of ") + a.name;
   // the name, right here, next to the photo
   const nom = h("input", { value: a.name, maxlength: "40", "aria-label": "Name" });
-  nom.onchange = () => { const v = nom.value.trim(); if (!v || v === a.name) { nom.value = a.name; return; } Motor.run({ type: "editAgent", id: a.id, changes: { name: v } }).then(() => { $("cajonTitulo").textContent = tr("Photo and name of ") + v; render(); }).catch(warn); };
-  c.append(h("div", { class: "bloque" }, field("Name", nom, "Give it any name you like.")));
+  nom.onchange = () => { const v = nom.value.trim(); if (!v || v === a.name) { nom.value = a.name; return; } Motor.run({ type: "editAgent", id: a.id, changes: { name: v } }).then(() => { $("drawerTitle").textContent = tr("Photo and name of ") + v; render(); }).catch(warn); };
+  c.append(h("div", { class: "block" }, field("Name", nom, "Give it any name you like.")));
   let wait = null;
   c.append(lookPicker(a.look, (A) => {
     clearTimeout(wait);
     wait = setTimeout(() => Motor.run({ type: "editAgent", id: a.id, changes: { look: A } }).then(() => { ensureFigure(A).then(() => render()); }).catch(warn), 120);
   }));
-  c.append(h("p", { class: "nota" }, a.role === "boss" ? "The website's colour follows the boss's clothes (and in each chat, the clothes of the agent you're talking to)." : "It's saved with the building. In its chat, the website's colour follows its clothes."));
+  c.append(h("p", { class: "note" }, a.role === "boss" ? "The website's colour follows the boss's clothes (and in each chat, the clothes of the agent you're talking to)." : "It's saved with the building. In its chat, the website's colour follows its clothes."));
 }
 
 function renderSpendingDrawer(dataOnly) {
-  const c = $("cajonCuerpo");
+  const c = $("drawerBody");
   if (dataOnly && c.contains(document.activeElement) && document.activeElement.tagName === "INPUT") return;
   c.innerHTML = "";
   const aj = ed.e.settings, usage = ed.budgetUsage();
   const saveSetting = (changes) => Motor.run({ type: "settings", changes }).then(() => { render(); renderSpendingDrawer(); }).catch(warn);
-  c.append(h("div", { class: "bloque" }, h("h4", {}, "The whole building"),
-    h("div", { class: "gastos3" }, ["today", "week", "month"].map((p) => h("div", {}, h("b", {}, fmt(ed.buildingSpending(p))), h("small", {}, { today: "today", week: "7 days", month: "this month" }[p])))),
-    h("div", { class: "barra" }, h("i", { class: phaseClass(), style: { width: Math.min(100, usage * 100) + "%" } })),
-    h("p", { class: "nota", style: { margin: 0 } }, tr(`Cap used: ${Math.round(usage * 100)} %.`) + " " + tr({ normal: "Everyone works.", freeze1: "Priority 1 and 2 are frozen.", freeze2: "Only priority 5 works.", cap: "Cap reached: everything frozen until tomorrow or until you raise the cap." }[ed.e.phase || "normal"]))));
+  c.append(h("div", { class: "block" }, h("h4", {}, "The whole building"),
+    h("div", { class: "spending3" }, ["today", "week", "month"].map((p) => h("div", {}, h("b", {}, fmt(ed.buildingSpending(p))), h("small", {}, { today: "today", week: "7 days", month: "this month" }[p])))),
+    h("div", { class: "bar" }, h("i", { class: phaseClass(), style: { width: Math.min(100, usage * 100) + "%" } })),
+    h("p", { class: "note", style: { margin: 0 } }, tr(`Cap used: ${Math.round(usage * 100)} %.`) + " " + tr({ normal: "Everyone works.", freeze1: "Priority 1 and 2 are frozen.", freeze2: "Only priority 5 works.", cap: "Cap reached: everything frozen until tomorrow or until you raise the cap." }[ed.e.phase || "normal"]))));
   // the master switch and who spends when waking up
   const pause = aj.pause !== false;
   const list = ed.whoSpends().filter((x) => !["memory"].includes(x.a.role));
   const withHeartbeat = list.filter((x) => x.auto && !x.a.off);
   const dayTotal = withHeartbeat.reduce((s, x) => s + (x.est.perDay || 0), 0);
   const addRequest = (a) => Motor.run({ type: "editAgent", id: a.id, changes: { heartbeat: { every: 1, unit: "on_request" } } }).then(() => { render(); renderSpendingDrawer(); }).catch(warn);
-  c.append(h("div", { class: "bloque" }, h("h4", {}, "Automatic work"),
-    h("div", { class: "fila-c" }, h("button", { class: "pausa-btn", type: "button", "aria-pressed": String(pause), onclick: () => Motor.run({ type: "pause", pause: !pause }).then(() => { render(); renderSpendingDrawer(); }).catch(warn) },
-      h("span", { class: "pausa-ico", "aria-hidden": "true" }), h("span", { class: "pausa-txt" }, h("b", {}, pause ? "Paused" : "Automatic work running"), h("small", {}, pause ? "press to start it" : "press to stop everything automatic")))),
-    h("p", { class: "nota", style: { margin: 0 } }, pause ? "General pause: no agent that spends wakes up on its own, and the tasks the boss shares out wait. You can still talk to them and wake them up by hand. Whatever costs nothing (the Controller and the skills without a brain, like the X Watcher) keeps working."
+  c.append(h("div", { class: "block" }, h("h4", {}, "Automatic work"),
+    h("div", { class: "row-c" }, h("button", { class: "pause-btn", type: "button", "aria-pressed": String(pause), onclick: () => Motor.run({ type: "pause", pause: !pause }).then(() => { render(); renderSpendingDrawer(); }).catch(warn) },
+      h("span", { class: "pause-icon", "aria-hidden": "true" }), h("span", { class: "pause-txt" }, h("b", {}, pause ? "Paused" : "Automatic work running"), h("small", {}, pause ? "press to start it" : "press to stop everything automatic")))),
+    h("p", { class: "note", style: { margin: 0 } }, pause ? "General pause: no agent that spends wakes up on its own, and the tasks the boss shares out wait. You can still talk to them and wake them up by hand. Whatever costs nothing (the Controller and the skills without a brain, like the X Watcher) keeps working."
       : `Running. If nobody had tasks, the automatic work would cost about ${fmt(dayTotal)} a day (estimated).`),
     h("h4", { style: { marginTop: "6px" } }, "Who spends when they wake up"),
-    h("div", { class: "quien-gasta" }, list.map(({ a, auto, est }) => h("div", { class: "fila-qg" + (est.spends && auto && est.perTime > 0 ? " gasta" : "") },
+    h("div", { class: "who-spends" }, list.map(({ a, auto, est }) => h("div", { class: "spender-row" + (est.spends && auto && est.perTime > 0 ? " spends" : "") },
       h("img", { src: figure(a.look), alt: "" }),
-      h("span", { class: "qg-txt" }, h("b", {}, a.name), h("small", {}, `${a.off ? "off" : auto ? heartbeatText(a.heartbeat) : "on request only"} · ${est.how}`)),
-      h("span", { class: "qg-der" }, est.spends && est.perTime > 0 ? h("b", {}, `≈${fmt(est.perTime)} per heartbeat`) : h("small", {}, est.subscription ? `from your ${est.subscription} subscription` : est.spends ? (est.perTask ? `≈${fmt(est.perTask)} per task` : "—") : "doesn't spend"),
+      h("span", { class: "spender-txt" }, h("b", {}, a.name), h("small", {}, `${a.off ? "off" : auto ? heartbeatText(a.heartbeat) : "on request only"} · ${est.how}`)),
+      h("span", { class: "spender-right" }, est.spends && est.perTime > 0 ? h("b", {}, `≈${fmt(est.perTime)} per heartbeat`) : h("small", {}, est.subscription ? `from your ${est.subscription} subscription` : est.spends ? (est.perTask ? `≈${fmt(est.perTask)} per task` : "—") : "doesn't spend"),
         est.spends && auto && est.perDay > 0 ? h("small", {}, `≈${fmt(est.perDay)} a day`) : null,
         est.spends && auto && !a.off && a.role !== "boss" ? h("button", { class: "btn mini", type: "button", onclick: () => addRequest(a) }, "On request only") : null)))),
-    h("small", { class: "nota" }, "Estimate (ASSUMPTION): what it reads when it wakes up, about 3.5 letters per token, plus about 400 tokens of reply, at its brain's price. Internet search adds about $0.006. You can see the real spending above.")));
+    h("small", { class: "note" }, "Estimate (ASSUMPTION): what it reads when it wakes up, about 3.5 letters per token, plus about 400 tokens of reply, at its brain's price. Internet search adds about $0.006. You can see the real spending above.")));
   const td = h("input", { type: "number", min: "0", step: "0.5", value: aj.dailyCap }), tm = h("input", { type: "number", min: "0", step: "1", value: aj.monthlyCap }), cd = h("input", { type: "number", min: "10", max: "99", step: "5", value: Math.round((aj.freezeFrom || 0.8) * 100) });
   td.onchange = () => saveSetting({ dailyCap: Math.max(0, parseFloat(td.value) || 0) });
   tm.onchange = () => saveSetting({ monthlyCap: Math.max(0, parseFloat(tm.value) || 0) });
   cd.onchange = () => saveSetting({ freezeFrom: Math.min(0.99, Math.max(0.1, (parseFloat(cd.value) || 80) / 100)) });
   const mid = Math.round(((aj.freezeFrom || 0.8) + 1) / 2 * 100);
-  c.append(h("div", { class: "bloque" }, h("h4", {}, "Caps"),
-    h("div", { class: "dos" }, h("label", { class: "campo" }, h("span", {}, "Daily cap (USD)"), td), h("label", { class: "campo" }, h("span", {}, "Monthly cap (USD)"), tm)),
-    h("label", { class: "campo" }, h("span", {}, "Start freezing at (%)"), cd),
-    h("div", { class: "tramos" },
+  c.append(h("div", { class: "block" }, h("h4", {}, "Caps"),
+    h("div", { class: "two" }, h("label", { class: "field" }, h("span", {}, "Daily cap (USD)"), td), h("label", { class: "field" }, h("span", {}, "Monthly cap (USD)"), tm)),
+    h("label", { class: "field" }, h("span", {}, "Start freezing at (%)"), cd),
+    h("div", { class: "tiers" },
       h("div", {}, h("b", {}, `< ${Math.round((aj.freezeFrom || 0.8) * 100)} %`), h("span", {}, "everyone works")),
       h("div", {}, h("b", {}, `≥ ${Math.round((aj.freezeFrom || 0.8) * 100)} %`), h("span", {}, "priority 1 and 2 are frozen")),
       h("div", {}, h("b", {}, `≥ ${mid} %`), h("span", {}, "only priority 5 works (the boss and the controls)")),
       h("div", {}, h("b", {}, "100 %"), h("span", {}, "everything frozen, the boss too; it comes back the next day or when you raise the cap"))),
-    h("small", { class: "nota" }, "Also put a limit on the key on the OpenRouter website: it's the safety net if something goes wrong here.")));
+    h("small", { class: "note" }, "Also put a limit on the key on the OpenRouter website: it's the safety net if something goes wrong here.")));
   const rows = ed.e.agents.map((a) => ({ a, today: ed.agentSpending(a, "today"), sem: ed.agentSpending(a, "week"), month: ed.agentSpending(a, "month") })).sort((x, y) => y.month - x.month || y.today - x.today);
-  c.append(h("div", { class: "bloque" }, h("h4", {}, "Per agent"),
-    h("table", { class: "gasto" }, h("thead", {}, h("tr", {}, h("th", {}, "Agent"), h("th", {}, "Prio."), h("th", {}, "Today"), h("th", {}, "7 days"), h("th", {}, "Month"))),
-      h("tbody", {}, rows.map((f) => h("tr", {}, h("td", {}, f.a.name, " ", h("small", { class: "nota" }, STATUS_TXT[visibleState(f.a)])), h("td", {}, f.a.priority), h("td", {}, f.today > 0 ? (f.a.estimatedSpending ? "≈" : "") + fmt(f.today) : "—"), h("td", {}, f.sem > 0 ? fmt(f.sem) : "—"), h("td", {}, f.month > 0 ? fmt(f.month) : "—")))),
+  c.append(h("div", { class: "block" }, h("h4", {}, "Per agent"),
+    h("table", { class: "spending" }, h("thead", {}, h("tr", {}, h("th", {}, "Agent"), h("th", {}, "Prio."), h("th", {}, "Today"), h("th", {}, "7 days"), h("th", {}, "Month"))),
+      h("tbody", {}, rows.map((f) => h("tr", {}, h("td", {}, f.a.name, " ", h("small", { class: "note" }, STATUS_TXT[visibleState(f.a)])), h("td", {}, f.a.priority), h("td", {}, f.today > 0 ? (f.a.estimatedSpending ? "≈" : "") + fmt(f.today) : "—"), h("td", {}, f.sem > 0 ? fmt(f.sem) : "—"), h("td", {}, f.month > 0 ? fmt(f.month) : "—")))),
       h("tfoot", {}, h("tr", {}, h("td", {}, "Total"), h("td", {}, ""), h("td", {}, fmt(ed.buildingSpending("today"))), h("td", {}, fmt(ed.buildingSpending("week"))), h("td", {}, fmt(ed.buildingSpending("month")))))),
-    h("small", { class: "nota" }, "In dollars. Brains, images and mic: what OpenRouter charges for each call. Voice: what was charged if OpenRouter reports it; if not, estimated at the model's price (“≈”).")));
+    h("small", { class: "note" }, "In dollars. Brains, images and mic: what OpenRouter charges for each call. Voice: what was charged if OpenRouter reports it; if not, estimated at the model's price (“≈”).")));
 }
 
 // ---------------- Settings → Other APIs (your subscriptions') ----------------
@@ -2189,111 +2189,111 @@ function otherApisBlock() {
   const conx = ed.connections();
   const saveList = (list) => Motor.run({ type: "connections", connections: list }).then(() => { render(); renderSettings(); }).catch(warn);
   const currentList = () => (ed.e.settings.connections || []).map((x) => Object.assign({}, x));
-  const b = h("div", { class: "bloque" }, h("h4", {}, "Other APIs (your subscriptions)"),
-    h("p", { class: "nota", style: { margin: 0 } }, "Each agent thinks with OpenRouter (pay per use) or with the API of a subscription you already pay for. Add yours here and, in each agent's profile → Brain, choose which one it thinks with. What comes out of your subscription doesn't count towards the spending cap: it's tracked separately, so you can see it."),
-    h("small", { class: "nota" }, "Some subscriptions include API access or API credits (for example, some Claude and ChatGPT plans, or the Google Cloud credits in Google AI Pro and Ultra). Others only let you use your allowance in their own apps: don't use those here. Anything paid separately is better through OpenRouter."));
+  const b = h("div", { class: "block" }, h("h4", {}, "Other APIs (your subscriptions)"),
+    h("p", { class: "note", style: { margin: 0 } }, "Each agent thinks with OpenRouter (pay per use) or with the API of a subscription you already pay for. Add yours here and, in each agent's profile → Brain, choose which one it thinks with. What comes out of your subscription doesn't count towards the spending cap: it's tracked separately, so you can see it."),
+    h("small", { class: "note" }, "Some subscriptions include API access or API credits (for example, some Claude and ChatGPT plans, or the Google Cloud credits in Google AI Pro and Ultra). Others only let you use your allowance in their own apps: don't use those here. Anything paid separately is better through OpenRouter."));
   for (const P of conx) {
-    const msg = h("small", { class: "nota" });
+    const msg = h("small", { class: "note" });
     const test = h("button", { class: "btn mini", type: "button", onclick: async () => { test.disabled = true; msg.textContent = tr("Testing…"); try { const l = await loadDirectModels(P.id); msg.textContent = tr(`It works: ${l.length} models. The first one: ${l[0] || "—"}.`); } catch (err) { msg.textContent = err.message; } test.disabled = false; } }, "Test");
-    const outside = h("button", { class: "btn mini peligro", type: "button", onclick: (ev) => confirm(ev.target, "Remove this API? Its agents go back to OpenRouter. Press again", () => { try { localStorage.removeItem(apiKey(P.id)); } catch {} saveList(currentList().filter((x) => x.id !== P.id)); }) }, "Remove this API");
-    const row = h("div", { class: "campo api-fila" }, h("span", {}, P.name + (hasApiKey(P.id) && !P.noKey ? " · " + tr("key set") : "")), h("small", { class: "nota" }, P.api + (P.format === "anthropic" ? " · Claude's format" : "")));
-    if (P.noKey) row.append(h("small", { class: "nota" }, "A model on your own computer: no key needed. It has to be running (and, to use it from this website, allow calls from the browser)."));
+    const outside = h("button", { class: "btn mini danger", type: "button", onclick: (ev) => confirm(ev.target, "Remove this API? Its agents go back to OpenRouter. Press again", () => { try { localStorage.removeItem(apiKey(P.id)); } catch {} saveList(currentList().filter((x) => x.id !== P.id)); }) }, "Remove this API");
+    const row = h("div", { class: "field api-row" }, h("span", {}, P.name + (hasApiKey(P.id) && !P.noKey ? " · " + tr("key set") : "")), h("small", { class: "note" }, P.api + (P.format === "anthropic" ? " · Claude's format" : "")));
+    if (P.noKey) row.append(h("small", { class: "note" }, "A model on your own computer: no key needed. It has to be running (and, to use it from this website, allow calls from the browser)."));
     else if (isApp()) {
       const kk = h("input", { type: "password", autocomplete: "off", placeholder: hasApiKey(P.id) ? "••••••••••" : P.web ? `Your key (from ${P.web})` : "Your key" });
-      row.append(h("div", { class: "clave-fila" }, kk,
-        h("button", { class: "btn mini primario", type: "button", onclick: async () => { try { await callApp("/api/conf/key", { prov: P.id, key: kk.value.trim() }); await refreshHome(); renderSettings(); toast(kk.value.trim() ? "Key saved on this computer." : "Key removed."); } catch (e) { warn(e); } } }, "Save")),
-        h("small", { class: "nota" }, "It's stored only on this computer and only travels to this API's address. To remove it, leave it empty and press “Save”."));
+      row.append(h("div", { class: "key-row" }, kk,
+        h("button", { class: "btn mini primary", type: "button", onclick: async () => { try { await callApp("/api/conf/key", { prov: P.id, key: kk.value.trim() }); await refreshHome(); renderSettings(); toast(kk.value.trim() ? "Key saved on this computer." : "Key removed."); } catch (e) { warn(e); } } }, "Save")),
+        h("small", { class: "note" }, "It's stored only on this computer and only travels to this API's address. To remove it, leave it empty and press “Save”."));
     }
-    else if (mode === "home") row.append(h("small", { class: "nota" }, hasApiKey(P.id) ? "Key set in Fer Home." : "No key in Fer Home. On the Fer Home computer: node fer-casa.mjs keys"));
+    else if (mode === "home") row.append(h("small", { class: "note" }, hasApiKey(P.id) ? "Key set in Fer Home." : "No key in Fer Home. On the Fer Home computer: node fer-casa.mjs keys"));
     else {
       const has = !!store.get(apiKey(P.id));
       const inp = h("input", { type: "password", autocomplete: "off", placeholder: P.web ? `Your key (from ${P.web})` : "Your key", value: has ? "••••••••••" : "" });
       inp.onfocus = () => { if (inp.value.startsWith("•")) inp.value = ""; };
-      const save = h("button", { class: "btn mini primario", type: "button", onclick: () => { const v = inp.value.trim(); if (v && !v.startsWith("•")) store.set(apiKey(P.id), v); render(); renderSettings(); } }, "Save");
+      const save = h("button", { class: "btn mini primary", type: "button", onclick: () => { const v = inp.value.trim(); if (v && !v.startsWith("•")) store.set(apiKey(P.id), v); render(); renderSettings(); } }, "Save");
       const removeKey = has ? h("button", { class: "btn mini", type: "button", onclick: (ev) => confirm(ev.target, "Remove the key? Press again", () => { try { localStorage.removeItem(apiKey(P.id)); } catch {} renderSettings(); }) }, "Remove the key") : null;
-      row.append(h("div", { class: "clave-fila" }, inp, save, removeKey));
+      row.append(h("div", { class: "key-row" }, inp, save, removeKey));
     }
-    row.append(h("div", { class: "fila-c" }, test, outside, msg));
+    row.append(h("div", { class: "row-c" }, test, outside, msg));
     b.append(row);
   }
   // adding: the known ones (they only fill in the address) or any other
   const known = Object.entries(PROVIDERS).filter(([k]) => k !== "openrouter" && !conx.some((c) => c.id === k));
-  if (known.length) b.append(h("div", { class: "campo" }, h("span", {}, "Add a known one"), h("div", { class: "fila-c" }, known.map(([k, P]) => h("button", { class: "btn mini", type: "button", onclick: () => saveList([...currentList(), { id: k }]) }, "+ " + P.name)))));
+  if (known.length) b.append(h("div", { class: "field" }, h("span", {}, "Add a known one"), h("div", { class: "row-c" }, known.map(([k, P]) => h("button", { class: "btn mini", type: "button", onclick: () => saveList([...currentList(), { id: k }]) }, "+ " + P.name)))));
   const nom = h("input", { placeholder: "Name (for example, My API)" }), dir = h("input", { placeholder: "Address (for example, https://api.company.com/v1)" });
   const fmtSel = h("select", {}, h("option", { value: "openai" }, "Speaks like OpenAI (most of them)"), h("option", { value: "anthropic" }, "Speaks like Claude"));
-  const err = h("small", { class: "nota" });
-  b.append(h("div", { class: "campo" }, h("span", {}, "Or any other"), nom, dir, fmtSel,
-    h("div", { class: "fila-c" }, h("button", { class: "btn mini", type: "button", onclick: () => {
+  const err = h("small", { class: "note" });
+  b.append(h("div", { class: "field" }, h("span", {}, "Or any other"), nom, dir, fmtSel,
+    h("div", { class: "row-c" }, h("button", { class: "btn mini", type: "button", onclick: () => {
       const name = nom.value.trim(), api = dir.value.trim();
       if (!/^https?:\/\/\S+$/i.test(api)) { err.textContent = tr("The address has to start with https:// (or http:// if it's on your computer)."); return; }
       let id = "api-" + (withoutAccents(name || api.replace(/^https?:\/\//, "")).replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "").slice(0, 22) || "new");
       while (conx.some((c) => c.id === id) || PROVIDERS[id]) id += "-2";
       saveList([...currentList(), { id, name: name || api.replace(/^https?:\/\//, "").split("/")[0], api, format: fmtSel.value }]);
     } }, "Add"), err)));
-  b.append(h("small", { class: "nota" }, mode === "local" ? "The keys stay only in this browser and only travel to their API's address. They never go into backups or moves." : "With Fer Home, the keys live on its computer (datos/config.json): node fer-casa.mjs keys."));
+  b.append(h("small", { class: "note" }, mode === "local" ? "The keys stay only in this browser and only travel to their API's address. They never go into backups or moves." : "With Fer Home, the keys live on its computer (datos/config.json): node fer-casa.mjs keys."));
   return b;
 }
 function renderSettings() {
-  const c = $("cajonCuerpo"), sc = c.scrollTop; c.innerHTML = "";
+  const c = $("drawerBody"), sc = c.scrollTop; c.innerHTML = "";
   const aj = ed.e.settings;
   const saveSetting = (changes, extra) => Motor.run(Object.assign({ type: "settings", changes }, extra || {})).then(render).catch(warn);
   // where it lives
-  c.append(h("div", { class: "bloque" }, h("h4", {}, "Where your building lives"),
-    h("div", { class: "donde" },
-      isApp() ? h("div", { class: "aqui" }, h("b", {}, "In this app"), h("br"), h("span", { class: "nota" }, "On your computer, with no Terminal. The agents work while the app is open, with hands: their Chrome, their folder and their skills."), homeInfo.data ? h("br") : null, homeInfo.data ? h("small", { class: "nota" }, tr("Your data:") + " ", raw(homeInfo.data)) : null) : null,
-      h("div", { class: mode === "local" ? "aqui" : "" }, h("b", {}, "In this browser"), h("br"), h("span", { class: "nota" }, "Works right away, nothing to install. The agents work while this website is open on some device.")),
-      h("div", { class: mode === "home" && !isApp() ? "aqui" : "" }, h("b", {}, "Fer Home: a computer or phone that stays on"), h("br"), h("span", { class: "nota" }, "The fer-casa.mjs program runs this same building around the clock and gives the agents hands (their Chrome, their folder, their skills). You open the website from the address it gives you.")),
-      h("div", {}, h("b", {}, "Fer Home in the cloud"), h("br"), h("span", { class: "nota" }, "The same program on a rented server. It works even when everything at home is off."))),
-    h("small", { class: "nota" }, "How to install Fer Home: the README in the ZIP and the “Fer Agent · The Building” document.")));
+  c.append(h("div", { class: "block" }, h("h4", {}, "Where your building lives"),
+    h("div", { class: "where" },
+      isApp() ? h("div", { class: "here" }, h("b", {}, "In this app"), h("br"), h("span", { class: "note" }, "On your computer, with no Terminal. The agents work while the app is open, with hands: their Chrome, their folder and their skills."), homeInfo.data ? h("br") : null, homeInfo.data ? h("small", { class: "note" }, tr("Your data:") + " ", raw(homeInfo.data)) : null) : null,
+      h("div", { class: mode === "local" ? "here" : "" }, h("b", {}, "In this browser"), h("br"), h("span", { class: "note" }, "Works right away, nothing to install. The agents work while this website is open on some device.")),
+      h("div", { class: mode === "home" && !isApp() ? "here" : "" }, h("b", {}, "Fer Home: a computer or phone that stays on"), h("br"), h("span", { class: "note" }, "The fer-casa.mjs program runs this same building around the clock and gives the agents hands (their Chrome, their folder, their skills). You open the website from the address it gives you.")),
+      h("div", {}, h("b", {}, "Fer Home in the cloud"), h("br"), h("span", { class: "note" }, "The same program on a rented server. It works even when everything at home is off."))),
+    h("small", { class: "note" }, "How to install Fer Home: the README in the ZIP and the “Fer Agent · The Building” document.")));
   // access: your key and your money
   if (mode === "local") {
     const k = h("input", { type: "password", autocomplete: "off", placeholder: "sk-or-...", value: store.get(K.key) ? "••••••••••" : "" });
     k.onfocus = () => { if (k.value.startsWith("•")) k.value = ""; };
-    c.append(h("div", { class: "bloque" }, h("h4", {}, "Your OpenRouter key"),
-      h("div", { class: "fila-c" }, k, h("button", { class: "btn primario mini", onclick: () => { if (!k.value.startsWith("•")) store.set(K.key, k.value.trim()); k.value = store.get(K.key) ? "••••••••••" : ""; render(); renderChat(true); closeDrawer(); } }, "Save")),
-      h("p", { class: "nota", style: { margin: 0 } }, "Where it is and where it goes: it's stored only in this browser, on this device. It doesn't go through any Fer Agent server: when an agent thinks, speaks or listens, this browser sends it straight to OpenRouter, and to nobody else. Anyone using this same browser could use it."),
-      h("small", { class: "nota" }, "Safety net: put a spending limit on the key on the OpenRouter website."),
+    c.append(h("div", { class: "block" }, h("h4", {}, "Your OpenRouter key"),
+      h("div", { class: "row-c" }, k, h("button", { class: "btn primary mini", onclick: () => { if (!k.value.startsWith("•")) store.set(K.key, k.value.trim()); k.value = store.get(K.key) ? "••••••••••" : ""; render(); renderChat(true); closeDrawer(); } }, "Save")),
+      h("p", { class: "note", style: { margin: 0 } }, "Where it is and where it goes: it's stored only in this browser, on this device. It doesn't go through any Fer Agent server: when an agent thinks, speaks or listens, this browser sends it straight to OpenRouter, and to nobody else. Anyone using this same browser could use it."),
+      h("small", { class: "note" }, "Safety net: put a spending limit on the key on the OpenRouter website."),
       howToGetKey()));
   } else if (isApp()) {
     // in the app: the key is pasted here and saved on this computer; and you sign in to your websites once with the agents' Chrome
     const k = h("input", { type: "password", autocomplete: "off", placeholder: "sk-or-...", value: homeInfo.key ? "••••••••••" : "" });
     k.onfocus = () => { if (k.value.startsWith("•")) k.value = ""; };
-    c.append(h("div", { class: "bloque" }, h("h4", {}, "Your OpenRouter key"),
-      h("div", { class: "fila-c" }, k, h("button", { class: "btn primario mini", onclick: async () => {
+    c.append(h("div", { class: "block" }, h("h4", {}, "Your OpenRouter key"),
+      h("div", { class: "row-c" }, k, h("button", { class: "btn primary mini", onclick: async () => {
         if (!k.value.trim() || k.value.startsWith("•")) return;
         try { await callApp("/api/conf/key", { prov: "openrouter", key: k.value.trim() }); await refreshHome(); toast("Key saved on this computer."); render(); renderChat(true); closeDrawer(); } catch (e) { warn(e); }
       } }, "Save")),
-      h("p", { class: "nota", style: { margin: 0 } }, "Where it is and where it goes: it's stored only on this computer, in the app's data folder. It only travels to OpenRouter when an agent thinks, speaks or listens."),
-      h("small", { class: "nota" }, "Safety net: put a spending limit on the key on the OpenRouter website."),
+      h("p", { class: "note", style: { margin: 0 } }, "Where it is and where it goes: it's stored only on this computer, in the app's data folder. It only travels to OpenRouter when an agent thinks, speaks or listens."),
+      h("small", { class: "note" }, "Safety net: put a spending limit on the key on the OpenRouter website."),
       howToGetKey()));
     const u = h("input", { type: "url", placeholder: "https://mail.google.com" });
-    c.append(h("div", { class: "bloque" }, h("h4", {}, "Your websites, in the agents' Chrome"),
-      h("p", { class: "nota", style: { margin: 0 } }, "For an agent to use a website with your account (your email, a social network…), sign in once yourself: the agents' Chrome opens, you sign in and close that window. The session stays on this computer."),
-      h("div", { class: "fila-c" }, u, h("button", { class: "btn mini", onclick: async () => {
+    c.append(h("div", { class: "block" }, h("h4", {}, "Your websites, in the agents' Chrome"),
+      h("p", { class: "note", style: { margin: 0 } }, "For an agent to use a website with your account (your email, a social network…), sign in once yourself: the agents' Chrome opens, you sign in and close that window. The session stays on this computer."),
+      h("div", { class: "row-c" }, u, h("button", { class: "btn mini", onclick: async () => {
         try { await callApp("/api/conf/login", { url: u.value.trim() }); toast("The agents' Chrome is open. Sign in with your account and, when you're done, close that window."); } catch (e) { warn(e); }
       } }, "Open")),
-      h("small", { class: "nota" }, "It needs Google Chrome installed on this computer.")));
+      h("small", { class: "note" }, "It needs Google Chrome installed on this computer.")));
   } else {
     const p = h("input", { type: "password", placeholder: "Fer Home PIN", value: pin });
-    c.append(h("div", { class: "bloque" }, h("h4", {}, "Fer Home PIN"),
-      h("div", { class: "fila-c" }, p, h("button", { class: "btn primario mini", onclick: async () => { pin = p.value.trim(); pinRejected = false; store.set(K.pin, pin); await refreshHome(); renderChat(true); if (!pinRejected) closeDrawer(); else renderSettings(); } }, "Enter")),
-      pinRejected ? h("small", { class: "nota", style: { color: "var(--peligro)" } }, "That PIN isn't right (or there were too many attempts: wait a minute).") : null,
-      h("small", { class: "nota" }, "The keys live in Fer Home (datos/config.json), not on this device. The PIN stops anyone else on your network using your credit.")));
+    c.append(h("div", { class: "block" }, h("h4", {}, "Fer Home PIN"),
+      h("div", { class: "row-c" }, p, h("button", { class: "btn primary mini", onclick: async () => { pin = p.value.trim(); pinRejected = false; store.set(K.pin, pin); await refreshHome(); renderChat(true); if (!pinRejected) closeDrawer(); else renderSettings(); } }, "Enter")),
+      pinRejected ? h("small", { class: "note", style: { color: "var(--danger)" } }, "That PIN isn't right (or there were too many attempts: wait a minute).") : null,
+      h("small", { class: "note" }, "The keys live in Fer Home (datos/config.json), not on this device. The PIN stops anyone else on your network using your credit.")));
   }
   c.append(otherApisBlock());
   // the building's name and objectives
   const nom = h("input", { value: ed.e.name || "" });
   nom.onchange = () => saveSetting({}, { name: nom.value.trim() || "My building" });
   const obj = h("textarea", { rows: "5", placeholder: "For example:\nHelp my shop sell more online\nSave me two hours a day of email and paperwork\n…" }); obj.value = ed.e.objectives || "";
-  const tally = h("span", { class: "contador" });
+  const tally = h("span", { class: "counter" });
   const count = () => {
     const lines = obj.value.split("\n").filter((l) => l.trim()).length, letters = obj.value.trim().length;
     tally.textContent = tr(`${lines}/${MAX_OBJECTIVE_LINES} lines · ${letters} letters · about ${Math.ceil(letters / 3.5)} tokens in every heartbeat of every agent`);
-    tally.classList.toggle("mal", lines > MAX_OBJECTIVE_LINES);
+    tally.classList.toggle("bad", lines > MAX_OBJECTIVE_LINES);
   };
   obj.oninput = count; count();
   obj.onchange = () => Motor.run({ type: "objectives", text: obj.value }).then((r) => { obj.value = r.objectives; count(); render(); }).catch(warn);
-  c.append(h("div", { class: "bloque" }, field("Building name", nom),
+  c.append(h("div", { class: "block" }, field("Building name", nom),
     field("Building objectives (yours or your company's)", obj, "Five lines at most. Every agent reads them when it wakes up, together with its own and its role's lessons. Keep it short: every letter is paid for in every heartbeat."), tally));
   // the brain: library and long-term memory in a folder
   c.append(brainBlock());
@@ -2318,8 +2318,8 @@ function renderSettings() {
   const chkShort = h("input", { type: "checkbox", checked: aj.shortVoice !== false, onchange: (ev) => saveSetting({ shortVoice: ev.target.checked }) });
   const chkCut = h("input", { type: "checkbox", checked: aj.cutOnSpeech !== false, onchange: (ev) => saveSetting({ cutOnSpeech: ev.target.checked }) });
   const selLec = modelPicker("text", aj.lessonsModel, { empty: `The cheapest that will do (${modelName(chooseModel("budget", ed.models)) || "none"})`, onChange: (v) => saveSetting({ lessonsModel: v }) });
-  c.append(h("div", { class: "bloque" }, h("h4", {}, "Building's default models"),
-    h("p", { class: "nota", style: { margin: 0 } }, "Used by every agent that doesn't have its own. Each one picks its own in its profile → Capabilities."),
+  c.append(h("div", { class: "block" }, h("h4", {}, "Building's default models"),
+    h("p", { class: "note", style: { margin: 0 } }, "Used by every agent that doesn't have its own. Each one picks its own in its profile → Capabilities."),
     field("See: brain with vision", selView, "Describes images to the agents whose brain can't see."),
     field("Create images", selImg), field("Create music", selMus, tr("Where it's turned on: in each agent's profile → Capabilities → “Create music”.") + " " + (withMusic.length ? tr("These have it now:") + " " + withMusic.join(", ") + "." : tr("No agent has it now."))),
     field("Speak: voice model", selVoice), field("The boss's voice", selVc, "The other agents, if they don't choose their own, each get a different voice from that model."),
@@ -2330,61 +2330,61 @@ function renderSettings() {
     field("Model that turns coins into lessons", selLec, "A cheap one: it writes the rule and you approve it in the inbox.")));
   // recommended models: at the top of each picker. Artie proposes the new ones; you decide.
   const pendingModels = (ed.e.modelProposals || []).filter((x) => x.state === "pending");
-  const recSummary = h("div", { class: "lista" }, Object.keys(MODEL_TYPES).filter((t) => t !== "others").map((t) => {
+  const recSummary = h("div", { class: "list" }, Object.keys(MODEL_TYPES).filter((t) => t !== "others").map((t) => {
     const rec = ((aj.recommended || {})[t]) || {};
     const lines = LEVELS.filter((n) => (rec[n] || []).length).map((n) => h("div", {}, h("b", {}, tr(LEVEL_NAME[n]) + ": "), rec[n].map(modelName).join(", ")));
-    return lines.length ? h("div", { class: "item" }, h("div", { class: "cab" }, h("span", {}, tr(MODEL_TYPES[t]))), lines) : null;
+    return lines.length ? h("div", { class: "item" }, h("div", { class: "head" }, h("span", {}, tr(MODEL_TYPES[t]))), lines) : null;
   }).filter(Boolean));
-  c.append(h("div", { class: "bloque" }, h("h4", {}, "Recommended models"),
-    h("p", { class: "nota", style: { margin: 0 } }, "Every selector first shows the recommended ones by PRICE level (free, cheap, mid, high and cutting-edge), not by quality: each level has the newest version from each maker. Below, all of OpenRouter's, sorted by what they do according to their data. When a new model comes out, Artie proposes it; nothing changes without your yes."),
-    pendingModels.length ? Object.keys(MODEL_TYPES).map((t) => proposalsFor(t)).flat() : h("p", { class: "nota", style: { margin: 0 } }, "Artie has no pending proposals."),
+  c.append(h("div", { class: "block" }, h("h4", {}, "Recommended models"),
+    h("p", { class: "note", style: { margin: 0 } }, "Every selector first shows the recommended ones by PRICE level (free, cheap, mid, high and cutting-edge), not by quality: each level has the newest version from each maker. Below, all of OpenRouter's, sorted by what they do according to their data. When a new model comes out, Artie proposes it; nothing changes without your yes."),
+    pendingModels.length ? Object.keys(MODEL_TYPES).map((t) => proposalsFor(t)).flat() : h("p", { class: "note", style: { margin: 0 } }, "Artie has no pending proposals."),
     h("details", {}, h("summary", {}, "See the current recommended ones"), recSummary),
     h("div", {}, h("button", { class: "btn mini", onclick: (ev) => confirm(ev.target, "Go back to the original ones? Press again", () => Motor.run({ type: "recommended.reset" }).then(() => { render(); renderSettings(); }).catch(warn)) }, "Go back to the original recommended ones"))));
   // lessons and view
   const nLec = h("input", { type: "number", min: "1", max: "50", step: "1", value: aj.lessonsPerRole || 5, onchange: (ev) => saveSetting({ lessonsPerRole: Math.max(1, Math.min(50, parseInt(ev.target.value, 10) || 5)) }) });
   const selBuildingView = h("select", { onchange: (ev) => saveSetting({ buildingView: ev.target.value }) }, [["auto", `Automatic: strips from ${AUTO_AGENTS + 1} agents or ${AUTO_STOREYS + 1} floors`], ["drawing", "Always the drawing"], ["strips", "Always in strips"]].map(([v, t]) => h("option", { value: v }, t)));
   selBuildingView.value = aj.buildingView || "auto";
-  c.append(h("div", { class: "bloque" }, h("h4", {}, "Coins, lessons and view"),
+  c.append(h("div", { class: "block" }, h("h4", {}, "Coins, lessons and view"),
     field("Lessons kept per role", nLec, "When a new one comes in, the oldest goes. The ones you pin in the profile never go."),
     field("How the building is shown", selBuildingView)));
   if (Object.keys(LANGUAGES).length > 1) {
     const selLanguage = h("select", { onchange: (ev) => changeLanguage(ev.target.value) }, Object.entries(LANGUAGES).map(([k, t]) => h("option", { value: k }, t)));
     selLanguage.value = language;
-    c.append(h("label", { class: "bloque campo" }, h("span", {}, "Language (the website and what the agents are told)"), selLanguage));
+    c.append(h("label", { class: "block field" }, h("span", {}, "Language (the website and what the agents are told)"), selLanguage));
   }
   // the built-in agents you renamed, back to their official name (in the building's language)
-  c.append(h("div", { class: "bloque" },
+  c.append(h("div", { class: "block" },
     h("button", { class: "btn mini", onclick: () => Motor.run({ type: "builtInNames" }).then((r) => { render(); renderSettings(); toast(r && r.changed ? tr(`Built-in names restored: ${r.changed}.`) : tr("They already have their built-in names.")); }).catch(warn) }, "Restore the built-in names"),
-    h("small", { class: "nota" }, "The built-in agents get back their official name in this language. The ones you created don't change.")));
+    h("small", { class: "note" }, "The built-in agents get back their official name in this language. The ones you created don't change.")));
   // backups, moving and starting again
   const template = (name, txt) => h("button", { class: "btn mini", onclick: (ev) => confirm(ev.target, "Sure? The current building will be deleted", () => Motor.run({ type: "template", name }).then(() => { selection = "boss"; openFloorId = ""; render(); renderChat(true); closeDrawer(); }).catch(warn)) }, txt);
   const fi = h("input", { type: "file", accept: "application/json,.json", hidden: true, onchange: async (ev) => { const f = ev.target.files[0]; if (!f) return; try { const r = await loadBackup(await f.text()); render(); renderChat(true); closeDrawer(); toast(r.relocation ? "Move received: agents, settings, images and music. Paste your keys again in Settings (they don't travel in the file)." : (r.media ? tr(`Backup loaded with ${r.media} images and music tracks.`) : tr("Backup loaded."))); } catch (err) { warn(err); } } });
   const t = lastBackup();
-  c.append(h("div", { class: "bloque" }, h("h4", {}, "Backups and moving"),
-    h("p", { class: "nota", style: { margin: 0 } }, `Last backup: ${t ? new Date(t).toLocaleString(LOCALE) + " (" + howLongAgo(t) + ")" : "none yet"}. The backup includes agents, memories, settings, spending, images and music. It doesn't include your keys.`),
-    h("div", { class: "fila-c" }, h("button", { class: "btn mini primario", onclick: () => saveBackup({ withMedia: true }).then(() => renderSettings()).catch(warn) }, "Save a backup now"), h("button", { class: "btn mini", onclick: () => fi.click() }, "Load a backup or a move"), fi),
-    h("p", { class: "nota", style: { margin: 0 } }, "Moving (when the website moves to your own domain): here press “Prepare the move”; on the new website, “Load a backup or a move” with that file. Agents, settings, images and music go across; you paste the keys again. If you use Google Drive, add the new address in Google Cloud (step 6 of connecting Drive)."),
-    h("div", { class: "fila-c" }, h("button", { class: "btn mini", onclick: () => saveBackup({ withMedia: true, relocation: true }).catch(warn) }, "Prepare the move")),
-    mode === "local" && store.get(K.v4) ? h("div", { class: "fila-c" }, h("span", { class: "nota" }, "Your version 4 building, exactly as it was."), h("button", { class: "btn mini", onclick: () => download(store.get(K.v4), "fer-agent-version-4.json") }, "Download it")) : null,
-    beforeV9 ? h("div", { class: "fila-c" }, h("span", { class: "nota" }, "Your building from before version 9, exactly as it was."), h("button", { class: "btn mini", onclick: () => download(beforeV9, "fer-agent-before-version-9.json") }, "Download it")) : null,
-    techieBackup() ? h("div", { class: "fila-c" }, h("span", { class: "nota" }, `Techie's last backup: ${techieBackup().day}.`), h("button", { class: "btn mini", onclick: () => download(techieBackup().json, `fer-agent-techie-backup-${techieBackup().day}.json`) }, "Download the copy")) : null));
-  c.append(h("div", { class: "bloque" }, h("h4", {}, "Start again"),
-    h("p", { class: "nota", style: { margin: 0 } }, "Built-in agents: the ones that come with Fer Agent (the sages, Techie, Artie, the Creator, JEV, the Controller and Memory). They're installed and removed from their page."),
-    h("div", { class: "fila-c" }, h("button", { class: "btn mini", onclick: () => { closeDrawer(); openScreen("builtIn"); } }, "Open “Built-in agents”")),
-    lastSetting ? h("p", { class: "nota", style: { margin: 0 } }, lastSetting) : null,
-    h("p", { class: "nota", style: { margin: 0 } }, "Start from scratch: “Just the boss” or “With the recommended team” (dome, tech floor and lobby with their agents). Settings and spending are kept."),
-    h("div", { class: "fila-c" }, template("empty", "Just the boss"), template("basic", "With the recommended team"))));
-  c.append(h("p", { class: "nota" }, `Fer Agent Building · version ${VERSION} · open source · prices and models come live from OpenRouter.`));
+  c.append(h("div", { class: "block" }, h("h4", {}, "Backups and moving"),
+    h("p", { class: "note", style: { margin: 0 } }, `Last backup: ${t ? new Date(t).toLocaleString(LOCALE) + " (" + howLongAgo(t) + ")" : "none yet"}. The backup includes agents, memories, settings, spending, images and music. It doesn't include your keys.`),
+    h("div", { class: "row-c" }, h("button", { class: "btn mini primary", onclick: () => saveBackup({ withMedia: true }).then(() => renderSettings()).catch(warn) }, "Save a backup now"), h("button", { class: "btn mini", onclick: () => fi.click() }, "Load a backup or a move"), fi),
+    h("p", { class: "note", style: { margin: 0 } }, "Moving (when the website moves to your own domain): here press “Prepare the move”; on the new website, “Load a backup or a move” with that file. Agents, settings, images and music go across; you paste the keys again. If you use Google Drive, add the new address in Google Cloud (step 6 of connecting Drive)."),
+    h("div", { class: "row-c" }, h("button", { class: "btn mini", onclick: () => saveBackup({ withMedia: true, relocation: true }).catch(warn) }, "Prepare the move")),
+    mode === "local" && store.get(K.v4) ? h("div", { class: "row-c" }, h("span", { class: "note" }, "Your version 4 building, exactly as it was."), h("button", { class: "btn mini", onclick: () => download(store.get(K.v4), "fer-agent-version-4.json") }, "Download it")) : null,
+    beforeV9 ? h("div", { class: "row-c" }, h("span", { class: "note" }, "Your building from before version 9, exactly as it was."), h("button", { class: "btn mini", onclick: () => download(beforeV9, "fer-agent-before-version-9.json") }, "Download it")) : null,
+    techieBackup() ? h("div", { class: "row-c" }, h("span", { class: "note" }, `Techie's last backup: ${techieBackup().day}.`), h("button", { class: "btn mini", onclick: () => download(techieBackup().json, `fer-agent-techie-backup-${techieBackup().day}.json`) }, "Download the copy")) : null));
+  c.append(h("div", { class: "block" }, h("h4", {}, "Start again"),
+    h("p", { class: "note", style: { margin: 0 } }, "Built-in agents: the ones that come with Fer Agent (the sages, Techie, Artie, the Creator, JEV, the Controller and Memory). They're installed and removed from their page."),
+    h("div", { class: "row-c" }, h("button", { class: "btn mini", onclick: () => { closeDrawer(); openScreen("builtIn"); } }, "Open “Built-in agents”")),
+    lastSetting ? h("p", { class: "note", style: { margin: 0 } }, lastSetting) : null,
+    h("p", { class: "note", style: { margin: 0 } }, "Start from scratch: “Just the boss” or “With the recommended team” (dome, tech floor and lobby with their agents). Settings and spending are kept."),
+    h("div", { class: "row-c" }, template("empty", "Just the boss"), template("basic", "With the recommended team"))));
+  c.append(h("p", { class: "note" }, `Fer Agent Building · version ${VERSION} · open source · prices and models come live from OpenRouter.`));
   c.scrollTop = sc;
 }
 // The brain in Settings: where it lives, how to connect it and what the website sees
 function brainBlock() {
-  const st = brain.state, box = h("div", { class: "bloque" }, h("h4", {}, "Brain: Library and Long-term memory"));
+  const st = brain.state, box = h("div", { class: "block" }, h("h4", {}, "Brain: Library and Long-term memory"));
   if (isApp()) {
     const cc = Object.assign({ n: brainFolders(ed.e) }, homeInfo.folder || {});
-    box.append(h("p", { class: "nota", style: { margin: 0 } }, `In the app, the brain lives in a folder on this computer: “${cc.n.library}” (your notes), “${cc.n.memory}” (one note per topic) and “${cc.n.backup}”. If you choose a folder inside Google Drive for desktop, you also have it in Drive and in Obsidian.`),
-      h("div", { class: "estado-carpeta" }, h("i", { class: "punto " + (cc.path ? "ok" : "") }), h("span", {}, tr("Folder:") + " ", raw(cc.path || "")),
-        cc.notes !== undefined ? h("span", { class: "nota" }, " · " + tr(`${cc.notes} topics`) + " · " + tr(`${cc.library || 0} notes in the Library`)) : null),
+    box.append(h("p", { class: "note", style: { margin: 0 } }, `In the app, the brain lives in a folder on this computer: “${cc.n.library}” (your notes), “${cc.n.memory}” (one note per topic) and “${cc.n.backup}”. If you choose a folder inside Google Drive for desktop, you also have it in Drive and in Obsidian.`),
+      h("div", { class: "folder-state" }, h("i", { class: "dot " + (cc.path ? "ok" : "") }), h("span", {}, tr("Folder:") + " ", raw(cc.path || "")),
+        cc.notes !== undefined ? h("span", { class: "note" }, " · " + tr(`${cc.notes} topics`) + " · " + tr(`${cc.library || 0} notes in the Library`)) : null),
       window.ferApp && window.ferApp.chooseFolder ? h("button", { class: "btn mini", type: "button", onclick: async () => {
         try {
           const relPath = await window.ferApp.chooseFolder(); if (!relPath) return;
@@ -2397,20 +2397,20 @@ function brainBlock() {
   }
   if (mode === "home") {
     const cc = Object.assign({ n: brainFolders(ed.e) }, homeInfo.folder || {});
-    box.append(h("p", { class: "nota", style: { margin: 0 } }, `With Fer Home, the brain lives in a folder on that computer: “${cc.n.library}” (your notes), “${cc.n.memory}” (one note per topic) and “${cc.n.backup}”. If that folder is inside Google Drive for desktop, you also have it in Drive and in Obsidian.`),
-      h("div", { class: "estado-carpeta" }, h("i", { class: "punto " + (cc.path ? "ok" : "") }), h("span", {}, cc.path ? `Folder: ${cc.path}` : "Folder: Fer Home's data folder (datos/cerebro)"),
-        cc.notes !== undefined ? h("span", { class: "nota" }, `· ${cc.notes} topics · ${cc.library || 0} notes in the Library`) : null),
-      h("small", { class: "nota" }, "To change it: on the Fer Home computer, node fer-casa.mjs folder"));
+    box.append(h("p", { class: "note", style: { margin: 0 } }, `With Fer Home, the brain lives in a folder on that computer: “${cc.n.library}” (your notes), “${cc.n.memory}” (one note per topic) and “${cc.n.backup}”. If that folder is inside Google Drive for desktop, you also have it in Drive and in Obsidian.`),
+      h("div", { class: "folder-state" }, h("i", { class: "dot " + (cc.path ? "ok" : "") }), h("span", {}, cc.path ? `Folder: ${cc.path}` : "Folder: Fer Home's data folder (datos/cerebro)"),
+        cc.notes !== undefined ? h("span", { class: "note" }, `· ${cc.notes} topics · ${cc.library || 0} notes in the Library`) : null),
+      h("small", { class: "note" }, "To change it: on the Fer Home computer, node fer-casa.mjs folder"));
     return box;
   }
   const conf = store.json(K.folder, null) || {};
-  box.append(h("div", { class: "estado-carpeta" }, h("i", { class: "punto " + (st.connected ? "ok" : st.error ? "mal" : "") }),
+  box.append(h("div", { class: "folder-state" }, h("i", { class: "dot " + (st.connected ? "ok" : st.error ? "bad" : "") }),
     h("span", {}, st.connected ? tr("Connected:") + " " + st.name : st.error ? `${st.name || tr("Folder")}: ${st.error}` : "No folder: the brain lives only in this browser."),
-    st.connected ? h("span", { class: "nota" }, "· " + tr(`${st.notes} topics in the long-term memory`) + " · " + tr(`${st.library} notes in the Library`) + (st.lastSync ? " · " + tr(`synced ${howLongAgo(st.lastSync)}`) : "")) : null));
-  if (st.needsPermission && brain.state.type === "local") box.append(h("div", {}, h("button", { class: "btn mini primario", onclick: async () => { const hnd = await idb.get("kv", "localFolder"); if (hnd) connectBrain(localAdapter(hnd), true).catch(warn); } }, "Give permission to the folder again")));
+    st.connected ? h("span", { class: "note" }, "· " + tr(`${st.notes} topics in the long-term memory`) + " · " + tr(`${st.library} notes in the Library`) + (st.lastSync ? " · " + tr(`synced ${howLongAgo(st.lastSync)}`) : "")) : null));
+  if (st.needsPermission && brain.state.type === "local") box.append(h("div", {}, h("button", { class: "btn mini primary", onclick: async () => { const hnd = await idb.get("kv", "localFolder"); if (hnd) connectBrain(localAdapter(hnd), true).catch(warn); } }, "Give permission to the folder again")));
   // Google Drive
   const cid = h("input", { placeholder: "Google client ID (ends in .apps.googleusercontent.com)", value: conf.clientId || "" });
-  const connectDrive = h("button", { class: "btn mini primario", type: "button", onclick: async () => {
+  const connectDrive = h("button", { class: "btn mini primary", type: "button", onclick: async () => {
     const id = cid.value.trim();
     if (!/\.apps\.googleusercontent\.com$/.test(id)) { warn(Object.assign(new Error("That doesn't look like a Google client ID (it must end in .apps.googleusercontent.com). Check the steps."), { shown: true })); return; }
     store.set(K.folder, JSON.stringify({ type: "drive", clientId: id }));
@@ -2418,8 +2418,8 @@ function brainBlock() {
     try { await connectBrain(driveAdapter(id), true); toast("Drive connected: the website only sees its “Fer Agent” folder."); } catch (err) { warn(Object.assign(new Error(`Couldn't connect Drive: ${err.message}`), { shown: true })); }
     connectDrive.disabled = false;
   } }, st.connected && st.type === "drive" ? "Connect again" : "Connect Google Drive");
-  box.append(h("div", { class: "campo" }, h("span", {}, "Google Drive (recommended: phone and computer see the same building)"), cid, h("div", {}, connectDrive)),
-    h("details", {}, h("summary", {}, "Steps to connect Drive (once, about 10 minutes)"), h("ol", { class: "nota pasos-drive" },
+  box.append(h("div", { class: "field" }, h("span", {}, "Google Drive (recommended: phone and computer see the same building)"), cid, h("div", {}, connectDrive)),
+    h("details", {}, h("summary", {}, "Steps to connect Drive (once, about 10 minutes)"), h("ol", { class: "note drive-steps" },
       h("li", {}, "Go to console.cloud.google.com with your Google account and create a project (at the top: “Select a project” → “New project”). Name: Fer Agent."),
       h("li", {}, "Menu → “APIs & Services” → “Library” → search for “Google Drive API” → “Enable”."),
       h("li", {}, "“APIs & Services” → “OAuth consent screen” (or “Google Auth Platform”): type “External”, app name Fer Agent, your support and contact email. Save."),
@@ -2429,19 +2429,19 @@ function brainBlock() {
       h("li", {}, "Copy the “Client ID” (it ends in .apps.googleusercontent.com), paste it above and press “Connect Google Drive”. Choose your account and grant permission. If Google warns that the app isn't verified, that's because it's yours and in testing: press “Continue”."),
       h("li", {}, "Repeat step 7 on your phone (same ID). The website will create the “Fer Agent” folder in your Drive. Don't create it by hand."))));
   // a folder on this computer
-  if (window.showDirectoryPicker) box.append(h("div", { class: "campo" }, h("span", {}, "Or a folder on this computer (Chrome or Edge)"),
+  if (window.showDirectoryPicker) box.append(h("div", { class: "field" }, h("span", {}, "Or a folder on this computer (Chrome or Edge)"),
     h("div", {}, h("button", { class: "btn mini", type: "button", onclick: async () => {
       let hnd; try { hnd = await window.showDirectoryPicker({ mode: "readwrite", id: "fer-agent-brain" }); } catch { return; }
       await idb.put("kv", "localFolder", hnd); store.set(K.folder, JSON.stringify({ type: "local" }));
       try { await connectBrain(localAdapter(hnd), true); toast("Folder connected."); } catch (err) { warn(err); }
     } }, st.connected && st.type === "local" ? "Choose another folder" : "Choose folder")),
-    h("small", { class: "nota" }, "For people who don't use Drive. Careful: what another device saves to Drive through the website won't be seen by this folder, or the other way round; use just one way on all your devices.")));
+    h("small", { class: "note" }, "For people who don't use Drive. Careful: what another device saves to Drive through the website won't be seen by this folder, or the other way round; use just one way on all your devices.")));
   const fb = h("input", { type: "file", multiple: true, accept: ".md,.txt,text/markdown,text/plain", hidden: true, onchange: async (ev) => { try { const n = await uploadLibrary([...ev.target.files]); toast(n === 1 ? tr("1 note added to the Library.") : tr(`${n} notes added to the Library.`)); renderSettings(); } catch (err) { warn(err); } ev.target.value = ""; } });
-  box.append(h("div", { class: "fila-c" },
+  box.append(h("div", { class: "row-c" },
     st.connected ? h("button", { class: "btn mini", onclick: () => syncBrain().then(() => toast("Synced.")) }, "Sync now") : null,
     h("button", { class: "btn mini", onclick: () => fb.click() }, "Add notes to the Library"), fb,
     st.connected || conf.type ? h("button", { class: "btn mini", onclick: (ev) => confirm(ev.target, "Disconnect? Press again", () => { clearInterval(brain.timerId); brain.ad = null; Object.assign(brain.state, { connected: false, error: "", name: "" }); try { localStorage.removeItem(K.folder); } catch {} loadLocalLibrary(); renderSettings(); }) }, "Disconnect") : null),
-    h("small", { class: "nota" }, "What the website sees: with Drive, only the files it creates itself in “Fer Agent” (drive.file permission); nothing else in your Drive. Whatever you correct in Obsidian in those notes, it reads again. A NEW note you write by hand in Obsidian isn't seen, because the website didn't create it: upload it with “Add notes to the Library” (it stays inside its folder and you edit it from there). For it to see any new note it would need permission to read your whole Drive, which Google treats as restricted and which would let it see everything, not just its folder: that's why it isn't requested."));
+    h("small", { class: "note" }, "What the website sees: with Drive, only the files it creates itself in “Fer Agent” (drive.file permission); nothing else in your Drive. Whatever you correct in Obsidian in those notes, it reads again. A NEW note you write by hand in Obsidian isn't seen, because the website didn't create it: upload it with “Add notes to the Library” (it stays inside its folder and you edit it from there). For it to see any new note it would need permission to read your whole Drive, which Google treats as restricted and which would let it see everything, not just its folder: that's why it isn't requested."));
   return box;
 }
 let lastSetting = "";
@@ -2636,7 +2636,7 @@ async function syncBrain(op = {}) {
   } catch (err) {
     brain.state.error = err.message;
   } finally {
-    brain.busy = false; renderBackupTop(); if (drawerType === "settings" && !inUse($("cajonCuerpo"))) renderSettings();
+    brain.busy = false; renderBackupTop(); if (drawerType === "settings" && !inUse($("drawerBody"))) renderSettings();
     if (brain.again) { brain.again = false; setTimeout(() => syncBrain({ writeOnly: true }), 500); }
   }
 }
@@ -2662,11 +2662,11 @@ async function fetchBuilding(ad) {
   return true;
 }
 function conflictNotice(d) {
-  if ($("conflicto")) return;
-  const box = h("div", { id: "conflicto", class: "aviso-flotante conflicto", role: "alertdialog" },
+  if ($("conflict")) return;
+  const box = h("div", { id: "conflict", class: "toast conflict", role: "alertdialog" },
     h("b", {}, "Your other device saved changes to the building"), h("span", {}, `Its changes are from ${new Date(d.ts).toLocaleString(LOCALE)}. You've changed things here too. Which ones do you keep?`),
-    h("div", { class: "fila-c" },
-      h("button", { class: "btn mini primario", onclick: async () => { box.remove(); const c = brain.conflict; brain.conflict = null; await Motor.run({ type: "import", state: d.building }).catch(warn); brain.myBuilding = d.ts; brain.changes = 0; if (c) brain.seenBuilding = Math.max(brain.seenBuilding, c.modified); render(); if (chatId) renderChat(true); } }, "Load the other device's"),
+    h("div", { class: "row-c" },
+      h("button", { class: "btn mini primary", onclick: async () => { box.remove(); const c = brain.conflict; brain.conflict = null; await Motor.run({ type: "import", state: d.building }).catch(warn); brain.myBuilding = d.ts; brain.changes = 0; if (c) brain.seenBuilding = Math.max(brain.seenBuilding, c.modified); render(); if (chatId) renderChat(true); } }, "Load the other device's"),
       h("button", { class: "btn mini", onclick: async () => { box.remove(); const c = brain.conflict; brain.conflict = null; if (c) brain.seenBuilding = Math.max(brain.seenBuilding, c.modified); if (brain.ad) await writeBuilding(brain.ad).catch(warn); } }, "Keep the ones here")));
   document.body.append(box);
 }
@@ -2747,56 +2747,56 @@ async function loadBackup(text) {
 // =====================================================================
 // Events
 // =====================================================================
-$("tabEdificio").onclick = () => showTab("building");
-$("cerrarPanel").onclick = () => closePanel();
-$("abrirActividad").onclick = () => openPanel("actividad");
-$("abrirSerie").onclick = () => openScreen("builtIn");
-$("tabFicha").onclick = () => showTab("profile");
-$("tabActividad").onclick = () => showTab("actividad");
-$("actTodo").onclick = () => { activityView = "all"; renderLog(); };
+$("tabBuilding").onclick = () => showTab("building");
+$("closePanel").onclick = () => closePanel();
+$("openActivity").onclick = () => openPanel("actividad");
+$("openBuiltIn").onclick = () => openScreen("builtIn");
+$("tabProfile").onclick = () => showTab("profile");
+$("tabActivity").onclick = () => showTab("actividad");
+$("actAll").onclick = () => { activityView = "all"; renderLog(); };
 $("actJev").onclick = () => { activityView = "jev"; renderLog(); };
-$("abrirAjustes").onclick = () => openDrawer("settings");
-$("medidor").onclick = () => openDrawer("spending");
-$("hablarJefe").onclick = () => { const j = ed.boss(); if (j) openChat(j.id); };
-$("abrirMes").onclick = () => openScreen("month");
-$("abrirSalas").onclick = () => openMeetingRooms();
-$("verDibujo").onclick = () => Motor.run({ type: "settings", changes: { buildingView: "drawing" } }).then(render).catch(warn);
-$("verFranjas").onclick = () => Motor.run({ type: "settings", changes: { buildingView: "strips" } }).then(render).catch(warn);
-$("crearPiso").onclick = () => openDrawer("storey");
-$("crearAgente").onclick = () => openDrawer("agent", {});
-$("cerrarCajon").onclick = goBack;
-$("velo").onclick = goBack;
-$("cerrarChat").onclick = goBack;
-$("irPortada").onclick = showHome;
-$("volverPortada").onclick = showHome;
-$("abrirBandeja").onclick = () => openScreen("inbox");
-$("pausa").onclick = () => { const p = !ed.e.settings.pause; Motor.run({ type: "pause", pause: p }).then(() => { render(); toast(p ? "General pause on: nothing that spends wakes up on its own." : "Automatic work running: heartbeats are working again."); }).catch(warn); };
-$("copiaRapida").onclick = () => saveBackup({ withMedia: true }).catch(warn);
-$("pararVoz").onclick = () => stopAudio();
-$("verFichaChat").onclick = () => { const a = chatAgent(); closeChat(); if (a) { profileTab = "identity"; choose(a); } };
+$("openSettings").onclick = () => openDrawer("settings");
+$("meter").onclick = () => openDrawer("spending");
+$("talkToBoss").onclick = () => { const j = ed.boss(); if (j) openChat(j.id); };
+$("openMonth").onclick = () => openScreen("month");
+$("openRooms").onclick = () => openMeetingRooms();
+$("showDrawing").onclick = () => Motor.run({ type: "settings", changes: { buildingView: "drawing" } }).then(render).catch(warn);
+$("showStrips").onclick = () => Motor.run({ type: "settings", changes: { buildingView: "strips" } }).then(render).catch(warn);
+$("createFloor").onclick = () => openDrawer("storey");
+$("createAgent").onclick = () => openDrawer("agent", {});
+$("closeDrawer").onclick = goBack;
+$("overlay").onclick = goBack;
+$("closeChat").onclick = goBack;
+$("toLanding").onclick = showHome;
+$("backToLanding").onclick = showHome;
+$("openInbox").onclick = () => openScreen("inbox");
+$("pause").onclick = () => { const p = !ed.e.settings.pause; Motor.run({ type: "pause", pause: p }).then(() => { render(); toast(p ? "General pause on: nothing that spends wakes up on its own." : "Automatic work running: heartbeats are working again."); }).catch(warn); };
+$("quickBackup").onclick = () => saveBackup({ withMedia: true }).catch(warn);
+$("stopVoice").onclick = () => stopAudio();
+$("showProfileChat").onclick = () => { const a = chatAgent(); closeChat(); if (a) { profileTab = "identity"; choose(a); } };
 document.addEventListener("keydown", (e) => {
   if (e.key !== "Escape" || homeVisible()) return;
-  if (!$("cajon").hidden || chatId || screen || openFloorId) goBack();
+  if (!$("drawer").hidden || chatId || screen || openFloorId) goBack();
 });
-$("nuevaConv").onclick = () => { stopAudio(); pendingErrors = []; const a = chatAgent(); Motor.run({ type: "conversation.new", id: a ? a.id : undefined }).then(() => renderChat(true)); };
-$("enviar").onclick = () => { unlockAudio(); send(); };
-$("texto").addEventListener("keydown", (e) => { if (e.key === "Enter" && !e.shiftKey && !e.isComposing) { e.preventDefault(); unlockAudio(); send(); } });
-$("texto").addEventListener("input", grow);
+$("newChat").onclick = () => { stopAudio(); pendingErrors = []; const a = chatAgent(); Motor.run({ type: "conversation.new", id: a ? a.id : undefined }).then(() => renderChat(true)); };
+$("send").onclick = () => { unlockAudio(); send(); };
+$("messageInput").addEventListener("keydown", (e) => { if (e.key === "Enter" && !e.shiftKey && !e.isComposing) { e.preventDefault(); unlockAudio(); send(); } });
+$("messageInput").addEventListener("input", grow);
 $("micro").onclick = () => { unlockAudio(); if (conv.on) hangUp(); else startConversation(); };
-$("altavoz").onclick = () => { const on = !speakerOn(); $("altavoz").setAttribute("aria-pressed", String(on)); store.set(K.speaker, on ? "1" : "0"); if (on) unlockAudio(); else stopAudio(); };
-$("marcoJefe").onclick = () => { if (bossState === "speaking") stopAudio(); };
-$("clip").onclick = () => $("fichero").click();
-$("fichero").onchange = (ev) => {
+$("speaker").onclick = () => { const on = !speakerOn(); $("speaker").setAttribute("aria-pressed", String(on)); store.set(K.speaker, on ? "1" : "0"); if (on) unlockAudio(); else stopAudio(); };
+$("bossFrame").onclick = () => { if (bossState === "speaking") stopAudio(); };
+$("clip").onclick = () => $("fileInput").click();
+$("fileInput").onchange = (ev) => {
   const f = ev.target.files[0]; if (!f) return;
   const r = new FileReader();
   r.onload = () => {   // it's reduced to 1280 px so it's cheap to look at
     const img = new Image();
-    img.onload = () => { const s = Math.min(1, 1280 / Math.max(img.width, img.height)); const c = document.createElement("canvas"); c.width = Math.round(img.width * s); c.height = Math.round(img.height * s); c.getContext("2d").drawImage(img, 0, 0, c.width, c.height); attachment = c.toDataURL("image/jpeg", 0.85); $("adjuntoImg").src = attachment; $("adjunto").hidden = false; };
+    img.onload = () => { const s = Math.min(1, 1280 / Math.max(img.width, img.height)); const c = document.createElement("canvas"); c.width = Math.round(img.width * s); c.height = Math.round(img.height * s); c.getContext("2d").drawImage(img, 0, 0, c.width, c.height); attachment = c.toDataURL("image/jpeg", 0.85); $("attachmentImg").src = attachment; $("attachment").hidden = false; };
     img.src = r.result;
   };
   r.readAsDataURL(f); ev.target.value = "";
 };
-$("quitarAdjunto").onclick = removeAttachment;
+$("removeAttachment").onclick = removeAttachment;
 try { if (window.speechSynthesis) speechSynthesis.onvoiceschanged = () => { if (drawerType === "settings") renderSettings(); }; } catch {}
 
 // =====================================================================
@@ -2809,10 +2809,10 @@ async function singleTab() {
     navigator.locks.request("fer-edificio-pestana", { ifAvailable: true }, (l) => { res(!!l); if (l) return new Promise(() => {}); }).catch(() => res(true));
   });
   if (isMine) return true;
-  document.body.append(h("div", { class: "otra-pestana", role: "alertdialog", "aria-labelledby": "otraT" },
-    h("div", {}, h("h2", { id: "otraT" }, "The building is already open in another tab"),
+  document.body.append(h("div", { class: "other-tab", role: "alertdialog", "aria-labelledby": "otherTabTitle" },
+    h("div", {}, h("h2", { id: "otherTabTitle" }, "The building is already open in another tab"),
       h("p", {}, "Use it there. If you open it in two tabs at once, one can undo what the other does and some work would be paid for twice."),
-      h("p", { class: "nota" }, "If you close the other one, this one opens by itself."))));
+      h("p", { class: "note" }, "If you close the other one, this one opens by itself."))));
   navigator.locks.request("fer-edificio-pestana", () => { location.reload(); return new Promise(() => {}); });
   return false;
 }
@@ -2842,7 +2842,7 @@ async function syncLanguage() {
   try { history.replaceState({ v: "landing", n: 0 }, ""); } catch {}
   const enter = () => { hideHome(); markNav(); };
   renderLanding($("landing"), { h, enter, figure: (look, img) => { ensureFigure(look).then((u) => { img.src = u; }); }, languages: LANGUAGES, language, changeLanguage });
-  $("altavoz").setAttribute("aria-pressed", String(store.get(K.speaker, "0") === "1"));
+  $("speaker").setAttribute("aria-pressed", String(store.get(K.speaker, "0") === "1"));
   const home = await detectHome();
   const lists = loadLists();
   if (home) {
