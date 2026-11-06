@@ -11,13 +11,17 @@ const MODELS = [
 const MIN = 60e3;
 const isMemory = (body) => /^(You are|Eres) Memory/.test(String((body.messages && body.messages[0] && body.messages[0].content) || ""));
 
-function create({ facts = { facts: [] }, fail = false, saved = null } = {}) {
-  const calls = [], memoryCalls = [], clock = { t: Date.parse("2026-11-06T10:00:00") };
+function create({ facts = { facts: [] }, fail = false, saved = null, jev = [] } = {}) {
+  const calls = [], memoryCalls = [], jevCalls = [], clock = { t: Date.parse("2026-11-06T10:00:00") };
   let store = saved;
   const reply = (content, cost) => ({ ok: true, status: 200, headers: { get: () => null }, json: async () => ({ model: "m", choices: [{ message: { content } }], usage: { prompt_tokens: 100, completion_tokens: 20, cost } }) });
   const fetch = async (url, init) => {
     const body = init && init.body ? JSON.parse(init.body) : {};
     calls.push(body);
+    if (body.questions) {   // JEV (OpenRouter's decisions API): the answers given in order
+      jevCalls.push(body);
+      return { ok: true, status: 200, headers: { get: () => null }, json: async () => ({ answers: { decision: { choice: jev[jevCalls.length - 1] || "go_ahead" } }, usage: { cost: 0.00002 } }) };
+    }
     if (isMemory(body)) {
       memoryCalls.push(body);
       if (fail) throw new Error("network down");
@@ -27,7 +31,7 @@ function create({ facts = { facts: [] }, fail = false, saved = null } = {}) {
   };
   const ed = new Building({ load: async () => store, save: async (j) => { store = j; }, key: () => "sk-or-test", fetch, now: () => clock.t });
   ed.setModels(MODELS);
-  return { ed, calls, memoryCalls, clock, saved: () => store };
+  return { ed, calls, memoryCalls, jevCalls, clock, saved: () => store };
 }
 
 test("a conversation that goes quiet is filed: each fact under its topic, with where it came from; it works with the pause on", async () => {
@@ -117,4 +121,22 @@ test("what the model answers is read in any of its usual shapes", () => {
   assert.deepEqual(memoryFacts('[{"topic": "A", "text": "x"}]'), [{ topic: "A", text: "x" }]);
   assert.deepEqual(memoryFacts("Here you are: {\"facts\": []}"), []);
   assert.deepEqual(memoryFacts("nothing"), []);
+});
+
+test("with JEV in the building, JEV decides first: small talk isn't filed and costs nothing more; something useful is", async () => {
+  const { ed, memoryCalls, jevCalls, clock } = create({ jev: ["stop", "go_ahead"], facts: { facts: [{ topic: "Hierros Norte", text: "Hierros Norte delivers the steel on Thursday 12 November 2026." }] } });
+  await ed.start("basic", "en");
+  assert.ok(ed.agent("jev") && ed.agent("memory"), "the recommended team has JEV and Memory");
+  await ed.speak("Hello! How are you?"); clock.t += 11 * MIN; await ed.tick();
+  assert.equal(jevCalls.length, 1, "Memory asks JEV first");
+  assert.match(jevCalls[0].state.join("\n"), /File in the long-term memory what matters from the chat with Boss/);
+  assert.match(jevCalls[0].state.join("\n"), /What was said:\nOwner: Hello! How are you\?/, "JEV reads what was said");
+  assert.equal(memoryCalls.length, 0, "JEV says stop: nothing is filed and the cheap model isn't paid for");
+  assert.ok(ed.e.log.some((l) => l.agent === "memory" && /didn't file the chat with Boss: JEV says “stop”/.test(l.text)));
+  assert.equal(ed.e.jevQueries.at(-1).did, "not filed");
+  await ed.speak("Hierros Norte delivers the steel on Thursday."); clock.t += 11 * MIN; await ed.tick();
+  assert.equal(jevCalls.length, 2); assert.equal(memoryCalls.length, 1, "JEV says go ahead: it's filed");
+  assert.doesNotMatch(memoryCalls[0].messages[1].content, /Hello! How are you/, "what JEV turned down isn't sent again");
+  assert.equal(ed.e.longMemory.at(-1).topic, "Hierros Norte");
+  assert.equal(ed.e.jevQueries.at(-1).did, "filed 1 fact");
 });

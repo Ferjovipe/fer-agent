@@ -1652,6 +1652,12 @@ export default {
   "The same one as for the lessons ({1})": "El mismo que para las lecciones ({1})",
   "Automatic memory": "Memoria automática",
   "Memory saves on its own what matters from each conversation": "Memory guarda sola lo importante de cada conversación",
-  "When a chat has been quiet for 10 minutes, a cheap model reads it and files the facts in the long-term memory, each one under its topic (one per person or company and one per project). The agent you talked to pays for it. It also works with the general pause on: it's the end of a conversation you had.": "Cuando un chat lleva 10 minutos en silencio, un modelo barato lo lee y archiva los datos en la memoria larga, cada uno en su tema (uno por persona o empresa y uno por proyecto). Lo paga el agente con el que hablaste. También funciona con la pausa general puesta: es el final de una conversación que tuviste tú.",
-  "Model Memory files with": "Modelo con el que archiva Memory"
+  "When a chat has been quiet for 10 minutes, a cheap model reads it and files the facts in the long-term memory, each one under its topic (one per person or company and one per project). If the building has JEV, JEV decides first whether it's worth it. The agent you talked to pays for it. It also works with the general pause on: it's the end of a conversation you had.": "Cuando un chat lleva 10 minutos en silencio, un modelo barato lo lee y archiva los datos en la memoria larga, cada uno en su tema (uno por persona o empresa y uno por proyecto). Si el edificio tiene JEV, JEV decide antes si merece la pena. Lo paga el agente con el que hablaste. También funciona con la pausa general puesta: es el final de una conversación que tuviste tú.",
+  "Model Memory files with": "Modelo con el que archiva Memory",
+  "File in the long-term memory what matters from the chat with {1}": "Archivar en la memoria larga lo importante del chat con {1}",
+  "What was said:\n{1}": "Lo que se dijo:\n{1}",
+  "Already in the long-term memory about it:\n{1}": "Lo que ya hay sobre eso en la memoria larga:\n{1}",
+  "not filed": "no archivado",
+  "didn't file the chat with {1}: JEV says “{2}”": "no archivó el chat con {1}: JEV dice «{2}»",
+  "filed {1} {2}": "archivó {1} {2}"
 };

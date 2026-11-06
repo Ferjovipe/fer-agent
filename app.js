@@ -2302,7 +2302,7 @@ function renderSettings() {
   const selMem = modelPicker("text", aj.memoryModel, { empty: tr("The same one as for the lessons ({1})").replace("{1}", modelName(aj.lessonsModel || chooseModel("budget", ed.models)) || tr("none")), onChange: (v) => saveSetting({ memoryModel: v }) });
   c.append(h("div", { class: "block" }, h("h4", {}, "Automatic memory"),
     h("label", { class: "cap" }, chkMem, h("span", {}, "Memory saves on its own what matters from each conversation",
-      h("small", {}, "When a chat has been quiet for 10 minutes, a cheap model reads it and files the facts in the long-term memory, each one under its topic (one per person or company and one per project). The agent you talked to pays for it. It also works with the general pause on: it's the end of a conversation you had."))),
+      h("small", {}, "When a chat has been quiet for 10 minutes, a cheap model reads it and files the facts in the long-term memory, each one under its topic (one per person or company and one per project). If the building has JEV, JEV decides first whether it's worth it. The agent you talked to pays for it. It also works with the general pause on: it's the end of a conversation you had."))),
     field("Model Memory files with", selMem)));
   // the building's default models (each agent can choose its own in its profile → Capabilities)
   const selView = modelPicker("text", aj.visionModel, { empty: "None", filter: (m) => modelData(m).sees, onChange: (v) => saveSetting({ visionModel: v }) });

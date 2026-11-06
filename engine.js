@@ -1377,6 +1377,16 @@ export class Building {
     const last = Math.max(...news.map((m) => Number(m.ts) || 0));
     const text = news.map((m) => `${m.role === "user" ? this.L("Owner") : a.name}: ${String(m.content).replace(/\s+/g, " ").slice(0, 2000)}`).join("\n");
     const known = this.searchMemory(text, 8, true), topics = this.memoryTopics().slice(0, 150), mem = this.agent("memory");
+    // JEV decides first whether it's worth filing (small talk, or already in the memory: it isn't filed and nothing more is spent)
+    // (a building without JEV files it straight away)
+    const c = !this.byRoleList("jev").length ? { final: "go_ahead" } : await this.askJev(mem || payer, this.F("File in the long-term memory what matters from the chat with {1}", a.name), "memory", { noBoss: true,
+      context: [this.F("What was said:\n{1}", text.slice(-1500)), this.F("Already in the long-term memory about it:\n{1}", known.length ? this.memoryText(known.slice(0, 4)) : this.L("(nothing)"))] });
+    if (c.final === "stop" || c.final === "reuse") {
+      a.memoryUpTo = last; c.did = this.L("not filed");
+      this.logActivity(mem || payer, this.F("didn't file the chat with {1}: JEV says “{2}”", a.name, this.L(DECISION_NAMES[c.final])), 0);
+      await this.save();
+      return { agent: a.id, saved: 0, cost: 0, jev: c.final };
+    }
     let r;
     try {
       r = await this.callOpenRouter(payer, this.memoryModel(), [
@@ -1401,6 +1411,7 @@ export class Building {
       saved.push(this.saveMemory(t + this.F(" (chat with {1})", a.name), Array.isArray(f.tags) ? f.tags : [], mem ? mem.id : "", this.existingTopic(f.topic)));
     }
     this.logActivity(mem || payer, this.F("filed the chat with {1}: {2} {3}", a.name, saved.length, saved.length === 1 ? this.L("fact") : this.L("facts")), 0);   // without a Memory agent, in the activity of the one who paid
+    c.did = this.F("filed {1} {2}", saved.length, saved.length === 1 ? this.L("fact") : this.L("facts")); c.cost = r.cost;   // in JEV's list: what it did and what it cost
     await this.save();
     return { agent: a.id, saved: saved.length, cost: r.cost };
   }
@@ -1816,7 +1827,7 @@ export class Building {
 
   // ---------------- JEV: before spending, it decides ----------------
   // It only gets who the agent is, what it's about to do and its short memory. It answers with one of four options and its probability.
-  async askJev(a, action, type) {
+  async askJev(a, action, type, op = {}) {   // op.context: more for JEV to read; op.noBoss: «ask the boss» counts as «go ahead» (not worth a call to the boss)
     const jev = this.byRoleList("jev")[0];
     const input = { id: uid("j_"), ts: this.now(), agent: a.id, name: a.name, type, action: String(action).slice(0, 400),
       decision: "", probabilities: null, confidence: null, final: "go_ahead", text: "", jevCost: 0, did: "", cost: 0, helped: null };
@@ -1830,7 +1841,7 @@ export class Building {
     const memory = a.shortMemory.slice(-8).map((m) => `- ${new Date(m.ts).toLocaleString(LOCALE)}: ${String(m.text).slice(0, 300)}`).join("\n") || this.L("(empty)");
     const body = {
       model: jev.brain || JEV_MODEL,
-      state: [this.F("Who it is: {1}, {2}{3}.", a.name, this.L((ROLES[a.role] || {}).name || a.role), a.objective ? this.L(". Its objective: ") + a.objective : ""), this.F("What it's going to do: {1}", action), this.F("Its short memory:\n{1}", memory)],
+      state: [this.F("Who it is: {1}, {2}{3}.", a.name, this.L((ROLES[a.role] || {}).name || a.role), a.objective ? this.L(". Its objective: ") + a.objective : ""), this.F("What it's going to do: {1}", action), this.F("Its short memory:\n{1}", memory), ...(op.context || [])],
       questions: { decision: { type: "choice", instructions: this.L("What should this agent do now, before spending?"), criteria: {
         go_ahead: this.L("What it's going to do is useful and not done yet: let it do it."),
         reuse: this.L("There's already something useful in its short memory: let it use what's there without spending again."),
@@ -1855,7 +1866,7 @@ export class Building {
       const pct = ans.probabilities && typeof ans.probabilities[chosen] === "number" ? ` (${Math.round(ans.probabilities[chosen] * 100)} %)` : "";
       input.text = this.L(DECISION_NAMES[chosen]) + pct;
       input.final = chosen;
-      if (chosen === "ask_boss") input.final = await this.askTheBoss(a, action, input);
+      if (chosen === "ask_boss") input.final = op.noBoss ? "go_ahead" : await this.askTheBoss(a, action, input);
       this.logActivity(jev, this.F("{1} wants “{2}”: {3}{4}", a.name, input.action.slice(0, 100), input.text, chosen === "ask_boss" ? this.L(" → the boss says ") + this.L(DECISION_NAMES[input.final]) : ""), 0);
       return input;
     } catch (err) {
