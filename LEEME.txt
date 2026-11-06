@@ -379,7 +379,7 @@ Seguridad
   Y las skills de leer y buscar solo van a internet: nunca a tu router, a tu red de casa, a este
   ordenador ni a las direcciones internas de un servidor.
 - El Chrome de los agentes es un perfil aparte (datos/chrome-agentes): no ve tus contraseñas ni tus sesiones.
-- Cada skill tiene un tiempo máximo (5 minutos; el Vigía, 8; se cambia con «tiempo:» en su SKILL.md).
+- Cada skill tiene un tiempo máximo (5 minutos; el Vigía, 8; se cambia con «timeout:» en su SKILL.md).
   Si una página se cuelga, la skill se para, se cierra su Chrome y la siguiente sigue.
 - Fer Casa habla sin https: úsalo en tu red de casa o con un túnel seguro.
 
@@ -387,10 +387,13 @@ Pruebas (para quien quiera comprobarlo)
 ---------------------------------------
   node --test pruebas/motor.test.mjs pruebas/motor7.test.mjs pruebas/vigia.test.mjs   el motor y el Vigía
   node --test pruebas/motor82.test.mjs   el motor en inglés
+  node --test pruebas/motor9.test.mjs    los edificios de versiones anteriores pasan a la 9 sin perder nada
   python3 pruebas/web_test.py      la web, lo de la versión 6 (necesita Playwright)
   python3 pruebas/web7_test.py     la web, lo de la versión 7
   python3 pruebas/web8_test.py     la web, lo nuevo de la versión 8
   python3 pruebas/web82_test.py    la web en inglés: ninguna pantalla con restos de español
+  python3 pruebas/web9_storage_test.py   un navegador que usó una versión anterior conserva su edificio, sus imágenes y su Biblioteca
   python3 pruebas/casa_test.py     Fer Casa
   python3 pruebas/casa7_test.py    Fer Casa con manos, Telegram, carpeta del cerebro y otra API
-  (casa_test y casa7_test arrancan Fer Casa con el equipo recomendado: FER_PLANTILLA=basico)
+  (casa_test y casa7_test arrancan Fer Casa con el equipo recomendado: FER_TEMPLATE=basic; casa_test usa los nombres
+   de antes de la versión 9, FER_PLANTILLA=basico, que también valen)

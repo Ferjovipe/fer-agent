@@ -2,9 +2,9 @@
 name: leer-archivo
 title: Read from its folder
 description: Reads a text file from the agents' folder on your computer, or lists what's in one of its subfolders. It can't leave that folder.
-efecto: lee
-fija: false
-datos: {"path": "notes/example.md"}
+effect: read
+fixed: false
+data: {"path": "notes/example.md"}
 script: leer.mjs
 ---
 # Read from its folder

@@ -2,9 +2,9 @@
 name: escribir-archivo
 title: Write in its folder
 description: Saves a text file in the agents' folder on your computer (or adds to the end of one). It has an effect outside the website, so each time it asks for your permission in the inbox.
-efecto: externo
-fija: false
-datos: {"path": "reports/today.md", "text": "…", "append": false}
+effect: external
+fixed: false
+data: {"path": "reports/today.md", "text": "…", "append": false}
 script: escribir.mjs
 ---
 # Write in its folder

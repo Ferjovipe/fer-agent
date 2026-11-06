@@ -1,0 +1,1348 @@
+{
+ "version": "8.3",
+ "nombre": "My building",
+ "plantilla": "basico",
+ "creado": 1793948658185,
+ "ajustes": {
+  "topeDiario": 1,
+  "topeMensual": 20,
+  "congelarDesde": 0.8,
+  "modeloVista": "",
+  "modeloImagen": "",
+  "modeloMusica": "",
+  "modeloVoz": "",
+  "vozConcreta": "",
+  "modeloOido": "openai/whisper-large-v3-turbo",
+  "responderEnVozSiMicro": true,
+  "altavoz": false,
+  "leccionesPorPapel": 5,
+  "recomendados": {
+   "texto": {
+    "economico": [
+     "openai/gpt-6-luna",
+     "deepseek/deepseek-v4.1-flash"
+    ],
+    "alto": [
+     "anthropic/claude-opus-5.5",
+     "openai/gpt-6.1-sol"
+    ]
+   },
+   "imagen": {},
+   "musica": {},
+   "voz": {},
+   "oido": {},
+   "decisiones": {},
+   "otros": {}
+  },
+  "vistaEdificio": "franjas",
+  "pausa": false,
+  "modeloLecciones": "",
+  "vozCorta": true,
+  "carpetasCerebro": {
+   "biblioteca": "Library",
+   "memoria": "Long-term memory",
+   "indice": "Index",
+   "copia": "building.json"
+  },
+  "conexiones": [
+   {
+    "id": "mia",
+    "nombre": "Mi API",
+    "api": "https://api.mia.example/v1/",
+    "formato": "openai"
+   }
+  ]
+ },
+ "plantas": [
+  {
+   "id": "cupula",
+   "nombre": "Dome",
+   "funcion": "Management: the boss and the council of sages",
+   "tipo": "cupula"
+  },
+  {
+   "id": "tecnica",
+   "nombre": "Tech floor",
+   "funcion": "Keeps the building running: onboarding, checks, backups, order and security, and costs",
+   "tipo": "piso",
+   "oficinas": 5,
+   "pools": 1
+  },
+  {
+   "id": "vestibulo",
+   "nombre": "Lobby",
+   "funcion": "Reception and the building's memory",
+   "tipo": "vestibulo"
+  }
+ ],
+ "agentes": [
+  {
+   "id": "jefe",
+   "nombre": "Boss",
+   "rol": "jefe",
+   "planta": "cupula",
+   "puesto": "centro",
+   "reportaA": "",
+   "cuerpo": "You are the building's boss and the main way to communicate with the whole team. You always reply in the language you are spoken to, clearly and directly: the answer first and then the detail if needed. You lead and oversee the rest of the agents: you hand tasks to the right agent, review their reports and keep an eye on spending. If you are asked for a new agent, you ask the Agent Creator to make it. You consult the council of sages only when something of the utmost importance has to be decided, because their advice is expensive. If you don't know something, you say so; you don't make up data.",
+   "objetivo": "That the team does what its owner asks, without overspending.",
+   "personalidad": "",
+   "cerebro": "anthropic/claude-sonnet-5.5",
+   "proveedor": "openrouter",
+   "siAgota": "openrouter",
+   "cerebroReserva": "",
+   "habilidades": [],
+   "skillFija": null,
+   "falta": null,
+   "voz": {
+    "modelo": "",
+    "voz": ""
+   },
+   "oido": "",
+   "modeloImagen": "",
+   "modeloMusica": "",
+   "chat": [],
+   "latido": {
+    "cada": 1,
+    "unidad": "d"
+   },
+   "alDespertar": "tareas",
+   "prioridad": 5,
+   "capacidades": [
+    "escribir",
+    "buscar",
+    "ver",
+    "crear_imagenes",
+    "hablar",
+    "oir"
+   ],
+   "apagado": false,
+   "topeDiario": 0,
+   "aspecto": {
+    "p": "chico",
+    "ropa": null,
+    "ojos": null,
+    "pelo": null,
+    "piel": null
+   },
+   "estado": "reposo",
+   "motivoEstado": "",
+   "proximo": 1794402000000,
+   "ultimo": 1794315600000,
+   "memoriaCorta": [
+    {
+     "ts": 1794229200000,
+     "tipo": "chat",
+     "texto": "Conversation: “Hello” → Here is my answer."
+    },
+    {
+     "ts": 1794229200000,
+     "tipo": "chat",
+     "texto": "Conversation: “Ask the sages whether we should open an office” → Here is my answer."
+    },
+    {
+     "ts": 1794229200000,
+     "tipo": "chat",
+     "texto": "Conversation: “Call a meeting with Tecno” → Here is my answer."
+    },
+    {
+     "ts": 1794229200000,
+     "tipo": "reunion",
+     "texto": "Minutes of the meeting “Weekly plan”: Here is my answer."
+    },
+    {
+     "ts": 1794229200000,
+     "tipo": "informe",
+     "texto": "Artie says it's missing: a list of AI newsletters."
+    },
+    {
+     "ts": 1794229200000,
+     "tipo": "informe",
+     "texto": "Status report from Techie: Onboarding of Boss reviewed: profile complete; it wakes up every day.\nOnboarding of Sage 1 reviewed: profile complete; it wakes up on request only.\nOnboarding of Sage 2 reviewed: profile complete; it wakes up on request only.\nOnboarding of Artie reviewed: profile complete; it wakes up every day.\nOnboarding of Agent Creator reviewed: profile complete; it wakes up on request only.\nOnboarding of JEV reviewed: profile complete; it wakes up on request only.\nOnboarding of Controller reviewed: profile complete; it wakes up every hour.\nOnboarding of Memory reviewed: profile complete; it wakes up on re"
+    }
+   ],
+   "tareas": [],
+   "gasto": {
+    "2026-11-09": 0.007
+   },
+   "creado": 1794229200000,
+   "suscripcion": {}
+  },
+  {
+   "id": "sabio1",
+   "nombre": "Sage 1",
+   "rol": "sabio",
+   "planta": "cupula",
+   "puesto": "izquierda",
+   "reportaA": "",
+   "cuerpo": "You are a sage on the council. You only speak when the boss consults you on an important decision. You give considered advice, with the main risks and your confidence level (high, moderate or low). 200 words maximum.",
+   "objetivo": "",
+   "personalidad": "",
+   "cerebro": "anthropic/claude-opus-5.5",
+   "proveedor": "openrouter",
+   "siAgota": "openrouter",
+   "cerebroReserva": "",
+   "habilidades": [],
+   "skillFija": null,
+   "falta": null,
+   "voz": {
+    "modelo": "",
+    "voz": ""
+   },
+   "oido": "",
+   "modeloImagen": "",
+   "modeloMusica": "",
+   "chat": [],
+   "latido": {
+    "cada": 1,
+    "unidad": "peticion"
+   },
+   "alDespertar": "tareas",
+   "prioridad": 4,
+   "capacidades": [
+    "escribir",
+    "hablar",
+    "oir"
+   ],
+   "apagado": false,
+   "topeDiario": 1,
+   "aspecto": {
+    "p": "abuelo",
+    "ropa": null,
+    "ojos": null,
+    "pelo": null,
+    "piel": null
+   },
+   "estado": "reposo",
+   "motivoEstado": "",
+   "proximo": 9000000000000000,
+   "ultimo": 0,
+   "memoriaCorta": [
+    {
+     "ts": 1794229200000,
+     "tipo": "consejo",
+     "texto": "Advice on “Should we open a new office?”: Here is my answer."
+    }
+   ],
+   "tareas": [],
+   "gasto": {
+    "2026-11-09": 0.001
+   },
+   "creado": 1794229200000,
+   "suscripcion": {}
+  },
+  {
+   "id": "sabio2",
+   "nombre": "Sage 2",
+   "rol": "sabio",
+   "planta": "cupula",
+   "puesto": "derecha",
+   "reportaA": "",
+   "cuerpo": "You are a sage on the council. You only speak when the boss consults you on an important decision. You push back if you see a mistake: you give the strongest counter-argument, the risks and your confidence level. 200 words maximum.",
+   "objetivo": "",
+   "personalidad": "",
+   "cerebro": "openai/gpt-6.1-sol",
+   "proveedor": "openrouter",
+   "siAgota": "openrouter",
+   "cerebroReserva": "",
+   "habilidades": [],
+   "skillFija": null,
+   "falta": null,
+   "voz": {
+    "modelo": "",
+    "voz": ""
+   },
+   "oido": "",
+   "modeloImagen": "",
+   "modeloMusica": "",
+   "chat": [],
+   "latido": {
+    "cada": 1,
+    "unidad": "peticion"
+   },
+   "alDespertar": "tareas",
+   "prioridad": 4,
+   "capacidades": [
+    "escribir",
+    "hablar",
+    "oir"
+   ],
+   "apagado": false,
+   "topeDiario": 1,
+   "aspecto": {
+    "p": "abuela",
+    "ropa": null,
+    "ojos": null,
+    "pelo": null,
+    "piel": null
+   },
+   "estado": "reposo",
+   "motivoEstado": "",
+   "proximo": 9000000000000000,
+   "ultimo": 0,
+   "memoriaCorta": [
+    {
+     "ts": 1794229200000,
+     "tipo": "consejo",
+     "texto": "Advice on “Should we open a new office?”: Here is my answer."
+    }
+   ],
+   "tareas": [],
+   "gasto": {
+    "2026-11-09": 0.001
+   },
+   "creado": 1794229200000,
+   "suscripcion": {}
+  },
+  {
+   "id": "tecno",
+   "nombre": "Techie",
+   "rol": "tecno",
+   "planta": "tecnica",
+   "puesto": "despacho",
+   "reportaA": "jefe",
+   "cuerpo": "You are Techie, the building's technician. You make sure everything works on the inside: onboarding new agents (their profile complete and their schedule right); a check every other night (that each agent has done its work and left its mark, and you warn if any fails); backups on Fridays; order and security (clearing what has been dealt with, finding duplicates and making sure nothing is sent, deleted or paid without the owner's yes); and costs on Mondays (how much each part spends and whether what it achieves is worth it). You write short reports, with data and no frills.",
+   "objetivo": "That the building runs without failures, with backups up to date and no costs that don't pay off.",
+   "personalidad": "",
+   "cerebro": "openai/gpt-6-luna",
+   "proveedor": "openrouter",
+   "siAgota": "openrouter",
+   "cerebroReserva": "",
+   "habilidades": [],
+   "skillFija": null,
+   "falta": null,
+   "voz": {
+    "modelo": "",
+    "voz": ""
+   },
+   "oido": "",
+   "modeloImagen": "",
+   "modeloMusica": "",
+   "chat": [
+    {
+     "role": "user",
+     "content": "How is everything?",
+     "ts": 1794229200000,
+     "voz": ""
+    },
+    {
+     "role": "assistant",
+     "content": "Here is my answer.",
+     "ts": 1794229200000,
+     "coste": 0.001,
+     "modelo": "m",
+     "eventos": [],
+     "imagenes": [],
+     "audios": []
+    }
+   ],
+   "latido": {
+    "cada": 1,
+    "unidad": "d"
+   },
+   "alDespertar": "objetivo",
+   "prioridad": 5,
+   "capacidades": [
+    "escribir",
+    "hablar",
+    "oir"
+   ],
+   "apagado": false,
+   "topeDiario": 0.05,
+   "aspecto": {
+    "p": "chico",
+    "ropa": "#2A2C36",
+    "ojos": null,
+    "pelo": "#1E1A18",
+    "piel": null
+   },
+   "estado": "reposo",
+   "motivoEstado": "",
+   "proximo": 1794402000000,
+   "ultimo": 1794315600000,
+   "memoriaCorta": [
+    {
+     "ts": 1794229200000,
+     "tipo": "chat",
+     "texto": "Conversation: “How is everything?” → Here is my answer."
+    },
+    {
+     "ts": 1794229200000,
+     "tipo": "resultado",
+     "texto": "Onboarding of Boss reviewed: profile complete; it wakes up every day.\nOnboarding of Sage 1 reviewed: profile complete; it wakes up on request only.\nOnboarding of Sage 2 reviewed: profile complete; it wakes up on request only.\nOnboarding of Artie reviewed: profile complete; it wakes up every day.\nOnboarding of Agent Creator reviewed: profile complete; it wakes up on request only.\nOnboarding of JEV reviewed: profile complete; it wakes up on request only.\nOnboarding of Controller reviewed: profile complete; it wakes up every hour.\nOnboarding of Memory reviewed: profile complete; it wakes up on request only.\nCheck: every agent has done its work and left its mark.\nCosts over the last 7 days: $0.0120. By floor: Dome $0.0090, Tech floor $0.0030. Biggest spenders: Boss $0.0070, Techie $0.0020, Sage 1 $0.0010, Sage 2 $0.0010, Artie $0.0010.\nHere is my answer."
+    },
+    {
+     "ts": 1794315600000,
+     "tipo": "resultado",
+     "texto": ""
+    }
+   ],
+   "tareas": [],
+   "gasto": {
+    "2026-11-09": 0.004
+   },
+   "creado": 1794229200000,
+   "suscripcion": {}
+  },
+  {
+   "id": "arturito",
+   "nombre": "Artie",
+   "rol": "mejora",
+   "planta": "tecnica",
+   "puesto": "oficina",
+   "reportaA": "jefe",
+   "cuerpo": "You are Artie, in charge of continuous improvement. You know how this building is set up, you follow every day how AI agents are advancing out there and you propose concrete improvements to the boss: new functions, changes in structure, agents that are missing or not needed. Your job is to improve the building, not to make money: if you see a business idea, you pass it to the boss. Each proposal comes with its reason and what it would cost. You also keep an eye on OpenRouter's models: if one comes out that is better than the recommended ones at its level, you propose it.",
+   "objetivo": "A short daily report with what's new and worth it and the improvements you propose.",
+   "personalidad": "",
+   "cerebro": "openai/gpt-6-luna",
+   "proveedor": "openrouter",
+   "siAgota": "openrouter",
+   "cerebroReserva": "",
+   "habilidades": [],
+   "skillFija": null,
+   "falta": {
+    "texto": "a list of AI newsletters.",
+    "ts": 1794229200000,
+    "tarea": "Send me the AI news"
+   },
+   "voz": {
+    "modelo": "",
+    "voz": ""
+   },
+   "oido": "",
+   "modeloImagen": "",
+   "modeloMusica": "",
+   "chat": [],
+   "latido": {
+    "cada": 1,
+    "unidad": "d"
+   },
+   "alDespertar": "objetivo",
+   "prioridad": 3,
+   "capacidades": [
+    "escribir",
+    "buscar",
+    "hablar",
+    "oir"
+   ],
+   "apagado": false,
+   "topeDiario": 0.05,
+   "aspecto": {
+    "p": "chico",
+    "ropa": "#E8C22C",
+    "ojos": null,
+    "pelo": "#8B5A2B",
+    "piel": null
+   },
+   "estado": "reposo",
+   "motivoEstado": "",
+   "proximo": 1794315600000,
+   "ultimo": 1794229200000,
+   "memoriaCorta": [
+    {
+     "ts": 1794229200000,
+     "tipo": "falta",
+     "texto": "Missing: a list of AI newsletters."
+    }
+   ],
+   "tareas": [
+    {
+     "id": "t_9ysmkfpnov",
+     "de": "",
+     "texto": "Send me the AI news",
+     "estado": "parada",
+     "creada": 1794229200000,
+     "resultado": "Missing: a list of AI newsletters.",
+     "hecha": 1794229200000
+    }
+   ],
+   "gasto": {
+    "2026-11-09": 0.001
+   },
+   "creado": 1794229200000,
+   "suscripcion": {}
+  },
+  {
+   "id": "creador",
+   "nombre": "Agent Creator",
+   "rol": "creador",
+   "planta": "tecnica",
+   "puesto": "oficina",
+   "reportaA": "jefe",
+   "cuerpo": "You are the Agent Creator. When someone describes in their own words the agent they want, you design its complete profile: name, role, floor and spot, clear instructions, objective, a suitable brain (the cheapest one that can do it well), heartbeat, capabilities and appearance.",
+   "objetivo": "",
+   "personalidad": "",
+   "cerebro": "anthropic/claude-sonnet-5.5",
+   "proveedor": "openrouter",
+   "siAgota": "openrouter",
+   "cerebroReserva": "",
+   "habilidades": [],
+   "skillFija": null,
+   "falta": null,
+   "voz": {
+    "modelo": "",
+    "voz": ""
+   },
+   "oido": "",
+   "modeloImagen": "",
+   "modeloMusica": "",
+   "chat": [],
+   "latido": {
+    "cada": 1,
+    "unidad": "peticion"
+   },
+   "alDespertar": "tareas",
+   "prioridad": 4,
+   "capacidades": [
+    "escribir",
+    "hablar",
+    "oir"
+   ],
+   "apagado": false,
+   "topeDiario": 0,
+   "aspecto": {
+    "p": "chica",
+    "ropa": "#7B3FB5",
+    "ojos": null,
+    "pelo": null,
+    "piel": null
+   },
+   "estado": "reposo",
+   "motivoEstado": "",
+   "proximo": 9000000000000000,
+   "ultimo": 0,
+   "memoriaCorta": [],
+   "tareas": [],
+   "gasto": {
+    "2026-11-09": 0.001
+   },
+   "creado": 1794229200000,
+   "suscripcion": {}
+  },
+  {
+   "id": "jev",
+   "nombre": "JEV",
+   "rol": "jev",
+   "planta": "tecnica",
+   "puesto": "oficina",
+   "reportaA": "tecno",
+   "cuerpo": "You are JEV. Before an agent does something that costs money (searching the internet, retrying something that failed, creating another agent, repeating work already done), you decide, from its profile, what it is about to do and its short memory, whether it should go ahead, reuse what is already there, stop or ask the boss.",
+   "objetivo": "",
+   "personalidad": "",
+   "cerebro": "~typesafe/jev-latest",
+   "proveedor": "openrouter",
+   "siAgota": "openrouter",
+   "cerebroReserva": "",
+   "habilidades": [],
+   "skillFija": null,
+   "falta": null,
+   "voz": {
+    "modelo": "",
+    "voz": ""
+   },
+   "oido": "",
+   "modeloImagen": "",
+   "modeloMusica": "",
+   "chat": [],
+   "latido": {
+    "cada": 1,
+    "unidad": "peticion"
+   },
+   "alDespertar": "tareas",
+   "prioridad": 5,
+   "capacidades": [],
+   "apagado": false,
+   "topeDiario": 0,
+   "aspecto": {
+    "p": "chico",
+    "ropa": "#8E1B2C",
+    "ojos": null,
+    "pelo": "#5A3820",
+    "piel": null
+   },
+   "estado": "reposo",
+   "motivoEstado": "",
+   "proximo": 9000000000000000,
+   "ultimo": 0,
+   "memoriaCorta": [],
+   "tareas": [],
+   "gasto": {
+    "2026-11-09": 2e-05
+   },
+   "creado": 1794229200000,
+   "suscripcion": {}
+  },
+  {
+   "id": "interventor",
+   "nombre": "Controller",
+   "rol": "interventor",
+   "planta": "tecnica",
+   "puesto": "oficina",
+   "reportaA": "tecno",
+   "cuerpo": "You watch the spending with fixed rules, without a brain: you freeze the least important agents when spending gets close to the cap and you write the daily report.",
+   "objetivo": "",
+   "personalidad": "",
+   "cerebro": "",
+   "proveedor": "openrouter",
+   "siAgota": "openrouter",
+   "cerebroReserva": "",
+   "habilidades": [],
+   "skillFija": null,
+   "falta": null,
+   "voz": {
+    "modelo": "",
+    "voz": ""
+   },
+   "oido": "",
+   "modeloImagen": "",
+   "modeloMusica": "",
+   "chat": [],
+   "latido": {
+    "cada": 1,
+    "unidad": "h"
+   },
+   "alDespertar": "tareas",
+   "prioridad": 5,
+   "capacidades": [],
+   "apagado": false,
+   "topeDiario": 0,
+   "aspecto": {
+    "p": "chica",
+    "ropa": "#2E9E5B",
+    "ojos": null,
+    "pelo": "#1E1A18",
+    "piel": null
+   },
+   "estado": "reposo",
+   "motivoEstado": "",
+   "proximo": 1794319200000,
+   "ultimo": 1794315600000,
+   "memoriaCorta": [],
+   "tareas": [],
+   "gasto": {},
+   "creado": 1794229200000,
+   "suscripcion": {}
+  },
+  {
+   "id": "memory",
+   "nombre": "Memory",
+   "rol": "memory",
+   "planta": "vestibulo",
+   "puesto": "recepcion",
+   "reportaA": "",
+   "cuerpo": "You keep the building's long-term memory and search it by keywords when someone says “remember”. No brain: it doesn't spend.",
+   "objetivo": "",
+   "personalidad": "",
+   "cerebro": "",
+   "proveedor": "openrouter",
+   "siAgota": "openrouter",
+   "cerebroReserva": "",
+   "habilidades": [],
+   "skillFija": null,
+   "falta": null,
+   "voz": {
+    "modelo": "",
+    "voz": ""
+   },
+   "oido": "",
+   "modeloImagen": "",
+   "modeloMusica": "",
+   "chat": [],
+   "latido": {
+    "cada": 1,
+    "unidad": "peticion"
+   },
+   "alDespertar": "tareas",
+   "prioridad": 5,
+   "capacidades": [],
+   "apagado": false,
+   "topeDiario": 0,
+   "aspecto": {
+    "p": "chica",
+    "ropa": "#1F3A93",
+    "ojos": null,
+    "pelo": "#E0B85A",
+    "piel": null
+   },
+   "estado": "reposo",
+   "motivoEstado": "",
+   "proximo": 9000000000000000,
+   "ultimo": 0,
+   "memoriaCorta": [],
+   "tareas": [],
+   "gasto": {},
+   "creado": 1794229200000,
+   "suscripcion": {}
+  },
+  {
+   "id": "ag_rs0f3tqitg",
+   "nombre": "Vigía de X",
+   "rol": "subagente",
+   "planta": "tecnica",
+   "puesto": "oficina",
+   "reportaA": "jefe",
+   "cuerpo": "Vigilas X y pasas los tweets que cumplen la regla.",
+   "objetivo": "",
+   "personalidad": "",
+   "cerebro": "openai/gpt-6-luna",
+   "proveedor": "openrouter",
+   "siAgota": "openrouter",
+   "cerebroReserva": "",
+   "habilidades": [
+    "vigia-x"
+   ],
+   "skillFija": {
+    "skill": "vigia-x",
+    "ajustes": {
+     "terminos": [
+      "\"inteligencia artificial\"",
+      "\"AI agents\""
+     ],
+     "minutos": 10,
+     "minimo": 3,
+     "desplazamientos": 1,
+     "base": "http://127.0.0.1:9924"
+    },
+    "estado": {
+     "vistos": {
+      "201": {
+       "inter": 4,
+       "ts": 1793948701451,
+       "rep": true
+      },
+      "202": {
+       "inter": 1,
+       "ts": 1793948701451,
+       "rep": false
+      },
+      "203": {
+       "inter": 940,
+       "ts": 1793948701451,
+       "rep": false
+      }
+     }
+    }
+   },
+   "falta": null,
+   "voz": {
+    "modelo": "",
+    "voz": ""
+   },
+   "oido": "",
+   "modeloImagen": "",
+   "modeloMusica": "",
+   "chat": [
+    {
+     "role": "informe",
+     "agente": "ag_rs0f3tqitg",
+     "nombre": "Vigía de X",
+     "content": "1 tweet ha sumado 3 o más interacciones en los últimos 10 minutos:\n\n1. @ana · hace 2 min · 3 me gusta · 1 respuestas · 0 reposts (+4)\n«La inteligencia artificial ya escribe sola»\nhttps://x.com/ana/status/201",
+     "ts": 1793948701419,
+     "skill": "vigia-x"
+    }
+   ],
+   "latido": {
+    "cada": 10,
+    "unidad": "min"
+   },
+   "alDespertar": "tareas",
+   "prioridad": 3,
+   "capacidades": [
+    "escribir",
+    "skills"
+   ],
+   "apagado": false,
+   "topeDiario": 0,
+   "aspecto": {
+    "p": "chico",
+    "ropa": null,
+    "ojos": null,
+    "pelo": null,
+    "piel": null
+   },
+   "estado": "reposo",
+   "motivoEstado": "",
+   "proximo": 1793949302894,
+   "ultimo": 1793948702894,
+   "memoriaCorta": [
+    {
+     "ts": 1793948701419,
+     "tipo": "resultado",
+     "texto": "1 tweet ha sumado 3 o más interacciones en los últimos 10 minutos:\n\n1. @ana · hace 2 min · 3 me gusta · 1 respuestas · 0 reposts (+4)\n«La inteligencia artificial ya escribe sola»\nhttps://x.com/ana/status/201"
+    }
+   ],
+   "tareas": [],
+   "gasto": {},
+   "creado": 1793948698564
+  },
+  {
+   "id": "ag_hw2r96qm64",
+   "nombre": "Archivero",
+   "rol": "subagente",
+   "planta": "tecnica",
+   "puesto": "oficina",
+   "reportaA": "jefe",
+   "cuerpo": "Eres el archivero: guardas los informes en la carpeta de los agentes.",
+   "objetivo": "",
+   "personalidad": "",
+   "cerebro": "openai/gpt-6-luna",
+   "proveedor": "openrouter",
+   "siAgota": "openrouter",
+   "cerebroReserva": "",
+   "habilidades": [
+    "escribir-archivo"
+   ],
+   "skillFija": null,
+   "falta": null,
+   "voz": {
+    "modelo": "",
+    "voz": ""
+   },
+   "oido": "",
+   "modeloImagen": "",
+   "modeloMusica": "",
+   "chat": [
+    {
+     "role": "informe",
+     "agente": "ag_hw2r96qm64",
+     "nombre": "Archivero",
+     "content": "Aprobado: Escribir en su carpeta: guardar el informe del día\n\nGuardado en informes/hoy.md (30 caracteres).",
+     "ts": 1793948706270
+    }
+   ],
+   "latido": {
+    "cada": 1,
+    "unidad": "d"
+   },
+   "alDespertar": "tareas",
+   "prioridad": 3,
+   "capacidades": [
+    "escribir",
+    "skills"
+   ],
+   "apagado": false,
+   "topeDiario": 0,
+   "aspecto": {
+    "p": "chico",
+    "ropa": null,
+    "ojos": null,
+    "pelo": null,
+    "piel": null
+   },
+   "estado": "reposo",
+   "motivoEstado": "",
+   "proximo": 1794035102931,
+   "ultimo": 1793948702931,
+   "memoriaCorta": [
+    {
+     "ts": 1793948702931,
+     "tipo": "resultado",
+     "texto": "Hecho «Guarda el informe de hoy»: He pedido permiso para guardar el informe."
+    },
+    {
+     "ts": 1793948706270,
+     "tipo": "resultado",
+     "texto": "Tu dueño aprobó «Escribir en su carpeta: guardar el informe del día»: Guardado en informes/hoy.md (30 caracteres)."
+    }
+   ],
+   "tareas": [
+    {
+     "id": "t_prqwnbqm6b",
+     "de": "",
+     "texto": "Guarda el informe de hoy",
+     "estado": "hecha",
+     "creada": 1793948702915,
+     "resultado": "He pedido permiso para guardar el informe.",
+     "hecha": 1793948702931
+    }
+   ],
+   "gasto": {
+    "2026-11-06": 0.0008
+   },
+   "creado": 1793948702908
+  }
+ ],
+ "memoriaLarga": [
+  {
+   "id": "m_77jchyqp9w",
+   "ts": 1793948706932,
+   "autor": "tú",
+   "texto": "El cliente Pérez paga a 90 días",
+   "etiquetas": [
+    "clientes"
+   ],
+   "tema": "Clientes"
+  },
+  {
+   "id": "m_ch7ny6qryc",
+   "ts": 1793948710402,
+   "autor": "",
+   "texto": "Pérez quiere factura electrónica",
+   "etiquetas": [
+    "clientes"
+   ],
+   "tema": "Clientes"
+  }
+ ],
+ "conversacion": [
+  {
+   "role": "user",
+   "content": "Hello",
+   "ts": 1794229200000,
+   "voz": ""
+  },
+  {
+   "role": "assistant",
+   "content": "Here is my answer.",
+   "ts": 1794229200000,
+   "coste": 0.001,
+   "modelo": "m",
+   "eventos": [],
+   "imagenes": [],
+   "audios": []
+  },
+  {
+   "role": "user",
+   "content": "Ask the sages whether we should open an office",
+   "ts": 1794229200000,
+   "voz": ""
+  },
+  {
+   "role": "assistant",
+   "content": "Here is my answer.",
+   "ts": 1794229200000,
+   "coste": 0.002,
+   "modelo": "m",
+   "eventos": [
+    "consulting the sages"
+   ],
+   "imagenes": [],
+   "audios": []
+  },
+  {
+   "role": "user",
+   "content": "Call a meeting with Tecno",
+   "ts": 1794229200000,
+   "voz": ""
+  },
+  {
+   "role": "assistant",
+   "content": "Here is my answer.",
+   "ts": 1794229200000,
+   "coste": 0.002,
+   "modelo": "m",
+   "eventos": [
+    "meeting proposed"
+   ],
+   "imagenes": [],
+   "audios": [],
+   "reunion": "re_gl7y4npno5"
+  },
+  {
+   "role": "informe",
+   "agente": "jefe",
+   "nombre": "Meeting room",
+   "content": "Minutes of “Weekly plan”\n\nHere is my answer.",
+   "ts": 1794229200000,
+   "reunion": "re_gl7y4npno5"
+  },
+  {
+   "role": "informe",
+   "agente": "arturito",
+   "nombre": "Artie",
+   "content": "Missing: a list of AI newsletters.",
+   "ts": 1794229200000,
+   "falta": true
+  },
+  {
+   "role": "informe",
+   "agente": "tecno",
+   "nombre": "Techie",
+   "content": "Onboarding of Boss reviewed: profile complete; it wakes up every day.\nOnboarding of Sage 1 reviewed: profile complete; it wakes up on request only.\nOnboarding of Sage 2 reviewed: profile complete; it wakes up on request only.\nOnboarding of Artie reviewed: profile complete; it wakes up every day.\nOnboarding of Agent Creator reviewed: profile complete; it wakes up on request only.\nOnboarding of JEV reviewed: profile complete; it wakes up on request only.\nOnboarding of Controller reviewed: profile complete; it wakes up every hour.\nOnboarding of Memory reviewed: profile complete; it wakes up on request only.\nCheck: every agent has done its work and left its mark.\nCosts over the last 7 days: $0.0120. By floor: Dome $0.0090, Tech floor $0.0030. Biggest spenders: Boss $0.0070, Techie $0.0020, Sage 1 $0.0010, Sage 2 $0.0010, Artie $0.0010.\nHere is my answer.",
+   "ts": 1794229200000
+  }
+ ],
+ "registro": [
+  {
+   "ts": 1794229200000,
+   "agente": "interventor",
+   "nombre": "Controller",
+   "texto": "general pause lifted: heartbeats are working again",
+   "coste": 0
+  },
+  {
+   "ts": 1794229200000,
+   "agente": "jefe",
+   "nombre": "Boss",
+   "texto": "chat",
+   "coste": 0.001
+  },
+  {
+   "ts": 1794229200000,
+   "agente": "tecno",
+   "nombre": "Techie",
+   "texto": "chat",
+   "coste": 0.001
+  },
+  {
+   "ts": 1794229200000,
+   "agente": "jefe",
+   "nombre": "Boss",
+   "texto": "chat",
+   "coste": 0.001
+  },
+  {
+   "ts": 1794229200000,
+   "agente": "sabio1",
+   "nombre": "Sage 1",
+   "texto": "advice",
+   "coste": 0.001
+  },
+  {
+   "ts": 1794229200000,
+   "agente": "sabio2",
+   "nombre": "Sage 2",
+   "texto": "advice",
+   "coste": 0.001
+  },
+  {
+   "ts": 1794229200000,
+   "agente": "sabio1",
+   "nombre": "Sage 1",
+   "texto": "advised on “Should we open a new office?”",
+   "coste": 0
+  },
+  {
+   "ts": 1794229200000,
+   "agente": "sabio2",
+   "nombre": "Sage 2",
+   "texto": "advised on “Should we open a new office?”",
+   "coste": 0
+  },
+  {
+   "ts": 1794229200000,
+   "agente": "jefe",
+   "nombre": "Boss",
+   "texto": "chat",
+   "coste": 0.001
+  },
+  {
+   "ts": 1794229200000,
+   "agente": "jefe",
+   "nombre": "Boss",
+   "texto": "chat",
+   "coste": 0.001
+  },
+  {
+   "ts": 1794229200000,
+   "agente": "jefe",
+   "nombre": "Boss",
+   "texto": "proposes the meeting “Weekly plan” (2 at the table; rounds: 1)",
+   "coste": 0
+  },
+  {
+   "ts": 1794229200000,
+   "agente": "jefe",
+   "nombre": "Boss",
+   "texto": "chat",
+   "coste": 0.001
+  },
+  {
+   "ts": 1794229200000,
+   "agente": "jefe",
+   "nombre": "Boss",
+   "texto": "meeting “Weekly plan”",
+   "coste": 0.001
+  },
+  {
+   "ts": 1794229200000,
+   "agente": "tecno",
+   "nombre": "Techie",
+   "texto": "meeting “Weekly plan”",
+   "coste": 0.001
+  },
+  {
+   "ts": 1794229200000,
+   "agente": "jefe",
+   "nombre": "Boss",
+   "texto": "minutes of “Weekly plan”",
+   "coste": 0.001
+  },
+  {
+   "ts": 1794229200000,
+   "agente": "arturito",
+   "nombre": "Artie",
+   "texto": "new task: “Send me the AI news”",
+   "coste": 0
+  },
+  {
+   "ts": 1794229200000,
+   "agente": "jev",
+   "nombre": "JEV",
+   "texto": "question from Artie",
+   "coste": 2e-05
+  },
+  {
+   "ts": 1794229200000,
+   "agente": "jev",
+   "nombre": "JEV",
+   "texto": "Artie wants “Search the internet for the task “Send me the AI news””: go ahead (90 %)",
+   "coste": 0
+  },
+  {
+   "ts": 1794229200000,
+   "agente": "arturito",
+   "nombre": "Artie",
+   "texto": "task",
+   "coste": 0.001
+  },
+  {
+   "ts": 1794229200000,
+   "agente": "arturito",
+   "nombre": "Artie",
+   "texto": "says it's missing: a list of AI newsletters.",
+   "coste": 0
+  },
+  {
+   "ts": 1794229200000,
+   "agente": "tecno",
+   "nombre": "Techie",
+   "texto": "cost review",
+   "coste": 0.001
+  },
+  {
+   "ts": 1794229200000,
+   "agente": "tecno",
+   "nombre": "Techie",
+   "texto": "round: everything in order",
+   "coste": 0
+  },
+  {
+   "ts": 1794229200000,
+   "agente": "creador",
+   "nombre": "Agent Creator",
+   "texto": "agent design",
+   "coste": 0.001
+  },
+  {
+   "ts": 1794229200000,
+   "agente": "creador",
+   "nombre": "Agent Creator",
+   "texto": "designed an agent: Chef",
+   "coste": 0
+  },
+  {
+   "ts": 1794229200000,
+   "agente": "tecno",
+   "nombre": "Techie",
+   "texto": "gold coin: Clear and short",
+   "coste": 0
+  },
+  {
+   "ts": 1794229200000,
+   "agente": "tecno",
+   "nombre": "Techie",
+   "texto": "write lesson",
+   "coste": 0.001
+  },
+  {
+   "ts": 1794315600000,
+   "agente": "interventor",
+   "nombre": "Controller",
+   "texto": "heartbeat: spending today $0.0000, 0 % of the cap",
+   "coste": 0
+  },
+  {
+   "ts": 1794315600000,
+   "agente": "jefe",
+   "nombre": "Boss",
+   "texto": "heartbeat: nothing pending",
+   "coste": 0
+  },
+  {
+   "ts": 1794315600000,
+   "agente": "tecno",
+   "nombre": "Techie",
+   "texto": "round: everything in order",
+   "coste": 0
+  }
+ ],
+ "propuestas": [
+  {
+   "id": "pr_ctd0oapnp0",
+   "ts": 1794229200000,
+   "pedido": "One that plans the weekly menu",
+   "de": "",
+   "ficha": {
+    "nombre": "Chef",
+    "rol": "subagente",
+    "planta": "",
+    "plantaNueva": {
+     "nombre": "Kitchen",
+     "funcion": "Menus"
+    },
+    "puesto": "pool",
+    "cuerpo": "You cook.",
+    "objetivo": "A menu",
+    "personalidad": "",
+    "nivel": "economico",
+    "latido": {
+     "cada": 7,
+     "unidad": "d"
+    },
+    "alDespertar": "tareas",
+    "capacidades": [
+     "escribir",
+     "hablar",
+     "oir"
+    ],
+    "aspecto": {
+     "p": "chica",
+     "ropa": null,
+     "ojos": null,
+     "pelo": null,
+     "piel": null
+    },
+    "porque": "Cheap.",
+    "cerebro": "openai/gpt-6-luna"
+   },
+   "estado": "pendiente"
+  }
+ ],
+ "diaParte": "2026-11-10",
+ "objetivos": "",
+ "monedas": [
+  {
+   "id": "mo_o6ue21pnp0",
+   "ts": 1794229200000,
+   "agente": "tecno",
+   "nombre": "Techie",
+   "papel": "tecno",
+   "tipo": "oro",
+   "motivo": "Clear and short",
+   "propone": "tú",
+   "estado": "confirmada"
+  }
+ ],
+ "lecciones": [
+  {
+   "id": "le_5ingjcpnp0",
+   "ts": 1794229200000,
+   "papel": "tecno",
+   "texto": "Check the facts before answering.",
+   "tipo": "oro",
+   "fija": false,
+   "agente": "tecno",
+   "moneda": "mo_o6ue21pnp0",
+   "motivo": "Clear and short",
+   "estado": "propuesta",
+   "redactada": true,
+   "coste": 0.001
+  }
+ ],
+ "reuniones": [
+  {
+   "id": "re_gl7y4npno5",
+   "creada": 1794229200000,
+   "titulo": "Weekly plan",
+   "ordenDelDia": "decide the week.",
+   "participantes": [
+    "jefe",
+    "tecno"
+   ],
+   "rondas": 1,
+   "convoca": "jefe",
+   "estado": "terminada",
+   "intervenciones": [
+    {
+     "ts": 1794229200000,
+     "agente": "jefe",
+     "nombre": "Boss",
+     "texto": "",
+     "ronda": 1,
+     "modera": true,
+     "coste": 0.001
+    },
+    {
+     "ts": 1794229200000,
+     "agente": "tecno",
+     "nombre": "Techie",
+     "texto": "Here is my answer.",
+     "ronda": 1,
+     "modera": false,
+     "coste": 0.001
+    }
+   ],
+   "acta": "Here is my answer.",
+   "coste": 0.003,
+   "motivo": "",
+   "empezada": 1794229200000,
+   "rondaActual": 0,
+   "terminada": 1794229200000
+  }
+ ],
+ "consultasJev": [
+  {
+   "id": "j_fnpmgrpnox",
+   "ts": 1794229200000,
+   "agente": "arturito",
+   "nombre": "Artie",
+   "tipo": "buscar",
+   "accion": "Search the internet for the task “Send me the AI news”",
+   "decision": "seguir",
+   "probabilidades": {
+    "seguir": 0.9
+   },
+   "confianza": null,
+   "final": "seguir",
+   "texto": "go ahead (90 %)",
+   "costeJev": 2e-05,
+   "hizo": "said it's missing something",
+   "coste": 0.001,
+   "sirvio": null
+  }
+ ],
+ "propuestasModelos": [],
+ "modelosVistos": [
+  "anthropic/claude-opus-5.5",
+  "anthropic/claude-sonnet-5.5",
+  "openai/gpt-6.1-sol",
+  "openai/gpt-6-luna",
+  "deepseek/deepseek-v4.1-flash"
+ ],
+ "autorizaciones": [
+  {
+   "id": "au_e4ekhfqm6m",
+   "ts": 1793948702926,
+   "agente": "ag_rs0f3tqitg",
+   "nombre": "Archivero",
+   "que": "Escribir en su carpeta: guardar el informe del día",
+   "detalle": "{\n \"ruta\": \"informes/hoy.md\",\n \"texto\": \"Informe de hoy: todo en orden.\"\n}",
+   "coste": 0,
+   "accion": {
+    "skill": "escribir-archivo",
+    "datos": {
+     "ruta": "informes/hoy.md",
+     "texto": "Informe de hoy: todo en orden."
+    }
+   },
+   "firma": "[\"ag_hw2r96qm64\",\"escribir-archivo\",{\"ruta\":\"informes/hoy.md\",\"texto\":\"Informe de hoy: todo en orden.\"}]",
+   "estado": "hecha",
+   "resultado": "Guardado en informes/hoy.md (30 caracteres).",
+   "decidida": 1793948706268
+  }
+ ],
+ "v7": true,
+ "v8": true,
+ "idioma": "en",
+ "vozParaTodos": true,
+ "gastoDias": {
+  "2026-11-09": 0.015020000000000006
+ },
+ "fase": "congelacion1",
+ "tecno": {
+  "altas": 1794315600000,
+  "control": "2026-11-09",
+  "copia": "",
+  "costes": "2026-11-09"
+ }
+}

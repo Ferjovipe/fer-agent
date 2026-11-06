@@ -2,9 +2,9 @@
 name: buscar-web
 title: Search the internet (free)
 description: Searches DuckDuckGo with the agents' Chrome and returns the first results (title, address and summary). It costs nothing.
-efecto: lee
-fija: false
-datos: {"query": "…"}
+effect: read
+fixed: false
+data: {"query": "…"}
 script: buscar.mjs
 ---
 # Search the internet (free)

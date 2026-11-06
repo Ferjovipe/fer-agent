@@ -35,7 +35,7 @@ You move the building from one to another with **Save backup** and **Load a back
 - **Your data** (building, keys, brain folder, the agents' Chrome profile) stays on your computer: on a Mac in `~/Library/Application Support/Fer Agent/datos`, on Windows in `%APPDATA%\Fer Agent\datos`. A log, `fer-agent.log`, is kept there too.
 - **Your websites:** Settings → *Your websites, in the agents' Chrome* opens the agents' Chrome so you sign in once (your email, a social network…); the session stays on your computer.
 - **The brain folder:** Settings → *Change the folder*. Choose one inside Google Drive for desktop and you also have it in Drive and Obsidian.
-- **Building it yourself:** `npm install`, then `npm run app` to try it, or `npm run instaladores` to make the installer for your system. GitHub makes the Mac and Windows installers by itself (the *Aplicación* workflow in Actions).
+- **Building it yourself:** `npm install`, then `npm run app` to try it, or `npm run installers` to make the installer for your system. GitHub makes the Mac and Windows installers by itself (the *Desktop app* workflow in Actions).
 
 ## Getting started
 
@@ -68,12 +68,13 @@ Tested with automated tests (OpenRouter, the other APIs, Google Drive, Telegram 
 ## Tests
 
 ```
-node --test pruebas/motor.test.mjs pruebas/motor7.test.mjs pruebas/motor82.test.mjs pruebas/vigia.test.mjs
+node --test pruebas/motor.test.mjs pruebas/motor7.test.mjs pruebas/motor82.test.mjs pruebas/motor9.test.mjs pruebas/vigia.test.mjs
 python3 pruebas/web_test.py      # website (Spanish), v6 features   — needs Playwright
 python3 pruebas/web7_test.py     # website (Spanish), v7 features
 python3 pruebas/web8_test.py     # website (Spanish), v8 features
 python3 pruebas/web82_test.py    # website in English: no Spanish left on any screen
 python3 pruebas/web9_test.py     # website in Spanish: no English left on any screen, nothing missing from the dictionary
+python3 pruebas/web9_storage_test.py   # a browser that used an earlier version keeps its building, images and Library
 python3 pruebas/casa_test.py     # Fer Home
 python3 pruebas/casa7_test.py    # Fer Home with hands, Telegram, brain folder and another API
 python3 pruebas/app9_test.py     # the desktop app inside: keys in Settings, local only, the agents' Chrome

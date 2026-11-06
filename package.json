@@ -10,8 +10,8 @@
   "main": "app/main.cjs",
   "scripts": {
     "app": "electron .",
-    "casa": "node fer-casa.mjs",
-    "instaladores": "electron-builder --publish never"
+    "home": "node fer-casa.mjs",
+    "installers": "electron-builder --publish never"
   },
   "dependencies": {
     "playwright-core": "1.63.0"

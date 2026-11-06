@@ -2,9 +2,9 @@
 name: leer-web
 title: Read a website
 description: Opens a web page in the agents' Chrome and returns its text. It only reads; it doesn't click or send anything.
-efecto: lee
-fija: false
-datos: {"url": "https://…"}
+effect: read
+fixed: false
+data: {"url": "https://…"}
 script: leer.mjs
 ---
 # Read a website
