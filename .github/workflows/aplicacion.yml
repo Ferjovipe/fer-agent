@@ -1,10 +1,15 @@
 # Fabrica la aplicación de escritorio de Fer Agent (Mac y Windows) en las máquinas de GitHub.
 # - A mano: pestaña «Actions» → «Aplicación» → «Run workflow». Los instaladores quedan en «Artifacts» de esa ejecución.
-# - Con una etiqueta de versión (por ejemplo v9.0.0): además se publican en «Releases».
+# - Con una versión (por ejemplo v9.0.0), al lanzarlo a mano o con una etiqueta: además se publican en «Releases».
 name: Aplicación
 
 on:
   workflow_dispatch:
+    inputs:
+      version:
+        description: "Versión que se publica en Releases (por ejemplo v9.0.0). Vacío: solo se fabrican."
+        required: false
+        default: ""
   push:
     tags: ["v*"]
 
@@ -40,12 +45,19 @@ jobs:
             dist/*.dmg
             dist/*.exe
           if-no-files-found: error
-      - name: Publicar en Releases (solo con etiqueta de versión)
-        if: startsWith(github.ref, 'refs/tags/v')
+      - name: Publicar en Releases (solo con versión)
+        if: startsWith(github.ref, 'refs/tags/v') || inputs.version != ''
         uses: softprops/action-gh-release@v2
         with:
+          tag_name: ${{ inputs.version || github.ref_name }}
+          target_commitish: ${{ github.sha }}
+          name: Fer Agent ${{ inputs.version || github.ref_name }}
           files: |
             dist/*.dmg
             dist/*.exe
           draft: false
-          prerelease: true
+          prerelease: ${{ contains(inputs.version || github.ref_name, '-') }}
+          body: |
+            Fer Agent desktop app · Mac (Apple chip: `mac-arm64`; Intel: `mac-x64`) and Windows (`.exe`).
+            First time on a Mac: System Settings → Privacy & Security → **Open Anyway**. On Windows: **More info → Run anyway**.
+            Then paste your OpenRouter key in Settings.
