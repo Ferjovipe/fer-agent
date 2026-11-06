@@ -11,7 +11,8 @@ Qué hay en esta carpeta
 index.html, app.js        La web: el edificio, cada planta, el chat con cada agente, las fichas, la
                           bandeja, el agente del mes, las reuniones, el gasto y los ajustes.
 landing.js                La portada.
-textos.js, textos/        Los idiomas: textos/en.js (inglés) y textos/es.js (plantilla para otro idioma).
+textos.js, textos/        Los idiomas: el programa está escrito en inglés; textos/es.js es la traducción al
+                          español (y el modelo para traducir a cualquier otro idioma).
 README.md                 La portada en GitHub, en inglés.
 personajes.js, img/       Los diez personajes y los trozos del dibujo del edificio.
 engine.js                 El motor. Lo usan igual la web y Fer Casa.
@@ -23,7 +24,7 @@ pruebas/                  Las pruebas automáticas (no hacen falta para usarlo).
 Versión 9.0
 -----------
 La aplicación de escritorio (Mac y Windows). Es el mismo edificio con Fer Home dentro, sin Terminal:
-  - Se instala con doble clic. Los instaladores los fabrica GitHub (pestaña «Actions», «Aplicación»)
+  - Se instala con doble clic. Los instaladores los fabrica GitHub (pestaña «Actions», «Desktop app»)
     y, con cada versión, quedan en «Releases».
   - La primera vez en un Mac: como todavía no lleva la firma de Apple, el Mac dice que no puede
     verificar al desarrollador. Ajustes del Sistema → Privacidad y seguridad → «Abrir igualmente»
@@ -286,9 +287,11 @@ NO comprobado (falta hacerlo con lo de verdad):
 
 Traducir a otro idioma
 ----------------------
-El mismo diccionario traduce las pantallas y lo que el motor les dice a los agentes:
-  1. Copia textos/es.js como textos/xx.js (xx: el código del idioma, por ejemplo fr).
-  2. Escribe a la derecha de cada texto su traducción. Lo que quede vacío sale en español.
+El programa está escrito en inglés. El mismo diccionario traduce las pantallas y lo que el motor les
+dice a los agentes:
+  1. Copia textos/es.js (inglés a la izquierda, español a la derecha) como textos/xx.js
+     (xx: el código del idioma, por ejemplo fr).
+  2. Sustituye lo de la derecha de cada texto por su traducción. Lo que quede vacío sale en inglés.
      Los {1}, {2}… son datos (nombres, cifras): se dejan tal cual. Respeta los espacios del principio
      y del final de cada texto.
   3. Añade el idioma a IDIOMAS en textos.js (por ejemplo  fr: "Français") y a IDIOMAS_MOTOR en

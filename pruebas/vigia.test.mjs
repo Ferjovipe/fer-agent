@@ -1,4 +1,4 @@
-// Pruebas del Vigía de X sin X: la regla, las búsquedas y el lector, con una página que imita a X.
+// Tests of the X Watcher without X: the rule, the searches and the reader, with a page that imitates X.
 import test from "node:test";
 import assert from "node:assert/strict";
 import http from "node:http";
@@ -13,25 +13,25 @@ import { createRequire } from "node:module";
 const require = createRequire(import.meta.url);
 const { chromium } = require("playwright");
 
-test("los términos se juntan en pocas búsquedas «A OR B» y sin reposts", () => {
+test("the terms are grouped into a few “A OR B” searches and without reposts", () => {
   const md = leerSkillMd(readFileSync(new URL("../skills/vigia-x/SKILL.md", import.meta.url), "utf8"));
   const terminos = md.cab.ajustes.find((x) => x.clave === "terminos").defecto;
-  assert.ok(terminos.length >= 30, "la lista propuesta");
+  assert.ok(terminos.length >= 30, "the proposed list");
   const b = construirBusquedas(terminos);
-  assert.ok(b.length >= 2 && b.length <= 8, `${b.length} búsquedas`);
+  assert.ok(b.length >= 2 && b.length <= 8, `${b.length} searches`);
   assert.ok(b.every((q) => q.startsWith("(") && q.endsWith(") -filter:retweets") && q.length < 420));
-  assert.equal(b.join(" ").split(" OR ").length + b.length - 1 >= terminos.length, true, "no se pierde ningún término");
+  assert.equal(b.join(" ").split(" OR ").length + b.length - 1 >= terminos.length, true, "no term is lost");
   assert.ok(b.some((q) => q.includes('"inteligencia artificial"')) && b.some((q) => q.includes('"人工智能"')));
 });
 
-test("la regla: nuevos en la ventana con 3 o más; viejos que han ganado 3 desde la vuelta anterior; cada uno una sola vez", () => {
+test("the rule: new ones in the window with 3 or more; old ones that have gained 3 since the previous round; each one only once", () => {
   const ahora = Date.parse("2026-11-05T12:00:00Z"), min = 60e3;
   const t = (id, haceMin, mg, resp = 0, rep = 0, extra = {}) => Object.assign({ id, autor: "a" + id, url: "u" + id, ts: ahora - haceMin * min, texto: "IA " + id, megusta: mg, respuestas: resp, reposts: rep }, extra);
   let r = aplicarRegla([t("1", 3, 2, 1, 0), t("2", 5, 1, 0, 0), t("3", 30, 50, 5, 5), t("4", 2, 0, 0, 3, { repost: true }), t("5", 9, 1, 1, 1)], {}, ahora, 10, 3);
-  assert.deepEqual(r.salen.map((x) => x.id), ["1", "5"], "1 (2+1) y 5 (1+1+1) son nuevos y suman 3; el 3 es viejo y no lo habíamos visto; el repost no cuenta");
-  // diez minutos después: el 2 ya no es nuevo pero ha ganado 3; el 3 ha ganado 2; el 1 sigue subiendo pero ya se avisó
+  assert.deepEqual(r.salen.map((x) => x.id), ["1", "5"], "1 (2+1) and 5 (1+1+1) are new and add up to 3; 3 is old and we hadn't seen it; the repost doesn't count");
+  // ten minutes later: 2 is no longer new but has gained 3; 3 has gained 2; 1 keeps rising but was already passed on
   const despues = ahora + 10 * min;
-  r = aplicarRegla([t("1", 3, 10, 1, 0), t("2", 5, 3, 1, 0), t("3", 30, 52, 5, 5)], r.estado, despues, 10, 3);   // los mismos tweets (misma hora de publicación)
+  r = aplicarRegla([t("1", 3, 10, 1, 0), t("2", 5, 3, 1, 0), t("3", 30, 52, 5, 5)], r.estado, despues, 10, 3);   // the same tweets (same publication time)
   assert.deepEqual(r.salen.map((x) => x.id), ["2"]);
   assert.equal(r.salen[0].gana, 3);
   const txt = formatear(r.salen, despues, 10, 3, enEspanol);   // v9: written in English, here in a Spanish building
@@ -39,19 +39,19 @@ test("la regla: nuevos en la ventana con 3 o más; viejos que han ganado 3 desde
   assert.match(txt, /@a2 · hace 15 min · 3 me gusta · 1 respuestas · 0 reposts \(\+3\)/);
   assert.match(formatear(r.salen, despues, 10, 3), /^1 tweet has gained 3 or more interactions in the last 10 minutes:\n\n1\. @a2 · 15 min ago · 3 likes · 1 replies · 0 reposts \(\+3\)\n“IA 2”/);
   assert.equal(formatear([], despues, 10, 3), "NOTHING");
-  // lo que no se avisó se olvida pronto (no llena la memoria)
+  // what wasn't passed on is soon forgotten (it doesn't fill the memory)
   r = aplicarRegla([], r.estado, despues + 60 * min, 10, 3);
-  assert.deepEqual(Object.keys(r.estado.vistos).sort(), ["1", "2", "5"], "solo quedan (un día) los ya avisados");
+  assert.deepEqual(Object.keys(r.estado.vistos).sort(), ["1", "2", "5"], "only the ones already passed on stay (for a day)");
 });
 
-test("las rutas de la carpeta de los agentes no pueden salir de ella", () => {
+test("the paths of the agents' folder can't leave it", () => {
   assert.equal(dentroDe("/tmp/agentes", "notas/a.md"), "/tmp/agentes/notas/a.md");
   assert.throws(() => dentroDe("/tmp/agentes", "../etc/passwd"), /leaves the agents|sale de la carpeta/);
   assert.throws(() => dentroDe("/tmp/agentes", "notas/../../x"), /leaves the agents|sale de la carpeta/);
-  assert.equal(dentroDe("/tmp/agentes", "/abs/ruta.md"), "/tmp/agentes/abs/ruta.md", "una ruta absoluta se toma dentro de la carpeta");
+  assert.equal(dentroDe("/tmp/agentes", "/abs/ruta.md"), "/tmp/agentes/abs/ruta.md", "an absolute path is taken inside the folder");
 });
 
-test("el lector entiende los números que X enseña cuando la etiqueta no trae la cifra («1,2 mil» son 1.200)", async () => {
+test("the reader understands the numbers X shows when the label doesn't carry the figure (“1,2 mil” is 1,200)", async () => {
   const casos = [["1,2 mil", 1200], ["12 mil", 12000], ["1.234", 1234], ["1,2 K", 1200], ["3 mill.", 3000000], ["1.5M", 1500000], ["7", 7], ["", 0]];
   const b = await chromium.launch();
   try {
@@ -63,14 +63,14 @@ test("el lector entiende los números que X enseña cuando la etiqueta no trae l
   } finally { await b.close(); }
 });
 
-test("una skill que se cuelga se para a su hora, se cierra su Chrome y la siguiente de la cola sigue", { timeout: 60000 }, async () => {
+test("a skill that hangs is stopped on time, its Chrome is closed and the next one in the queue carries on", { timeout: 60000 }, async () => {
   const { mkdtempSync, mkdirSync, writeFileSync } = await import("node:fs");
   const os = await import("node:os"), path = await import("node:path");
   const { crearManos } = await import("../manos.mjs");
   const dir = mkdtempSync(path.join(os.tmpdir(), "manos-"));
   mkdirSync(path.join(dir, "skills", "colgada"), { recursive: true });
   writeFileSync(path.join(dir, "skills", "colgada", "SKILL.md"), "---\nname: colgada\ntitle: Colgada\ndescription: prueba\nefecto: lee\ntiempo: 10\nscript: colgada.mjs\n---\nNada");
-  // abre una página que bloquea su propio motor (como una web mala) y se queda esperando
+  // opens a page that blocks its own engine (like a bad website) and keeps waiting
   writeFileSync(path.join(dir, "skills", "colgada", "colgada.mjs"), "export default async (d, h) => h.conPagina(async (p) => { await p.setContent('<p>hola</p>'); await p.evaluate(() => { for (;;) {} }); return 'nunca'; });");
   const avisos = [];
   const manos = crearManos({ carpetaAgentes: path.join(dir, "agentes"), perfilChrome: path.join(dir, "perfil"), carpetasSkills: [path.join(dir, "skills"), new URL("../skills", import.meta.url).pathname], canal: "no-hay-tal-canal", log: (t) => avisos.push(t) });
@@ -80,13 +80,13 @@ test("una skill que se cuelga se para a su hora, se cierra su Chrome y la siguie
     const siguiente = manos.ejecutar("leer-archivo", { ruta: "." }, {});
     await assert.rejects(colgada, /tardó más de 10 s/);
     const r = await siguiente;
-    assert.ok(Date.now() - t0 < 30000, `la cola siguió a tiempo (${Date.now() - t0} ms)`);
+    assert.ok(Date.now() - t0 < 30000, `the queue carried on in time (${Date.now() - t0} ms)`);
     assert.equal(typeof r.texto, "string");
     assert.ok(avisos.some((t) => /tardó más de 10 s/.test(t)));
   } finally { await manos.cerrar(); }
 });
 
-test("leer una web: solo internet, nunca tu red de casa, este ordenador ni las direcciones internas de un servidor", async () => {
+test("reading a website: only the internet, never your home network, this computer or a server's internal addresses", async () => {
   const { esDireccionPublica, crearManos } = await import("../manos.mjs");
   for (const u of ["http://127.0.0.1:8080/", "http://169.254.169.254/latest/meta-data", "http://192.168.1.1/", "http://10.0.0.5/", "http://172.20.1.1/", "http://[::1]/", "http://localhost:3000/", "http://router.local/", "file:///etc/passwd", "http://100.100.1.1/"])
     assert.equal(await esDireccionPublica(u), false, u);
@@ -98,7 +98,7 @@ test("leer una web: solo internet, nunca tu red de casa, este ordenador ni las d
   await manos.cerrar();
 });
 
-test("el lector y el Vigía entero, contra una página que imita a X (Chrome de verdad, sin X)", async () => {
+test("the reader and the whole Watcher, against a page that imitates X (real Chrome, no X)", async () => {
   const ahora = Date.now();
   let visitas = 0, pedirLogin = false;
   const base = [
@@ -111,7 +111,7 @@ test("el lector y el Vigía entero, contra una página que imita a X (Chrome de 
     const u = new URL(req.url, "http://x");
     if (u.pathname === "/search") {
       visitas++;
-      const tweets = base.map((t) => Object.assign({}, t, visitas > 1 && t.id === "102" ? { mg: 4 } : {}));   // en la segunda vuelta, el 102 gana 3
+      const tweets = base.map((t) => Object.assign({}, t, visitas > 1 && t.id === "102" ? { mg: 4 } : {}));   // on the second round, 102 gains 3
       res.writeHead(200, { "Content-Type": "text/html; charset=utf-8" });
       return res.end(paginaX({ ahora, tweets, login: pedirLogin }));
     }
@@ -125,7 +125,7 @@ test("el lector y el Vigía entero, contra una página que imita a X (Chrome de 
     await pag.goto(url + "/search?q=x");
     const leidos = await pag.evaluate(leerTweetsEnPagina);
     assert.deepEqual(leidos.map((t) => [t.id, t.autor, t.megusta, t.respuestas, t.reposts, t.repost]), [["101", "ana", 2, 1, 0, false], ["102", "bob", 1, 0, 0, false], ["103", "chen", 1234, 0, 10, false], ["104", "dan", 9, 0, 0, true], ["105", "eli", 0, 0, 0, false]]);
-    assert.ok(Math.abs(leidos[0].ts - (ahora - 2 * 60e3)) < 1000, "la hora del tweet");
+    assert.ok(Math.abs(leidos[0].ts - (ahora - 2 * 60e3)) < 1000, "the tweet's time");
     await pag.close();
     visitas = 0;
     const h = { conPagina: async (f) => { const p = await b.newPage(); try { return await f(p); } finally { await p.close(); } }, ahora: () => ahora + 1000, log: () => {}, L: enEspanol };   // a Spanish building
@@ -136,8 +136,8 @@ test("el lector y el Vigía entero, contra una página que imita a X (Chrome de 
     assert.doesNotMatch(r1.texto, /@dan|@eli|@bob/);
     assert.match(r1.resumen, /tweets leídos en 1 búsquedas; 2 cumplen la regla/);
     const r2 = await vigia(ajustes, { ...h, ahora: () => ahora + 10 * 60e3 }, { estado: r1.estado });
-    assert.match(r2.texto, /@bob .*\(\+3\)/, "el 102 ha ganado 3 desde la vuelta anterior");
-    assert.doesNotMatch(r2.texto, /@chen|@ana/, "los ya avisados no se repiten");
+    assert.match(r2.texto, /@bob .*\(\+3\)/, "102 has gained 3 since the previous round");
+    assert.doesNotMatch(r2.texto, /@chen|@ana/, "the ones already passed on aren't repeated");
     pedirLogin = true;
     await assert.rejects(() => vigia(ajustes, h, { estado: {} }), /X pide entrar/);
   } finally { await b.close(); srv.close(); }

@@ -1,5 +1,5 @@
-// Pruebas del motor en INGLÉS (versión 8.2): un edificio en inglés nace en inglés, se habla en inglés con cada agente
-// y nada de lo que el motor dice o apunta se queda sin traducir. Ejecutar: node --test pruebas/motor82.test.mjs
+// Engine tests in ENGLISH (version 8.2): an English building is born in English, each agent is spoken to in English
+// and nothing the engine says or records is left untranslated. Run: node --test pruebas/motor82.test.mjs
 import test from "node:test";
 import assert from "node:assert/strict";
 import { writeFileSync, mkdirSync } from "node:fs";
@@ -13,7 +13,7 @@ const ESPANOL = /\b(Eres|Tu nombre|Te llamas|Regla:|Fecha y hora|Organigrama|Obj
 function crear(guion) {
   const llamadas = [];
   let guardado = null;
-  const ahoraRef = { t: Date.parse("2026-11-09T10:00:00") };   // un lunes
+  const ahoraRef = { t: Date.parse("2026-11-09T10:00:00") };   // a Monday
   const fetch = async (url, init) => {
     const body = init && init.body ? JSON.parse(init.body) : {};
     llamadas.push({ url, body });
@@ -27,7 +27,7 @@ function crear(guion) {
 }
 const sistemas = (ll) => ll.filter((x) => x.body && x.body.messages).map((x) => String(x.body.messages[0].content));
 
-test("un edificio nuevo en inglés: nombres, plantas e instrucciones en inglés", async () => {
+test("a new building in English: names, floors and instructions in English", async () => {
   const { ed } = crear(() => resp("ok"));
   await ed.iniciar("basico", "en");
   assert.equal(ed.e.idioma, "en");
@@ -40,7 +40,7 @@ test("un edificio nuevo en inglés: nombres, plantas e instrucciones en inglés"
   fijarIdioma("es"); assert.equal(fmt(0.0123), "0,0123 $"); assert.equal(textoLatido({ cada: 3, unidad: "d" }), "cada 3 días"); fijarIdioma("en");
 });
 
-test("lo que se dice a los agentes, en inglés: chat, tarea con MISSING, ronda de Tecno, sabios, reunión, Creador y lección", async () => {
+test("what is said to the agents, in English: chat, a task with MISSING, Techie's round, sages, meeting, Creator and lesson", async () => {
   const { ed, llamadas, ahoraRef } = crear((url, body) => {
     const s = body.messages ? String(body.messages[0].content) : "";
     const u = body.messages ? String(body.messages[body.messages.length - 1].content) : "";
@@ -54,64 +54,64 @@ test("lo que se dice a los agentes, en inglés: chat, tarea con MISSING, ronda d
   });
   await ed.iniciar("basico", "en");
   await ed.ejecutar({ tipo: "pausa", pausa: false });
-  // chat con el jefe y con un agente
+  // chat with the boss and with an agent
   await ed.ejecutar({ tipo: "hablar", texto: "Hello" });
   await ed.ejecutar({ tipo: "hablar", agente: "tecno", texto: "How is everything?" });
-  // el jefe consulta a los sabios y convoca una reunión
+  // the boss consults the sages and calls a meeting
   await ed.ejecutar({ tipo: "hablar", texto: "Ask the sages whether we should open an office" });
   await ed.ejecutar({ tipo: "hablar", texto: "Call a meeting with Tecno" });
   const reu = ed.e.reuniones.at(-1);
-  assert.ok(reu, "el jefe propone la reunión");
+  assert.ok(reu, "the boss proposes the meeting");
   await ed.ejecutar({ tipo: "reunion.empezar", reunion: reu.id, rondas: 1 });
   for (let i = 0; i < 40 && ed.e.reuniones.at(-1).estado !== "terminada"; i++) await new Promise((r) => setTimeout(r, 25));
-  assert.equal(ed.e.reuniones.at(-1).ordenDelDia, "decide the week.", "sin repetir «Agenda:»");
-  // una tarea que no puede hacer: MISSING
+  assert.equal(ed.e.reuniones.at(-1).ordenDelDia, "decide the week.", "without repeating “Agenda:”");
+  // a task it can't do: MISSING
   await ed.ejecutar({ tipo: "asignarTarea", id: "arturito", texto: "Send me the AI news" });
   await ed.ejecutar({ tipo: "despertar", id: "arturito" });
   const art = ed.agente("arturito");
-  assert.ok(art.falta && /newsletters/.test(art.falta.texto), "MISSING: se entiende");
+  assert.ok(art.falta && /newsletters/.test(art.falta.texto), "MISSING: is understood");
   assert.match(art.tareas.at(-1).resultado, /^Missing: /);
-  // Tecno hace su ronda de los lunes (con revisión de costes)
+  // Techie does its Monday round (with a cost review)
   await ed.ejecutar({ tipo: "despertar", id: "tecno" });
-  // el Creador diseña un agente
+  // the Creator designs an agent
   const p = await ed.ejecutar({ tipo: "proponerAgente", texto: "One that plans the weekly menu" });
   assert.equal(p.propuesta.ficha.nombre, "Chef");
-  // una moneda con su lección
+  // a coin with its lesson
   await ed.ejecutar({ tipo: "moneda.dar", id: "tecno", tipoMoneda: "oro", motivo: "Clear and short" });
-  // el día siguiente: parte del Interventor
+  // the next day: the Controller's report
   ahoraRef.t += 86400e3; await ed.tick();
-  // la bandeja, las notas de la memoria y los avisos
+  // the inbox, the memory notes and the warnings
   ed.guardarMemoria("The owner prefers one-page reports", ["reports"], "tú");
   const notas = notasMemoriaMd(ed.e.memoriaLarga, {});
   assert.match(notas.find((n) => /reports/.test(n.ruta)).texto, /What the agents have learned about “reports”/);
   const bandeja = ed.bandeja();
   assert.ok(bandeja.length >= 2);
-  // todo lo que se mandó a los cerebros, en inglés
+  // everything sent to the brains, in English
   const s = sistemas(llamadas);
-  mkdirSync(new URL("./capturas/", import.meta.url), { recursive: true });   // en una copia recién bajada de GitHub no existe
+  mkdirSync(new URL("./capturas/", import.meta.url), { recursive: true });   // in a copy just downloaded from GitHub it doesn't exist
   writeFileSync(new URL("./capturas/motor82-prompts.txt", import.meta.url), s.join("\n\n==========\n\n"));
   assert.ok(s.length >= 8, "hubo llamadas");
-  // (al Creador se le dan las claves del JSON tal cual: «nombre», «planta»… son nombres de campos, no texto)
+  // (the Creator is given the JSON keys as they are: «nombre», «planta»… are field names, not text)
   for (const x of s) if (!x.startsWith("You are the Agent Creator")) assert.doesNotMatch(x, ESPANOL, x.slice(0, 200));
   assert.ok(s.some((x) => x.startsWith("You are the Agent Creator") && x.includes("Reply ONLY with a JSON object") && x.includes("Floors of the building:")));
   for (const x of llamadas.filter((y) => y.body && y.body.messages)) for (const m of x.body.messages) if (m.role === "user" || m.role === "system") assert.doesNotMatch(String(m.content), /\b(Tarea:|Lo dicho|Transcripción|Escribe el acta|Orden del día|ME FALTA)\b/, String(m.content).slice(0, 160));
-  // lo que apunta el motor (actividad) y la bandeja, en inglés
+  // what the engine records (activity) and the inbox, in English
   for (const r of ed.e.registro) assert.doesNotMatch(r.texto, /\b(latido|tarea|ronda|gasto|moneda|reunión|lección|cerebro|despierta|guardado)\b/, r.texto);
   for (const b of bandeja) assert.doesNotMatch(`${b.que} ${b.detalle || ""}`, /\b(Lección|Moneda|Reunión|llamadas|Dice que)\b/, b.que);
-  // y nada se pidió que no esté en el diccionario
+  // and nothing was asked for that isn't in the dictionary
   assert.deepEqual([...SIN_TRADUCIR].filter((x) => !["min", "h"].includes(x)), []);
 });
 
-test("cambiar el idioma del edificio: lo de serie cambia de idioma; lo que escribió el dueño, no", async () => {
+test("changing the building's language: the built-in parts change language; what the owner wrote, doesn't", async () => {
   const { ed, llamadas } = crear(() => resp("ok"));
   await ed.iniciar("basico", "en");
-  // lo que escribe el dueño: renombra a Sage 2, crea una planta y cambia las instrucciones de Techie
+  // what the owner writes: renames to Sage 2, creates a floor and changes Techie's instructions
   await ed.ejecutar({ tipo: "editarAgente", id: "sabio2", cambios: { nombre: "Consejera ChatGPT Pro" } });
   const pl = await ed.ejecutar({ tipo: "crearPlanta", nombre: "Redes Sociales", funcion: "Publicar" });
   await ed.ejecutar({ tipo: "editarAgente", id: "tecno", cambios: { cuerpo: "Mis instrucciones." } });
   const r = await ed.ejecutar({ tipo: "idioma", idioma: "es" });
   assert.equal(ed.e.idioma, "es");
-  assert.ok(r.cambiados > 10, "cambió lo de serie");
+  assert.ok(r.cambiados > 10, "the built-in parts changed");
   assert.deepEqual(ed.e.agentes.map((a) => a.nombre), ["Jefe", "Sabio 1", "Consejera ChatGPT Pro", "Tecno", "Arturito", "Creador de agentes", "JEV", "Interventor", "Memory"]);
   assert.deepEqual(ed.e.plantas.filter((p) => p.id !== pl.id).map((p) => p.nombre), ["Cúpula", "Planta técnica", "Vestíbulo"]);
   assert.equal(ed.planta(pl.id).nombre, "Redes Sociales");
@@ -119,37 +119,37 @@ test("cambiar el idioma del edificio: lo de serie cambia de idioma; lo que escri
   assert.match(ed.agente("jefe").cuerpo, /^Eres el jefe del edificio/);
   assert.match(ed.agente("arturito").cuerpo, /^Eres Arturito/);
   assert.match(ed.agente("arturito").objetivo, /^Un informe diario/);
-  assert.equal(ed.agente("tecno").cuerpo, "Mis instrucciones.", "las instrucciones que cambió el dueño se quedan");
+  assert.equal(ed.agente("tecno").cuerpo, "Mis instrucciones.", "the instructions the owner changed stay");
   await ed.ejecutar({ tipo: "hablar", texto: "Hola" });
   assert.match(sistemas(llamadas).at(-1), /^Eres el jefe del edificio/);
   assert.match(sistemas(llamadas).at(-1), /Te llamas Jefe\. Tu papel: Jefe\./);
-  // el botón «Volver a los nombres de serie»
+  // the «Back to the built-in names» button
   const b = await ed.ejecutar({ tipo: "nombresDeSerie" });
   assert.equal(b.cambiados, 1);
   assert.equal(ed.agente("sabio2").nombre, "Sabio 2");
-  assert.equal(ed.planta(pl.id).nombre, "Redes Sociales", "lo que creó el dueño no cambia");
-  // y otra vez a inglés
+  assert.equal(ed.planta(pl.id).nombre, "Redes Sociales", "what the owner created doesn't change");
+  // and back to English again
   await ed.ejecutar({ tipo: "idioma", idioma: "en" });
   assert.deepEqual(ed.e.agentes.map((a) => a.nombre), ["Boss", "Sage 1", "Sage 2", "Techie", "Artie", "Agent Creator", "JEV", "Controller", "Memory"]);
   assert.deepEqual(ed.e.plantas.map((p) => p.nombre).sort(), ["Dome", "Lobby", "Redes Sociales", "Tech floor"]);
   assert.equal(ed.e.nombre, "My building");
   assert.match(ed.agente("jefe").cuerpo, /^You are the building's boss/);
   assert.equal(ed.agente("tecno").cuerpo, "Mis instrucciones.");
-  // los edificios de antes de la 8.2 (en español), y los textos de serie de versiones anteriores
+  // buildings from before 8.2 (in Spanish), and the built-in texts of earlier versions
   const v = crear(() => resp("ok"));
   await v.ed.iniciar("basico");
   assert.equal(v.ed.e.idioma, "es");
   assert.equal(v.ed.e.agentes[0].nombre, "Jefe");
   v.ed.agente("arturito").cuerpo = "Eres Arturito, el de la mejora continua. Conoces cómo está montado este edificio, sigues cada día cómo avanzan los agentes de IA fuera " +
     "y propones al jefe mejoras concretas: funciones nuevas, cambios de estructura, agentes que faltan o sobran. Tu trabajo es mejorar el edificio, no ganar dinero: " +
-    "si ves una idea de negocio, se la pasas al jefe. Cada propuesta, con su porqué y lo que costaría.";   // el de la versión 5
+    "si ves una idea de negocio, se la pasas al jefe. Cada propuesta, con su porqué y lo que costaría.";   // the version 5 one
   await v.ed.ejecutar({ tipo: "idioma", idioma: "en" });
   assert.equal(v.ed.agente("arturito").nombre, "Artie");
   assert.match(v.ed.agente("arturito").cuerpo, /^You are Artie/);
 });
 
-test("edificios con historia: ya marcado en inglés con nombres en español, o con ids antiguos; siempre pasan a inglés", async () => {
-  // 1) el edificio ya dice «en» pero conserva los nombres en español (lo que dejaba la 8.2): al pulsar English, se arreglan
+test("buildings with a history: already marked as English with Spanish names, or with old ids; they always move to English", async () => {
+  // 1) the building already says «en» but keeps the names in Spanish (what 8.2 left): when you press English, they're fixed
   const a = crear(() => resp("ok"));
   await a.ed.iniciar("basico");
   a.ed.e.idioma = "en";
@@ -157,7 +157,7 @@ test("edificios con historia: ya marcado en inglés con nombres en español, o c
   assert.ok(r.cambiados > 10);
   assert.deepEqual(a.ed.e.agentes.map((x) => x.nombre), ["Boss", "Sage 1", "Sage 2", "Techie", "Artie", "Agent Creator", "JEV", "Controller", "Memory"]);
   assert.deepEqual(a.ed.e.plantas.map((x) => x.nombre), ["Dome", "Tech floor", "Lobby"]);
-  // 2) ids que no son los de serie (edificios muy antiguos): se reconocen por su papel, su tipo o su nombre de serie
+  // 2) ids that aren't the built-in ones (very old buildings): they're recognised by their role, their type or their built-in name
   const b = crear(() => resp("ok"));
   await b.ed.iniciar("basico");
   const j = b.ed.agente("jefe"); const s2 = b.ed.agente("sabio2");
@@ -171,7 +171,7 @@ test("edificios con historia: ya marcado en inglés con nombres en español, o c
   assert.equal(b.ed.agente("ag_viejo2").nombre, "Sage 2");
   assert.equal(b.ed.planta("direccion").nombre, "Dome");
   assert.equal(b.ed.planta("pl_viejo").nombre, "Tech floor");
-  // y el botón también los reconoce
+  // and the button recognises them too
   b.ed.agente("ag_viejo2").nombre = "Consejera ChatGPT Pro";
   const n = await b.ed.ejecutar({ tipo: "nombresDeSerie" });
   assert.equal(n.cambiados, 1);

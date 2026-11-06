@@ -1,9 +1,9 @@
 // =====================================================================
-// Fer Agent · LA PORTADA (landing)
-// Todos los textos pasan por tr() (textos.js): se traducen sin tocar este archivo.
+// Fer Agent · THE HOME PAGE (landing)
+// Every text goes through tr() (textos.js): they're translated without touching this file.
 // =====================================================================
-// figura(aspecto, img): pinta el personaje con sus colores dentro de la imagen
-// La descarga de la aplicación: la última versión publicada en GitHub (sin registro)
+// figura(aspecto, img): paints the character with its colours inside the image
+// Downloading the app: the latest version published on GitHub (no sign-up)
 const DESCARGA = "https://github.com/Ferjovipe/fer-agent/releases/latest";
 export function pintarLanding(cont, { h, entrar, figura, idiomas, idioma, cambiarIdioma }) {
   cont.innerHTML = "";
@@ -28,7 +28,7 @@ export function pintarLanding(cont, { h, entrar, figura, idiomas, idioma, cambia
         h("p", {}, "We lay the foundations. You decide the org chart and what each agent does."),
         h("div", { class: "botones-heroe" },
           h("button", { class: "boton-grande", type: "button", onclick: entrar }, "Enter the building"),
-          // la aplicación de Mac y Windows, sin pedir nada (no se enseña dentro de la propia aplicación)
+          // the Mac and Windows app, without asking for anything (not shown inside the app itself)
           /Electron\//.test(navigator.userAgent) ? null : h("a", { class: "boton-borde", href: DESCARGA, target: "_blank", rel: "noopener" }, "Download the app")),
         h("span", { class: "letra-pequena" }, "Open source · Free · Mac, Windows or in the browser · Works with your OpenRouter key or your subscription's API")),
       h("button", { class: "bajar", type: "button", onclick: () => cont.querySelector(".seccion-l").scrollIntoView({ behavior: "smooth" }) }, "How it works ↓")),

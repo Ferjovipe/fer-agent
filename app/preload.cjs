@@ -1,4 +1,4 @@
-// La ventana de la aplicación solo puede pedir esto (nada más de este ordenador): elegir la carpeta del cerebro y volver a abrirse.
+// The app's window can only ask for this (nothing else from this computer): choosing the brain folder and reopening.
 const { contextBridge, ipcRenderer } = require("electron");
 contextBridge.exposeInMainWorld("ferApp", {
   elegirCarpeta: () => ipcRenderer.invoke("elegir-carpeta"),

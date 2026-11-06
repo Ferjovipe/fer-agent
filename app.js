@@ -1,8 +1,8 @@
 // =====================================================================
-// Fer Agent · El Edificio — LA PANTALLA
-// Dibuja la portada, el edificio, las fichas, el chat con cada agente, el gasto, el agente del mes,
-// las salas de reuniones y los ajustes. Todos los textos pasan por tr() (textos.js) para poder traducirse.
-// El trabajo de verdad lo hace engine.js (aquí en el navegador, o en Fer Casa).
+// Fer Agent · The Building — THE SCREEN
+// Draws the home page, the building, the profiles, the chat with each agent, the spending, the agent of the month,
+// the meeting rooms and the settings. Every text goes through tr() (textos.js) so it can be translated.
+// The real work is done by engine.js (here in the browser, or in Fer Home).
 // =====================================================================
 import { LOCALE, fijarIdioma, Edificio, ROLES, CAPACIDADES, PUESTOS, POR_POOL, MAX_OFICINAS, MAX_POOLS, MAX_REUNION, VERSION, MODELO_JEV, TIPOS_MODELO, NIVELES, NOMBRE_NIVEL,
   reparto, limpiarAspecto, textoLatido, nivelClave, tipoModelo, precioVariable, fmt, fmtTope, explicarError, PROVEEDORES, filtrarModelosApi, MAX_PERSONALIDAD, MAX_LINEAS_OBJETIVOS,
@@ -13,8 +13,8 @@ import { pintarLanding } from "./landing.js";
 
 const OR = "https://openrouter.ai/api/v1";
 const BROWSER = "browser";
-// Detector de voz de código abierto (Silero VAD, licencia ISC). Se descarga solo al tocar el micro.
-// Los dos archivos que corren dentro de la página van «sellados»: si alguien los cambia, el navegador no los usa.
+// Open-source voice detector (Silero VAD, ISC licence). It's only downloaded when you touch the mic.
+// The two files that run inside the page are «sealed»: if someone changes them, the browser doesn't use them.
 const ORT_BASE = "https://cdn.jsdelivr.net/npm/onnxruntime-web@1.22.0/dist/";
 const VAD_BASE = "https://cdn.jsdelivr.net/npm/@ricky0123/vad-web@0.0.31/dist/";
 const SELLOS = {
@@ -32,15 +32,15 @@ const K = { estado: "ferEdificio.estado", clave: "ferAgent.key", look: "ferAgent
   claveAnthropic: "ferAgent.keyAnthropic", claveOpenai: "ferAgent.keyOpenAI", claveXai: "ferAgent.keyXai",
   ultimaCopia: "ferAgent.ultimaCopia", aparato: "ferAgent.aparato", carpeta: "ferAgent.carpeta" };
 const CLAVE_DE = { anthropic: K.claveAnthropic, openai: K.claveOpenai, xai: K.claveXai };
-// dónde guarda este navegador la clave de cada API (las tres de antes conservan su sitio)
+// where this browser keeps each API's key (the three earlier ones keep their place)
 const claveApi = (id) => CLAVE_DE[id] || ("ferAgent.keyApi." + id);
 const tieneClaveApi = (id) => { const P = ed && ed.proveedor(id); if (P && P.sinClave) return true; return modo === "casa" ? !!(casaInfo.claves || {})[id] : !!store.get(claveApi(id)); };
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
-// Cada aparato (este navegador) tiene su número, para saber de dónde viene la copia del edificio de la carpeta del cerebro
+// Each device (this browser) has its number, to know where the building's backup in the brain folder comes from
 const aparato = (() => { let x = store.get(K.aparato); if (!x) { x = "ap_" + Math.random().toString(36).slice(2, 10); store.set(K.aparato, x); } return x; })();
 
 // =====================================================================
-// IndexedDB: imágenes, música y lo que no cabe en el almacenamiento normal (no se pierde al recargar)
+// IndexedDB: images, music and whatever doesn't fit in normal storage (not lost on reload)
 // =====================================================================
 const idb = {
   _db: null,
@@ -66,16 +66,16 @@ const idb = {
   claves(t) { return this.op(t, "readonly", (st) => st.getAllKeys()).catch(() => []); }
 };
 
-// Constructor de elementos sin riesgo: el texto siempre va como texto.
-// Lo que escribe la gente o un agente (mensajes, tareas, notas, motivos, títulos) va tal cual: no pasa por el diccionario
+// A safe element builder: text always goes as text.
+// What people or an agent write (messages, tasks, notes, reasons, titles) goes as it is: it doesn't go through the dictionary
 const crudo = (t) => document.createTextNode(String(t ?? ""));
-// Para quien no ha usado nunca OpenRouter: cómo sacar la clave
+// For whoever has never used OpenRouter: how to get the key
 const comoSacarClave = () => h("div", { class: "como-clave" }, h("b", {}, "No key yet? You can get one in a few minutes:"),
   h("ol", {},
     h("li", {}, "Create an OpenRouter account: with your email, Google or GitHub. ", h("a", { href: "https://openrouter.ai", target: "_blank", rel: "noopener" }, "openrouter.ai")),
     h("li", {}, "In “Credits”, add some balance. You pay in advance and only what your agents use is spent. ", h("a", { href: "https://openrouter.ai/credits", target: "_blank", rel: "noopener" }, "openrouter.ai/credits")),
     h("li", {}, "In “Keys”, press “Create Key”, give it a spending limit and copy the key: it's only shown once. Paste it above and press “Save”. ", h("a", { href: "https://openrouter.ai/keys", target: "_blank", rel: "noopener" }, "openrouter.ai/keys"))));
-const entreComillas = (t) => { const [a, b] = tr("“{1}”").split("{1}"); return [a, crudo(t), b]; };   // «…» en español, “…” en inglés
+const entreComillas = (t) => { const [a, b] = tr("“{1}”").split("{1}"); return [a, crudo(t), b]; };   // «…» in Spanish, “…” in English
 function h(tag, attrs, ...kids) {
   const el = document.createElement(tag);
   for (const [k, v] of Object.entries(attrs || {})) {
@@ -83,7 +83,7 @@ function h(tag, attrs, ...kids) {
     if (k === "class") el.className = v;
     else if (k.startsWith("on")) el.addEventListener(k.slice(2), v);
     else if (k === "style" && typeof v === "object") { for (const [p, x] of Object.entries(v)) { if (x === null || x === undefined) continue; if (p.startsWith("--")) el.style.setProperty(p, String(x)); else el.style[p] = x; } }
-    else if (k === "html") el.innerHTML = v;      // solo para dibujos generados aquí, nunca texto de nadie
+    else if (k === "html") el.innerHTML = v;      // only for drawings generated here, never anyone's text
     else if (v === true) el.setAttribute(k, "");
     else el.setAttribute(k, (k === "title" || k === "placeholder" || k === "aria-label" || k === "alt") ? tr(String(v)) : v);
   }
@@ -92,7 +92,7 @@ function h(tag, attrs, ...kids) {
 }
 
 // =====================================================================
-// Motor: aquí mismo (navegador) o en Fer Casa (ordenador, teléfono o servidor)
+// Engine: right here (browser) or in Fer Home (computer, phone or server)
 // =====================================================================
 let modo = "local", pin = store.get(K.pin);
 let ed = null;
@@ -105,7 +105,7 @@ const Motor = {
     const porPartes = acc.tipo === "hablar" && typeof acc.alTrozo === "function";
     const r = await fetch("./api/accion", { method: "POST", headers: Object.assign({ "Content-Type": "application/json", "X-Fer-Pin": pin }, porPartes ? { "X-Fer-Trozos": "1" } : {}), body: JSON.stringify(acc) });
     if (porPartes && r.ok && r.body && /ndjson/.test(r.headers.get("content-type") || "")) {
-      // la respuesta llega por partes desde Fer Casa: la voz empieza mientras el agente escribe
+      // the reply arrives in parts from Fer Home: the voice starts while the agent writes
       const rd = r.body.getReader(), dec = new TextDecoder();
       let buf = "", todo = "", fin = null, error = "";
       const linea = (l) => { if (!l.trim()) return; let j; try { j = JSON.parse(l); } catch { return; } if (typeof j.trozo === "string") { todo += j.trozo; try { acc.alTrozo(j.trozo, todo); } catch {} } if (j.fin) fin = j.fin; if (j.error) error = j.error; };
@@ -122,13 +122,13 @@ const Motor = {
     return d;
   }
 };
-let casaApp = false;   // Fer Home dentro de la aplicación de escritorio (versión 9): la clave se pega aquí y no hay PIN que escribir
+let casaApp = false;   // Fer Home inside the desktop app (version 9): the key is pasted here and there's no PIN to type
 async function detectarCasa() {
   try { const r = await fetch("./api/hola", { cache: "no-store" }); if (r.ok) { const d = await r.json(); casaApp = !!(d && d.app); return !!(d && d.ferCasa); } } catch {}
   return false;
 }
 const esApp = () => modo === "casa" && (casaApp || !!casaInfo.app);
-// En la aplicación: guardar una clave o abrir el Chrome de los agentes (lo hace la aplicación, en este ordenador)
+// In the app: save a key or open the agents' Chrome (the app does it, on this computer)
 async function llamarApp(ruta, datos) {
   const r = await fetch("." + ruta, { method: "POST", headers: { "Content-Type": "application/json", "X-Fer-Pin": pin }, body: JSON.stringify(datos) });
   const d = await r.json().catch(() => ({}));
@@ -136,9 +136,9 @@ async function llamarApp(ruta, datos) {
   return d;
 }
 let pinRechazado = false;
-let skillsCasa = [], casaInfo = {};   // en Fer Casa: las skills (manos) que tiene y cómo está (Telegram, carpeta del cerebro)
+let skillsCasa = [], casaInfo = {};   // in Fer Home: the skills (hands) it has and how it is (Telegram, brain folder)
 async function refrescarCasa() {
-  if (!pin || pinRechazado) return;          // sin PIN no se pregunta (así no te bloquea a ti mismo)
+  if (!pin || pinRechazado) return;          // without a PIN it doesn't ask (so you don't lock yourself out)
   try {
     const r = await fetch("./api/estado", { headers: { "X-Fer-Pin": pin }, cache: "no-store" });
     if (r.status === 401) { pinRechazado = true; pedirPin(); return; }
@@ -148,7 +148,7 @@ async function refrescarCasa() {
     skillsCasa = Array.isArray(d.skills) ? d.skills : []; casaInfo = d.casa || {};
     if (Array.isArray(d.biblioteca)) ed.biblioteca = d.biblioteca;
     pintar();
-    if (!refrescarCasa.idioma) { refrescarCasa.idioma = true; sincronizarIdioma(); }   // la primera vez: el idioma de esta persona o el del edificio
+    if (!refrescarCasa.idioma) { refrescarCasa.idioma = true; sincronizarIdioma(); }   // the first time: this person's language or the building's
   } catch {}
 }
 function pedirPin() { if ($("cajon").hidden) abrirCajon("ajustes"); }
@@ -157,14 +157,14 @@ const apiCab = (json) => { const c = modo === "local" ? { Authorization: "Bearer
 const hayAcceso = () => (modo === "casa" ? !!pin && !(esApp() && casaInfo.clave === false) : !!store.get(K.clave));
 
 // =====================================================================
-// Listas de modelos de OpenRouter (públicas, sin clave)
+// OpenRouter model lists (public, no key)
 // =====================================================================
 async function cargarListas() {
   const get = async (q) => { const r = await fetch(OR + "/models" + q); if (!r.ok) throw new Error("HTTP " + r.status); return (await r.json()).data || []; };
-  // Todos los modelos de una vez; cada uno se clasifica por lo que hace (lo dicen sus datos, no una lista a mano)
+  // All the models at once; each one is classified by what it does (its data says so, not a hand-made list)
   let todos = null;
   try { todos = await get("?output_modalities=all"); } catch {}
-  if (!todos || !todos.length) {   // si esa consulta falla, como antes: una por tipo
+  if (!todos || !todos.length) {   // if that query fails, as before: one per type
     const r = await Promise.allSettled(["", "?output_modalities=speech", "?output_modalities=transcription", "?output_modalities=image", "?output_modalities=audio"].map(get));
     const vistos = new Set(); todos = [];
     for (const x of r) if (x.status === "fulfilled") for (const m of x.value) if (!vistos.has(m.id)) { vistos.add(m.id); todos.push(m); }
@@ -182,12 +182,12 @@ const n0 = (v) => { const n = parseFloat(v); return isFinite(n) && n > 0 ? n : 0
 const porMillon = (p) => (p * 1e6).toLocaleString(LOCALE, { maximumFractionDigits: 3 });
 const datosModelo = (m) => ({ id: m.id, name: m.name || m.id, inPrice: n0((m.pricing || {}).prompt), outPrice: n0((m.pricing || {}).completion), ve: ((m.architecture && m.architecture.input_modalities) || []).includes("image"), out: (m.architecture && m.architecture.output_modalities) || ["text"] });
 const dinero = (n, dec = 3) => n.toLocaleString(LOCALE, { maximumFractionDigits: dec });
-// El precio, dicho como se cobra cada tipo de modelo
+// The price, said the way each type of model is charged
 const POR_TXT = { song: "song", clip: "clip", track: "track", image: "image", minute: "minute", hour: "hour", request: "request", generation: "generation", second: "second" };
 function precioTxt(m) {
   const p = m.pricing || {}, a = n0(p.prompt), b = n0(p.completion), t = tipoModelo(m);
   if (precioVariable(m)) return tr("variable price");
-  // imágenes: OpenRouter da el precio por token de imagen («image_output»); aquí, por imagen de 1024×1024 (≈)
+  // images: OpenRouter gives the price per image token («image_output»); here, per 1024×1024 image (≈)
   if (t === "imagen" && precioUnidad(m)) return tr(`≈$${dinero(precioUnidad(m))} per image`);
   if (t === "musica" && n0(p.request)) return tr(`$${dinero(n0(p.request))} per song`);
   if (t !== "texto" && sinPrecioPublicado(m)) { const d = precioDescrito(m); return tr(d ? `price not published (its description says $${dinero(d.usd)} per ${POR_TXT[d.por] || d.por})` : "price not published"); }
@@ -204,8 +204,8 @@ function etiquetaModelo(m) {
   if (nivel === "sinprecio") return `${d.name} · ${precioTxt(m)}`;
   return `${d.name} · ${tr(NOMBRE_NIVEL[nivel])} · ${precioTxt(m)}${d.ve && tipoModelo(m) === "texto" ? " · " + tr("sees") : ""}`;
 }
-// Selector de modelos: arriba los recomendados por nivel; debajo, todos los de ese tipo (y en «Cerebro», también «Otros»).
-// v8: en el desplegable, solo los recomendados (15 como mucho) y el que tiene ahora; el resto, con el buscador de al lado
+// Model picker: the recommended ones per level on top; below, all of that type (and in «Brain», also «Others»).
+// v8: in the drop-down, only the recommended ones (15 at most) and the current one; the rest, with the search box next to it
 const MAX_RECOMENDADOS = 15;
 function selectorModelo(tipo, actual, { vacio, extra, alCambiar, filtro } = {}) {
   const sel = h("select", {});
@@ -217,7 +217,7 @@ function selectorModelo(tipo, actual, { vacio, extra, alCambiar, filtro } = {}) 
     sel.replaceChildren();
     if (vacio) sel.append(h("option", { value: "" }, vacio));
     for (const x of extra || []) sel.append(h("option", { value: x[0] }, x[1]));
-    const puestos = new Set();   // arriba, como mucho 15 recomendados por nivel de precio
+    const puestos = new Set();   // on top, at most 15 recommended per price level
     for (const nivel of NIVELES) {
       if (puestos.size >= MAX_RECOMENDADOS) break;
       const ids = (rec[nivel] || []).filter((id) => porId.has(id) && !puestos.has(id)).slice(0, MAX_RECOMENDADOS - puestos.size);
@@ -225,7 +225,7 @@ function selectorModelo(tipo, actual, { vacio, extra, alCambiar, filtro } = {}) 
       ids.forEach((id) => puestos.add(id));
       sel.append(h("optgroup", { label: tr("Recommended") + " · " + tr(NOMBRE_NIVEL[nivel]) }, ids.map((id) => h("option", { value: id }, etiquetaModelo(porId.get(id))))));
     }
-    // debajo, TODOS los de OpenRouter de este tipo (cientos), como en la versión 7; y los «Otros», por si acaso
+    // below, ALL OpenRouter's of this type (hundreds), as in version 7; and the «Others», just in case
     sel.append(h("optgroup", { label: tr("All") + " · " + tr(TIPOS_MODELO[tipo]) + ` (${lista.length})` }, lista.map((m) => h("option", { value: m.id }, etiquetaModelo(m)))));
     if (tipo === "texto" && !filtro && porTipo.otros.length) sel.append(h("optgroup", { label: tr("Others (may not work here)") }, porTipo.otros.map((m) => h("option", { value: m.id }, etiquetaModelo(m) + " · " + ((m.architecture && m.architecture.output_modalities) || []).join("+")))));
     if (valor && ![...sel.options].some((o) => o.value === valor)) sel.prepend(h("option", { value: valor }, porId.has(valor) ? etiquetaModelo(porId.get(valor)) : valor + (valor === MODELO_JEV ? "" : " " + tr("(not in the list)"))));
@@ -234,7 +234,7 @@ function selectorModelo(tipo, actual, { vacio, extra, alCambiar, filtro } = {}) 
   rellenar(actual || "");
   if (alCambiar) sel.addEventListener("change", () => alCambiar(sel.value));
   if (todos.length > MAX_RECOMENDADOS) {
-    // además, «Buscar entre todos»: escribes parte del nombre y eliges (es lo mismo que buscarlo en el desplegable, más rápido)
+    // also, «Search all»: you type part of the name and choose (the same as finding it in the drop-down, but faster)
     const boton = h("button", { type: "button", class: "btn mini buscar-modelo" }, tr(`Search all (${todos.length})`));
     let caja = null;
     boton.onclick = (ev) => {
@@ -255,7 +255,7 @@ function selectorModelo(tipo, actual, { vacio, extra, alCambiar, filtro } = {}) 
   }
   return sel;
 }
-// Lo que propone Arturito para este tipo de modelo (tú decides)
+// What Artie proposes for this type of model (you decide)
 function propuestasDe(tipo) {
   return (ed.e.propuestasModelos || []).filter((x) => x.tipo === tipo && x.estado === "pendiente").map((pm) => h("div", { class: "propuesta-modelo" },
     h("span", {}, `${tr("Artie proposes")} ${pm.modelo} ${tr("for the level")} ${tr(NOMBRE_NIVEL[pm.nivel] || pm.nivel)}: ${pm.motivo}`),
@@ -264,7 +264,7 @@ function propuestasDe(tipo) {
 }
 
 // =====================================================================
-// Texto con formato seguro y texto para leer en voz alta
+// Safely formatted text and text to read aloud
 // =====================================================================
 const escapar = (s) => s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
 const enLinea = (s) => s.replace(/`([^`]+)`/g, "<code>$1</code>").replace(/\*\*([^*]+)\*\*/g, "<strong>$1</strong>").replace(/(^|[^*])\*([^*\n]+)\*/g, "$1<em>$2</em>")
@@ -289,7 +289,7 @@ const paraVoz = (t) => String(t).replace(/```[\s\S]*?```/g, " ").replace(/<[^>]*
   .replace(/\n{2,}/g, ". ").replace(/\s+/g, " ").trim();
 
 // =====================================================================
-// Personajes: chico, chica, abuelo y abuela, con colores a elegir
+// Characters: boy, girl, grandpa and grandma, with colours to choose
 // =====================================================================
 const ZONAS = { piel: 1, pelo: 2, ojos: 3, ropa: 4 };
 const NOMBRE_PJ = { chico: "Boy", chica: "Girl", abuelo: "Grandpa", abuela: "Grandma", morado: "Purple suit", verde: "Green suit", coral: "Coral", azul: "Blue suit", turquesa: "Teal suit", camisa: "Blue shirt" };
@@ -327,7 +327,7 @@ function hexAHsl(hex) {
   return [hh, s, l];
 }
 function canal(p, q, t) { if (t < 0) t += 1; if (t > 1) t -= 1; if (t < 1 / 6) return p + (q - p) * 6 * t; if (t < 1 / 2) return q; if (t < 2 / 3) return p + (q - p) * (2 / 3 - t) * 6; return p; }
-function pintarZona(data, C, zona, hex) {   // cambia el color conservando luces y sombras
+function pintarZona(data, C, zona, hex) {   // changes the colour keeping lights and shadows
   const [th, ts, tl] = hexAHsl(hex), refL = C.P.regiones[zona].refL, lista = C.idx[ZONAS[zona]], L = C.L;
   for (let j = 0; j < lista.length; j++) {
     const i = lista[j], Lp = L[i];
@@ -346,7 +346,7 @@ async function dibujarPersonaje(aspecto, cv) {
   cv.getContext("2d").putImageData(out, 0, 0);
   return cv;
 }
-// Figura ya pintada (en caché): mientras se prepara, se ve el personaje con sus colores originales.
+// An already painted figure (cached): while it's prepared, the character shows in its original colours.
 const cacheFig = new Map(), pendFig = new Map();
 const claveFig = (A) => [A.p, A.ropa, A.ojos, A.pelo, A.piel].join("|");
 function asegurarFigura(aspecto) {
@@ -356,7 +356,7 @@ function asegurarFigura(aspecto) {
   if (!pendFig.has(k)) pendFig.set(k, dibujarPersonaje(A, document.createElement("canvas")).then(reducir).then((u) => { cacheFig.set(k, u); pendFig.delete(k); return u; }).catch(() => { cacheFig.set(k, PERSONAJES[A.p].img); pendFig.delete(k); return PERSONAJES[A.p].img; }));
   return pendFig.get(k);
 }
-// La figura pintada se guarda a la mitad de tamaño (de sobra para la pantalla) y como archivo en memoria, no como texto.
+// The painted figure is saved at half size (plenty for the screen) and as a file in memory, not as text.
 function reducir(cv) {
   const t = document.createElement("canvas"); t.height = Math.round(cv.height / 2); t.width = Math.round(cv.width / 2);
   const x = t.getContext("2d"); x.imageSmoothingQuality = "high"; x.drawImage(cv, 0, 0, t.width, t.height);
@@ -382,7 +382,7 @@ function pintarAcento() {
   const a = chatId ? agenteChat() : ed.jefe(); if (!a) return;
   const ac = acentoDe(a); if (ac !== acentoPuesto) { acentoPuesto = ac; ponerAcento(ac); }
 }
-// Para verlo en grande (chat, podio): el dibujo a tamaño completo
+// To see it big (chat, podium): the full-size drawing
 const cacheGrande = new Map();
 function asegurarFiguraGrande(aspecto) {
   const A = asp(aspecto), k = claveFig(A);
@@ -391,7 +391,7 @@ function asegurarFiguraGrande(aspecto) {
   return cacheGrande.get(k);
 }
 
-// Selector de aspecto: personaje y colores (lo usan «Crear agente» y «Aspecto»)
+// Look picker: character and colours (used by «Create agent» and «Look»)
 function selectorAspecto(actual, alCambiar) {
   let A = asp(actual);
   const caja = h("div", { class: "aspecto" });
@@ -428,14 +428,14 @@ function selectorAspecto(actual, alCambiar) {
 }
 
 // =====================================================================
-// El edificio: trozos del dibujo apilados (cúpula, pisos y vestíbulo)
+// The building: pieces of the drawing stacked (dome, floors and lobby)
 // =====================================================================
-// Medidas en píxeles del dibujo original (1438 de ancho). «suelo» es donde pisan; «fig», lo que miden.
+// Measurements in pixels of the original drawing (1438 wide). «suelo» is where they stand; «fig», how tall they are.
 const ANCHO = 1438;
 const TRAMO = {
-  // «placa»: dónde va el letrero, arriba a la izquierda de su planta (v8: antes quedaba en el borde de abajo y parecía de la de debajo)
+  // «placa»: where the sign goes, top left of its floor (v8: before, it sat at the bottom edge and looked like it belonged to the floor below)
   cupula: { img: "img/cupula.webp", img2: "img/cupula2x.webp", alto: 187, suelo: 152, fig: 66, placa: 100, placaMovil: 128 },
-  piso: { img: "img/piso.webp", img2: "img/piso2x.webp", alto: 130, suelo: 93, fig: 58, placa: 1, placaMovil: 96 },   // en un teléfono el piso mide 3 dedos: los letreros, en la losa de cada planta (no tapan a nadie)
+  piso: { img: "img/piso.webp", img2: "img/piso2x.webp", alto: 130, suelo: 93, fig: 58, placa: 1, placaMovil: 96 },   // on a phone a floor is 3 fingers high: the signs go on each floor's slab (they don't cover anyone)
   vestibulo: { img: "img/vestibulo.webp", img2: "img/vestibulo2x.webp", alto: 219, suelo: 141, fig: 84, placa: 10, placaMovil: 146 }
 };
 const SITIOS = {
@@ -443,9 +443,9 @@ const SITIOS = {
   vestibulo: { izquierda: [268], recepcion: [717], derecha: [1172] },
   piso: { despacho: [176], pool: [425, 487, 548, 662, 726, 790], oficina: [884, 997, 1109, 1220, 1329] }
 };
-// En la vista de un piso se juntan módulos sacados del mismo dibujo: despacho, pools, oficinas y el cierre.
+// In a floor's view, modules taken from the same drawing are put together: head office, pools, offices and the closing piece.
 const MODULO = { despacho: [0, 348], pool: [348, 828], oficina: [828, 941], fin: [1382, 1438] };
-// Recorte que se ve al entrar en la cúpula y en el vestíbulo: [x0, x1, y0, y1]
+// Crop shown when going into the dome and the lobby: [x0, x1, y0, y1]
 const CORTE = { cupula: [400, 1040, 22, 187], vestibulo: [0, 1438, 0, 219] };
 const NOMBRE_PUESTO = { centro: "centre", izquierda: "left", derecha: "right", despacho: "head office", oficina: "office", pool: "pool", recepcion: "reception" };
 const PUESTOS_TXT = { cupula: [["izquierda", "To the boss's left"], ["derecha", "To the boss's right"]], piso: [["despacho", "Head office (section head)"], ["oficina", "Office"], ["pool", "Pool (several simple agents)"]], vestibulo: [["recepcion", "Reception"], ["izquierda", "Left office"], ["derecha", "Right office"]] };
@@ -470,7 +470,7 @@ function faseClase() { return { normal: "", congelacion1: "c1", congelacion2: "c
 function pintarTop() {
   const aj = ed.e.ajustes, hoy = ed.gastoEdificio("hoy"), uso = ed.usoPresupuesto(), j = ed.jefe();
   $("nombreEdificio").textContent = ed.e.nombre || tr("My building");
-  // el contador siempre a la vista; con cero, «Hoy, sin gasto» en vez de «0,0000 $»
+  // the counter always in view; at zero, «Today, no spending» instead of «$0.0000»
   $("medHoy").textContent = hoy > 0 ? tr(`Today ${fmt(hoy)}`) : tr("Today, no spending");
   $("medTope").textContent = n0(aj.topeDiario) ? tr(`cap ${fmtTope(n0(aj.topeDiario))}`) : tr("no cap");
   const b = $("medBarra"); b.style.width = Math.min(100, uso * 100) + "%"; b.className = faseClase();
@@ -480,11 +480,11 @@ function pintarTop() {
   const pend = (ed.e.monedas || []).filter((m) => m.estado === "propuesta").length;
   $("globoMes").hidden = !pend; $("globoMes").textContent = pend;
   $("globoMes").title = tr(pend === 1 ? "1 proposed coin is waiting for your decision" : `${pend} proposed coins are waiting for your decision`);
-  // la bandeja: todo lo que espera tu sí
+  // the inbox: everything waiting for your yes
   const nb = ed.bandeja().length;
   $("globoBandeja").hidden = !nb; $("globoBandeja").textContent = nb;
   $("abrirBandeja").title = tr(nb ? (nb === 1 ? "1 thing is waiting for your yes" : `${nb} things are waiting for your yes`) : "Nothing is waiting for your yes");
-  // el interruptor general
+  // the master switch
   const pausa = aj.pausa !== false, gastan = ed.quienesGastan().filter((x) => x.auto && x.est.gasta && !x.a.apagado);
   $("pausa").setAttribute("aria-pressed", String(pausa));
   $("pausaTxt").textContent = tr(pausa ? "Paused" : "Automatic");
@@ -492,7 +492,7 @@ function pintarTop() {
   $("pausa").title = tr(pausa ? "General pause: no agent that spends wakes up on its own. Press to start." : "Running: heartbeats are on. Press to stop everything automatic.");
   pintarCopiaTop();
 }
-// «Guardar copia»: cuándo se hizo la última (descargada o en la carpeta del cerebro)
+// «Save backup»: when the last one was made (downloaded or in the brain folder)
 function ultimaCopia() { return Math.max(Number(store.get(K.ultimaCopia, "0")) || 0, (cerebro.estado && cerebro.estado.ultimaCopia) || 0); }
 function haceCuanto(ts) {
   if (!ts) return tr("never");
@@ -516,20 +516,20 @@ function estadoVisible(a) {
 }
 const ESTADO_TXT = { trabajando: "working", apagado: "off", congelado: "frozen", activo: "with pending tasks", reposo: "resting" };
 const pct = (n) => (n * 100).toFixed(3) + "%";
-// La voz y el oído, en el idioma de la web (con el acento del navegador si es el mismo idioma: en-GB, es-MX…)
+// Voice and hearing, in the website's language (with the browser's accent if it's the same language: en-GB, es-MX…)
 const idiomaVoz = () => ((navigator.language || "").slice(0, 2).toLowerCase() === idioma ? navigator.language : LOCALE);
 const rolTxt = (a) => trSiempre((ROLES[a.rol] || {}).nombre || a.rol);
-// Los nombres de agentes, plantas y del edificio son datos: no se traducen (si el jefe se llama «Jefe», en inglés se ve «Jefe»)
+// The names of agents, floors and the building are data: they aren't translated (if the boss is called «Jefe», in English you see «Jefe»)
 const nombresAlDia = () => { if (ed && ed.e) fijarNombres([ed.e.nombre, ...ed.e.agentes.map((a) => a.nombre), ...ed.e.plantas.map((p) => p.nombre)]); };
 const conversa = (a) => !!(a && a.cerebro && a.rol !== "jev" && !["interventor", "memory"].includes(a.rol));
-const gastoTxt = (g) => (g > 0 ? fmt(g) : "");   // el gasto solo se enseña cuando lo hay
-// La ficha (y la actividad) van en un panel a la derecha que solo se abre al tocar un agente o al entrar en un piso
+const gastoTxt = (g) => (g > 0 ? fmt(g) : "");   // spending is only shown when there is some
+// The profile (and the activity) go in a panel on the right that only opens when you touch an agent or go into a floor
 const panelAbierto = () => document.body.classList.contains("con-panel");
 function abrirPanel(tab) { if (window.innerWidth > 900) document.body.classList.add("con-panel"); verPestana(tab || "ficha"); pintar(); }
 function cerrarPanel() { if (!panelAbierto()) return; document.body.classList.remove("con-panel"); pintar(); }
 function elegir(a) { seleccion = a.id; abrirPanel("ficha"); }
 
-// Una figura colocada sobre un trozo del dibujo. x0 y ancho: el tramo de dibujo que ocupa el contenedor.
+// A figure placed on a piece of the drawing. x0 and width: the stretch of drawing the container takes up.
 function personaje(a, T, x, x0, ancho, conNombre) {
   const est = estadoVisible(a);
   return h("button", {
@@ -541,7 +541,7 @@ function personaje(a, T, x, x0, ancho, conNombre) {
   }, h("img", { src: figura(a.aspecto), alt: "", draggable: "false" }), est === "activo" ? h("span", { class: "pendiente", "aria-hidden": "true" }) : null,
     monedasFigura(a), h("span", { class: "etiqueta" + (conNombre ? "" : " al-pasar"), "aria-hidden": "true" }, a.nombre));
 }
-// El contador de monedas doradas y rojas, en el muñeco
+// The gold and red coin counter, on the figure
 let cuentaMonedas = null, firmaMonedas = "";
 function monedasDe(a) {
   const ms = (ed.e.monedas || []), f = ms.length + ":" + ((ms.at(-1) || {}).id || "") + ":" + ms.filter((m) => m.estado !== "confirmada").length;
@@ -564,7 +564,7 @@ function hueco(T, x, x0, ancho, planta, puesto) {
 }
 const gastoPlanta = (p) => ed.e.agentes.filter((a) => a.planta === p.id).reduce((s, a) => s + ed.gastoAgente(a, "hoy"), 0);
 
-// ¿Dibujo o franjas? «Automática»: franjas cuando el edificio es grande.
+// Drawing or strips? «Automatic»: strips when the building is big.
 const AUTO_AGENTES = 20, AUTO_PISOS = 6;
 function vistaEdificio() {
   const v = ed.e.ajustes.vistaEdificio || "auto";
@@ -575,7 +575,7 @@ let torre = null, dirCab = null, dirLista = null, plantaAntes = "";
 function pintarCiudad() {
   const cont = $("edificio");
   if (plantaAbierta && !ed.e.plantas.some((p) => p.id === plantaAbierta)) plantaAbierta = "";
-  if (plantaAntes && !plantaAbierta) document.body.classList.remove("con-panel");   // al salir de un piso, el edificio entero otra vez
+  if (plantaAntes && !plantaAbierta) document.body.classList.remove("con-panel");   // when leaving a floor, the whole building again
   plantaAntes = plantaAbierta;
   cont.classList.toggle("abierta", !!plantaAbierta);
   $("ciudadBarra").hidden = !!plantaAbierta;
@@ -583,9 +583,9 @@ function pintarCiudad() {
   const v = vistaEdificio();
   $("verDibujo").setAttribute("aria-pressed", String(v === "dibujo")); $("verFranjas").setAttribute("aria-pressed", String(v === "franjas"));
   if (!torre) { torre = h("div", { class: "torre" }); dirLista = h("div", { class: "dir-lista" }); cabDirectorio(); }
-  // el directorio, solo en «Franjas» (en el dibujo ya ves a todos)
+  // the directory, only in «Strips» (in the drawing you already see everyone)
   const conDir = v === "franjas";
-  if (cont.children[0] !== torre || (cont.children.length > 1) !== conDir) cont.replaceChildren(...(conDir ? [torre, dirCab, dirLista] : [torre]));   // el buscador no se rehace: no pierde lo escrito
+  if (cont.children[0] !== torre || (cont.children.length > 1) !== conDir) cont.replaceChildren(...(conDir ? [torre, dirCab, dirLista] : [torre]));   // the search box isn't rebuilt: it doesn't lose what was typed
   torre.replaceChildren(...ed.e.plantas.map((p) => (v === "franjas" && p.tipo === "piso" ? franjaPiso(p) : tramoEdificio(p))), h("div", { class: "suelo-calle" }));
   if (conDir) pintarDirectorio();
 }
@@ -606,7 +606,7 @@ function tramoEdificio(p) {
     h("b", {}, p.nombre), g > 0 ? h("span", {}, fmt(g)) : null));
   return el;
 }
-// Un piso como franja: nombre, función, cuántos agentes, cuántos trabajan y el gasto (si lo hay); un punto por agente.
+// A floor as a strip: name, job, how many agents, how many are working and the spending (if any); one dot per agent.
 function franjaPiso(p) {
   const ags = ed.e.agentes.filter((a) => a.planta === p.id), est = ags.map(estadoVisible);
   const trab = est.filter((x) => x === "trabajando").length, g = gastoPlanta(p);
@@ -619,7 +619,7 @@ function franjaPiso(p) {
       h("span", { class: "f-datos" }, datos, ags.length ? h("span", { class: "puntos", "aria-hidden": "true" }, ags.map((a, i) => h("i", { class: est[i] }))) : null)));
 }
 
-// ---------------- Directorio: todos los agentes, con buscador y filtros ----------------
+// ---------------- Directory: every agent, with a search box and filters ----------------
 const FILTROS = [["", "All"], ["trabajando", "Working"], ["activo", "With pending tasks"], ["congelado", "Frozen"], ["apagado", "Off"]];
 const sinAcentos = (t) => String(t || "").toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g, "");
 function cabDirectorio() {
@@ -654,8 +654,8 @@ function pintarDirectorio() {
 let centrarPendiente = false;
 function abrirPlanta(id) {
   if (plantaAbierta !== id) {
-    centrarPendiente = true;   // al entrar, la planta se enseña centrada en el agente elegido
-    // la ficha que sale al lado es la del jefe de ese piso (o la del primero que haya); si está vacío, no sale ficha
+    centrarPendiente = true;   // when going in, the floor is shown centred on the chosen agent
+    // the profile shown beside it is that floor's section head's (or the first one's); if it's empty, no profile is shown
     const r = reparto(ed.e, id), quien = (r.despacho || [])[0] || (r.centro || [])[0] || (r.recepcion || [])[0] || ed.e.agentes.find((a) => a.planta === id);
     if (quien) { seleccion = quien.id; if (window.innerWidth > 900) document.body.classList.add("con-panel"); }
   }
@@ -664,7 +664,7 @@ function abrirPlanta(id) {
   marcarNav();
 }
 
-// ---------------- Vista de una planta ----------------
+// ---------------- A floor's view ----------------
 function pintarPlanta(cont, p) {
   const foco = document.activeElement;
   if (cont.contains(foco) && (foco.tagName === "INPUT" || foco.tagName === "TEXTAREA")) return;
@@ -672,7 +672,7 @@ function pintarPlanta(cont, p) {
   cont.innerHTML = "";
   const T = TRAMO[p.tipo], r = reparto(ed.e, p.id), ags = ed.e.agentes.filter((a) => a.planta === p.id);
   const ejecutar = (acc) => Motor.ejecutar(acc).then(pintar).catch(avisar);
-  // cabecera: volver, nombre y función (se cambian escribiendo)
+  // header: back, name and job (changed by typing)
   const nombre = h("input", { class: "nombre-planta", value: p.nombre, "aria-label": "Name of the floor", onchange: (ev) => ejecutar({ tipo: "editarPlanta", id: p.id, nombre: ev.target.value }) });
   const funcion = h("textarea", { class: "funcion-planta", rows: "1", maxlength: "300", placeholder: "What is this floor for?", "aria-label": "What the floor does", onchange: (ev) => ejecutar({ tipo: "editarPlanta", id: p.id, funcion: ev.target.value.replace(/\s*\n\s*/g, " ") }) });
   funcion.value = p.funcion || "";
@@ -680,12 +680,12 @@ function pintarPlanta(cont, p) {
     h("button", { class: "volver", type: "button", onclick: volverAtras }, "← Back to the whole building"),
     nombre, funcion,
     h("p", { class: "planta-datos" }, tr(ags.length === 1 ? "1 agent" : `${ags.length} agents`) + (gastoPlanta(p) > 0 ? " · " + tr(`today ${fmt(gastoPlanta(p))}`) : "") + (p.tipo === "piso" ? " · " + tr(p.oficinas === 1 ? "1 office" : `${p.oficinas} offices`) + " · " + tr(p.pools === 1 ? "1 pool" : `${p.pools} pools`) : ""))));
-  // la planta dibujada
+  // the drawn floor
   const tira = h("div", { class: "tira " + p.tipo });
   if (p.tipo === "piso") {
     for (const m of modulosPiso(p, r, T, true)) tira.append(m);
   } else {
-    // cúpula y vestíbulo: un recorte del dibujo grande, para verlos de cerca
+    // dome and lobby: a crop of the big drawing, to see them up close
     const [x0, x1, y0, y1] = CORTE[p.tipo], Tc = Object.assign({}, T, { suelo: T.suelo - y0, alto: y1 - y0 });
     const lienzo = h("div", { class: "lienzo", style: { "--x0": x0, "--x1": x1, "--y0": y0, "--y1": y1, "--W": ANCHO, "--A": T.alto, backgroundImage: `url(${T.img2})` } });
     for (const [puesto, xs] of Object.entries(SITIOS[p.tipo])) {
@@ -708,7 +708,7 @@ function pintarPlanta(cont, p) {
   };
   tira.addEventListener("scroll", mover, { passive: true });
   if (p.tipo === "piso") {
-    // plano pequeño de todo el piso: enseña dónde estás y lleva a cada sitio con un toque
+    // a small map of the whole floor: shows where you are and takes you to each place with a tap
     const total = (MODULO.despacho[1] - MODULO.despacho[0]) * 2 + p.pools * (MODULO.pool[1] - MODULO.pool[0]) * 2 + Math.max(p.oficinas, r.oficina.length) * (MODULO.oficina[1] - MODULO.oficina[0]) * 2 + (MODULO.fin[1] - MODULO.fin[0]) * 2;
     const alto = Math.min(84, Math.max(34, anchoCont * 260 / total));
     plano = h("div", { class: "plano", style: { "--h": alto + "px" }, "aria-hidden": "true" }, modulosPiso(p, r, T, false));
@@ -727,7 +727,7 @@ function pintarPlanta(cont, p) {
     }
     mover();
   });
-  // acciones de la planta
+  // the floor's actions
   const acc = h("div", { class: "planta-acciones" },
     p.tipo === "cupula" && r.izquierda.length && r.derecha.length ? null : h("button", { class: "btn primario mini", onclick: () => abrirCajon("agente", { planta: p.id, puesto: p.tipo === "cupula" ? (r.izquierda.length ? "derecha" : "izquierda") : "" }) }, p.tipo === "cupula" ? "+ Sage" : "+ Agent on this floor"));
   if (p.tipo === "piso") {
@@ -741,7 +741,7 @@ function pintarPlanta(cont, p) {
       ags.length ? null : h("button", { class: "btn mini peligro", onclick: (ev) => confirmar(ev.target, "Delete the floor? Press again", () => Motor.ejecutar({ tipo: "borrarPlanta", id: p.id }).then(() => { plantaAbierta = ""; pintar(); }).catch(avisar)) }, "Delete floor")].filter(Boolean));
   }
   cont.append(acc);
-  // quién trabaja aquí
+  // who works here
   const lista = h("div", { class: "quienes" });
   const orden = { centro: 0, despacho: 0, recepcion: 0, izquierda: 1, derecha: 2, oficina: 3, pool: 4 };
   for (const a of ags.slice().sort((x, y) => (orden[x.puesto] ?? 9) - (orden[y.puesto] ?? 9))) {
@@ -752,7 +752,7 @@ function pintarPlanta(cont, p) {
   }
   cont.append(ags.length ? lista : h("p", { class: "planta-vacia" }, p.tipo === "piso" ? "Empty floor. Put a section head in the head office and their sub-agents in the offices or the pool." : "This floor is empty."));
 }
-// Los módulos de un piso: despacho, uno o más pools, las oficinas y el cierre de cristal.
+// A floor's modules: head office, one or more pools, the offices and the glass end.
 function modulosPiso(p, r, T, grande) {
   const mod = (tipo, x0, x1, contenido) => h("div", { class: "modulo " + tipo, style: { "--x0": x0 * 2, "--w": (x1 - x0) * 2 } }, contenido);
   const fig = (a, x, x0, ancho, puesto) => a ? personaje(a, T, x, x0, ancho, grande) : grande ? hueco(T, x, x0, ancho, p, puesto) : null;
@@ -765,7 +765,7 @@ function modulosPiso(p, r, T, grande) {
   return out;
 }
 function latirAntena() { const l = $("luzAntena"); if (!l) return; l.classList.remove("late"); void l.offsetWidth; l.classList.add("late"); }
-// Errores: en el chat si está abierto; si no, un aviso abajo que se va solo.
+// Errors: in the chat if it's open; if not, a notice at the bottom that goes away by itself.
 function avisar(err) {
   const t = err && err.mostrado ? err.message : `Something went wrong: ${(err && err.message) || err}`;
   if (chatId) { pendientesError.push(t); pintarChat(true); return; }
@@ -777,7 +777,7 @@ function avisoFlotante(t) {
   el.textContent = tr(t); el.hidden = false; clearTimeout(avisoFlotante.t); avisoFlotante.t = setTimeout(() => { el.hidden = true; }, 8000);
 }
 
-// ---------------- Pestañas del panel ----------------
+// ---------------- The panel's tabs ----------------
 function verPestana(p) {
   if (p === "edificio") { document.body.classList.add("ver-edificio"); $("tabEdificio").setAttribute("aria-selected", "true"); for (const id of ["tabFicha", "tabActividad"]) $(id).setAttribute("aria-selected", "false"); return; }
   document.body.classList.remove("ver-edificio"); $("tabEdificio").setAttribute("aria-selected", "false");
@@ -789,7 +789,7 @@ function verPestana(p) {
   if (p === "actividad") pintarRegistro();
 }
 
-// ---------------- Ficha de un agente, en cuatro pestañas ----------------
+// ---------------- An agent's profile, in four tabs ----------------
 const QUE_HACE = {
   tecno: "Every day it does its round without spending: it checks new agents, every other night it makes sure everyone has worked and left their mark, on Fridays it saves a backup, clears what's been dealt with, removes duplicate memories and makes sure nothing is sent, deleted or paid without your yes. On Mondays it reviews the costs, and only then does it use its brain, to say whether they pay off.",
   mejora: "Follows every day how AI agents are moving forward and suggests improvements for the building to the boss. It uses internet search. When a new model comes out, it proposes it to you as a recommended one; you decide.",
@@ -804,7 +804,7 @@ const fecha = (ts, op) => new Date(ts).toLocaleString(LOCALE, op || { day: "nume
 const campo = (txt, el, ayuda) => h("label", { class: "campo" }, h("span", {}, txt), el, ayuda ? h("small", {}, ayuda) : null);
 function pintarFicha(forzar) {
   const caja = $("ficha");
-  const foco = document.activeElement;   // no se repinta mientras escribes o eliges en un desplegable
+  const foco = document.activeElement;   // it isn't repainted while you type or choose in a drop-down
   if (!forzar && caja.contains(foco) && (foco.tagName === "TEXTAREA" || foco.tagName === "SELECT" || (foco.tagName === "INPUT" && !["checkbox", "radio"].includes(foco.type)))) return;
   const a = ed.agenteExacto(seleccion) || ed.jefe();
   if (!a) return;
@@ -814,7 +814,7 @@ function pintarFicha(forzar) {
   const cambiar = (cambios) => Motor.ejecutar({ tipo: "editarAgente", id: a.id, cambios }).then(pintar).catch(avisar);
   const est = estadoVisible(a), sinCerebro = a.rol === "interventor" || a.rol === "memory";
   const pl = ed.e.plantas.find((x) => x.id === a.planta);
-  // cabecera: figura, nombre, estado y lo esencial
+  // header: figure, name, state and the essentials
   caja.append(h("div", { class: "ficha-cab" },
     h("button", { class: "marco-ficha", type: "button", title: "Change their photo and name", onclick: () => abrirCajon("aspecto", { id: a.id }) }, h("img", { src: figura(a.aspecto), alt: "" })),
     h("div", { style: { flex: 1, minWidth: 0, display: "grid", gap: "4px" } }, h("h3", { class: "ficha-nombre" }, a.nombre),
@@ -836,7 +836,7 @@ function pintarFicha(forzar) {
   pinta(caja, a, cambiar, { sinCerebro, pl });
   caja.scrollTop = sc;
 }
-// Identidad: nombre, aspecto, papel, dónde está, a quién informa y sus monedas
+// Identity: name, look, role, where it is, who it reports to and its coins
 function fichaIdentidad(caja, a, cambiar, { pl }) {
   const nombre = h("input", { value: a.nombre, maxlength: "40", onchange: (ev) => cambiar({ nombre: ev.target.value.trim() || a.nombre }) });
   const plantasValidas = a.rol === "jefe" ? [] : ed.e.plantas.filter((x) => a.rol === "sabio" ? x.tipo === "cupula" : x.tipo !== "cupula");
@@ -845,7 +845,7 @@ function fichaIdentidad(caja, a, cambiar, { pl }) {
   const opPuesto = pl ? (PUESTOS_TXT[pl.tipo] || []) : [];
   const selPuesto = h("select", { disabled: a.rol === "jefe", onchange: (ev) => cambiar({ planta: a.planta, puesto: ev.target.value }) }, (a.rol === "jefe" ? [["centro", "Centre of the dome"]] : opPuesto).map(([v, t]) => h("option", { value: v }, t)));
   selPuesto.value = a.puesto;
-  // «Informa a»: cualquier agente del edificio (con buscador si hay muchos); el motor no deja hacer círculos
+  // «Reports to»: any agent in the building (with a search box if there are many); the engine doesn't allow loops
   const otros = ed.e.agentes.filter((x) => x.id !== a.id);
   const selInforma = h("select", { onchange: (ev) => cambiar({ reportaA: ev.target.value }) });
   const llenarInforma = (q) => {
@@ -866,7 +866,7 @@ function fichaIdentidad(caja, a, cambiar, { pl }) {
     h("div", { class: "dos" }, campo("Floor", selPlanta), campo("Spot", selPuesto))));
   caja.append(bloqueMonedas(a));
 }
-// Monedas: doradas (buen trabajo) y rojas (alucinar, gastar en balde). Cada una, con su motivo en una línea.
+// Coins: gold (good work) and red (making things up, wasting money). Each one with its reason in one line.
 function bloqueMonedas(a) {
   const mias = (ed.e.monedas || []).filter((m) => m.agente === a.id);
   const oro = mias.filter((m) => m.tipo === "oro" && m.estado === "confirmada").length, rojas = mias.filter((m) => m.tipo === "roja" && m.estado === "confirmada").length;
@@ -879,7 +879,7 @@ function bloqueMonedas(a) {
   if (ultimas.length) caja.append(h("div", { class: "lista" }, ultimas.map((m) => h("div", { class: "item" }, h("div", { class: "cab" }, h("span", {}, h("span", { class: "moneda " + m.tipo }), " ", fecha(m.ts)), h("span", {}, m.propone === "tú" ? "from you" : tr(`proposed by ${quienPropone(m.propone)}, confirmed`))), h("div", { class: "txt" }, crudo(m.motivo))))));
   return caja;
 }
-// Botón de moneda: al pulsarlo pide el motivo en una línea
+// Coin button: when pressed it asks for the reason in one line
 function botonMoneda(a, tipo, alDar) {
   const b = h("button", { class: "moneda-btn", type: "button", title: tipo === "oro" ? "Gold coin: it did well" : "Red coin: it made things up or wasted money" }, h("span", { class: "moneda " + tipo }), tipo === "oro" ? "Gold coin" : "Red coin");
   b.onclick = () => {
@@ -906,7 +906,7 @@ function filaMonedaPropuesta(m) {
     h("button", { class: "btn mini primario", onclick: () => Motor.ejecutar({ tipo: "moneda.confirmar", moneda: m.id }).then(pintar).catch(avisar) }, "Confirm"),
     h("button", { class: "btn mini", onclick: () => Motor.ejecutar({ tipo: "moneda.descartar", moneda: m.id }).then(pintar).catch(avisar) }, "Dismiss"));
 }
-// Trabajo: instrucciones, objetivo, lecciones, latido, tareas y memoria corta
+// Work: instructions, objective, lessons, heartbeat, tasks and short memory
 function fichaTrabajo(caja, a, cambiar, { sinCerebro }) {
   if (!sinCerebro) {
     const per = h("textarea", { rows: "2", maxlength: String(MAX_PERSONALIDAD), placeholder: "Its tone, its humour and whether it gets to the point. For example: “Friendly and funny, but brief and to the point.”", onchange: (ev) => cambiar({ personalidad: ev.target.value.trim() }) }, a.personalidad || "");
@@ -917,7 +917,7 @@ function fichaTrabajo(caja, a, cambiar, { sinCerebro }) {
       a.rol === "jev" ? null : campo("Personality", per, "Sent with every call: that way its character doesn't depend on the brain you give it."), a.rol === "jev" ? null : cuenta,
       a.rol === "jev" ? null : campo("Objective", h("textarea", { rows: "2", onchange: (ev) => cambiar({ objetivo: ev.target.value }) }, a.objetivo))));
   }
-  // lecciones de su papel (salen de las monedas); las nuevas esperan tu sí en la bandeja
+  // lessons of its role (they come from the coins); new ones wait for your yes in the inbox
   const pendLecc = (ed.e.lecciones || []).filter((l) => l.papel === a.rol && l.estado === "propuesta");
   const lecc = ed.leccionesDe(a.rol).slice().sort((x, y) => (y.fija - x.fija) || (y.ts - x.ts));
   const max = ed.e.ajustes.leccionesPorPapel || 5;
@@ -957,7 +957,7 @@ function fichaTrabajo(caja, a, cambiar, { sinCerebro }) {
   const mc = h("div", { class: "lista" });
   for (const m of a.memoriaCorta.slice().reverse().slice(0, 10)) mc.append(h("div", { class: "item" }, h("div", { class: "cab" }, h("span", {}, fecha(m.ts)), h("span", {}, m.tipo)), h("div", { class: "txt" }, crudo(m.texto))));
   caja.append(h("div", { class: "bloque" }, h("h4", {}, "Short memory"), a.memoriaCorta.length ? mc : h("p", { class: "nota", style: { margin: 0 } }, "Still empty.")));
-  // Memory: la memoria larga del edificio
+  // Memory: the building's long-term memory
   if (a.rol === "memory") {
     const ml = h("div", { class: "lista" });
     for (const n of ed.e.memoriaLarga.slice().reverse()) ml.append(h("div", { class: "item" }, h("div", { class: "cab" }, h("span", {}, new Date(n.ts).toLocaleDateString(LOCALE) + (n.etiquetas && n.etiquetas.length ? " · " + n.etiquetas.join(", ") : "")),
@@ -968,14 +968,14 @@ function fichaTrabajo(caja, a, cambiar, { sinCerebro }) {
       nt, et, h("div", {}, h("button", { class: "btn mini", onclick: () => { if (!nt.value.trim()) return; Motor.ejecutar({ tipo: "memoria.guardar", texto: nt.value.trim(), etiquetas: et.value.split(",").map((x) => x.trim()).filter(Boolean) }).then(pintar).catch(avisar); } }, "Save memory")), ml));
   }
 }
-// Cerebro y gasto: qué modelo piensa por él, su prioridad, su tope y lo que lleva gastado
+// Brain and spending: which model thinks for it, its priority, its cap and what it has spent
 function fichaCerebro(caja, a, cambiar, { sinCerebro }) {
   if (sinCerebro) caja.append(h("div", { class: "bloque" }, h("h4", {}, "Brain"), h("p", { class: "nota", style: { margin: 0 } }, "Works with fixed rules, no brain: it doesn't spend.")));
   else if (a.rol === "jev") {
     const sel = selectorModelo("decisiones", a.cerebro, { extra: [[MODELO_JEV, "Jev Latest · always the latest version of Jev"]], alCambiar: (v) => cambiar({ cerebro: v }) });
     caja.append(h("div", { class: "bloque" }, h("h4", {}, "Brain"), campo("Decision model", sel, "JEV decides with OpenRouter's decisions API. “Jev Latest” always points to the latest version, without changing it by hand.")));
   } else {
-    // Con qué piensa: OpenRouter (se paga por uso) o una de tus otras API (Ajustes → Otras API), la de una suscripción que ya pagas
+    // What it thinks with: OpenRouter (pay per use) or one of your other APIs (Settings → Other APIs), one from a subscription you already pay for
     const prov = ed.cerebroDe(a).proveedor, conx = ed.conexiones();
     const opciones = [["openrouter", "OpenRouter (pay per use)"], ...conx.map((c) => [c.id, `${c.nombre} · your subscription`])];
     if (prov !== "openrouter" && !conx.some((c) => c.id === prov)) opciones.push([prov, (ed.proveedor(prov) || {}).nombre || prov]);
@@ -1006,7 +1006,7 @@ function fichaCerebro(caja, a, cambiar, { sinCerebro }) {
       if (sus) bloque.append(h("small", { class: "nota" }, tr(`From your subscription, on ${sus[0]}: ${sus[1].tokens.toLocaleString(LOCALE)} tokens`) + (sus[1].usd ? " " + tr(`(on OpenRouter it would be ≈${fmt(sus[1].usd)})`) : "") + "."));
     }
     const est = ed.estimarLatido(a);
-    // cada trozo se traduce por separado (así cada idioma lo ordena a su manera)
+    // each piece is translated separately (that way each language orders it its own way)
     bloque.append(h("small", { class: "nota" }, [tr(`When it wakes up: ${est.como}`), est.gasta && est.porVez > 0 ? tr(`· ≈${fmt(est.porVez)} per heartbeat`) + (est.porDia ? " " + tr(`(≈${fmt(est.porDia)} a day)`) : "") : est.gasta && est.porTarea ? tr(`· ≈${fmt(est.porTarea)} per task`) : "",
       est.tokens ? tr(`· reads about ${est.tokens.toLocaleString(LOCALE)} tokens each time`) : "", est.suscripcion ? tr(`· from your ${est.suscripcion} subscription`) : est.sinPrecio ? tr("· no known price") : ""].filter(Boolean).join(" ")));
     caja.append(bloque);
@@ -1019,7 +1019,7 @@ function fichaCerebro(caja, a, cambiar, { sinCerebro }) {
     sinCerebro ? null : campo("Own daily cap (USD)", h("input", { type: "number", min: "0", step: "0.05", value: a.topeDiario || "", placeholder: "no own cap", onchange: (ev) => cambiar({ topeDiario: Math.max(0, parseFloat(ev.target.value) || 0) }) }), "If it goes over, it's frozen until tomorrow. The building's cap applies too (Spending)."),
     a.rol === "interventor" ? h("div", {}, h("button", { class: "btn mini", onclick: () => abrirCajon("gasto") }, "Building caps")) : null));
 }
-// Capacidades: cada una, con su propio modelo cuando lo necesita
+// Capabilities: each one, with its own model when it needs one
 function fichaCapacidades(caja, a, cambiar, { sinCerebro }) {
   if (sinCerebro || a.rol === "jev") { caja.append(h("div", { class: "bloque" }, h("p", { class: "nota", style: { margin: 0 } }, a.rol === "jev" ? "JEV only decides: it doesn't use capabilities." : "Works with fixed rules: it doesn't use capabilities."))); return; }
   const aj = ed.e.ajustes, tiene = (id) => a.capacidades.includes(id);
@@ -1045,9 +1045,9 @@ function fichaCapacidades(caja, a, cambiar, { sinCerebro }) {
   caja.append(h("div", { class: "bloque" }, h("h4", {}, "Capabilities"), caps,
     h("small", { class: "nota" }, "The advanced ones are described but not connected: each needs one more piece and always your authorisation.")));
 }
-// ---------------- Otras API: la de una suscripción que ya pagas, con tu propia clave ----------------
-const modelosDirectos = {};   // la lista que da cada API con tu clave (se pide al pulsar «Cargar la lista»)
-// Sugerencias sacadas de la lista de OpenRouter (si esa API es una de las conocidas), las más nuevas primero (Claude escribe las versiones con guion: 5.5 → 5-5)
+// ---------------- Other APIs: one from a subscription you already pay for, with your own key ----------------
+const modelosDirectos = {};   // the list each API gives with your key (asked for when you press «Load the list»)
+// Suggestions taken from OpenRouter's list (if that API is one of the known ones), the newest first (Claude writes versions with a hyphen: 5.5 → 5-5)
 function sugerenciasDirectas(prov, a) {
   if (modelosDirectos[prov] && modelosDirectos[prov].length) return modelosDirectos[prov];
   const P = ed.proveedor(prov);
@@ -1095,7 +1095,7 @@ function selectorDirecto(prov, actual, alCambiar) {
   const cargar = h("button", { class: "btn mini", type: "button", onclick: async () => { cargar.disabled = true; msg.textContent = tr("Getting the list…"); try { const l = await cargarModelosDirectos(prov); msg.textContent = tr(`${l.length} models in your account.`); pintarFicha(true); } catch (err) { msg.textContent = err.mostrado ? err.message : err.message; cargar.disabled = false; } } }, `Load the list from ${P.corto}`);
   return h("div", { class: "campo" }, h("span", {}, "Model"), sel, otro, h("div", { class: "fila-c" }, cargar, msg));
 }
-// ---------------- Manos: las skills de Fer Casa que puede usar este agente ----------------
+// ---------------- Hands: the Fer Home skills this agent can use ----------------
 const catalogo = () => (modo === "casa" ? skillsCasa : ed.catalogoSkills());
 function bloqueSkills(a, cambiar) {
   const cat = catalogo();
@@ -1134,7 +1134,7 @@ function editorAjustesSkill(a, k, cambiar) {
   return caja;
 }
 const nombreModelo = (id) => (id === BROWSER ? "browser" : ((modelos.find((m) => m.id === id) || {}).name || id));
-// Voz de un agente: modelo y voz concreta (si no eliges, cada agente tiene una distinta)
+// An agent's voice: model and particular voice (if you don't choose, each agent has a different one)
 function selectorVoz(a, cambiar) {
   const aj = ed.e.ajustes, propio = a.voz || { modelo: "", voz: "" };
   const selM = selectorModelo("voz", propio.modelo, { vacio: `The building's voice (${nombreModelo(aj.modeloVoz || BROWSER)})`, extra: [[BROWSER, "Browser voice · free"]] });
@@ -1158,7 +1158,7 @@ function confirmar(boton, texto, accion) {
   setTimeout(() => { if (boton.isConnected) { delete boton.dataset.armado; boton.textContent = antes; } }, 4000);
 }
 
-// ---------------- Actividad: todo, y las consultas a JEV ----------------
+// ---------------- Activity: everything, and the questions to JEV ----------------
 const NOMBRE_DEC = { seguir: "go ahead", aprovechar: "reuse what's already there", parar: "stop", preguntar_jefe: "ask the boss" };
 function pintarRegistro() {
   $("actTodo").setAttribute("aria-selected", String(vistaAct === "todo")); $("actJev").setAttribute("aria-selected", String(vistaAct === "jev"));
@@ -1183,7 +1183,7 @@ function pintarRegistro() {
 }
 
 // =====================================================================
-// Chat con cada agente, a pantalla completa
+// Chat with each agent, full screen
 // =====================================================================
 let avisoLleno = false;
 let pendientesError = [], pensando = false, imgsSesion = new Map(), audiosSesion = new Map(), adjunto = null, ultimoChat = "";
@@ -1203,7 +1203,7 @@ function cerrarChat() {
   chatId = ""; pendientesError = []; $("vistaChat").hidden = true; if (!pantalla) document.body.classList.remove("con-pantalla");
   pintarAcento(); pintar(); reemplazarNav();
 }
-// El primer mensaje es un saludo del agente (no se guarda ni se paga); si falta la clave, va después y con calma.
+// The first message is a greeting from the agent (not saved or paid for); if the key is missing, it comes afterwards, calmly.
 function saludoDe(a) {
   const pl = ed.e.plantas.find((p) => p.id === a.planta), edif = ed.e.nombre || "your building";
   if (a.rol === "jefe") {
@@ -1257,7 +1257,7 @@ function pintarChat(forzar) {
   if (pensando) m.append(h("div", { class: "msg bot escribiendo" }, escribiendo ? h("div", { class: "burbuja", html: markdown(escribiendo) }) : h("div", { class: "burbuja" }, h("span", { class: "pensando", "aria-label": "Thinking" }, h("i"), h("i"), h("i")))));
   $("chat").scrollTop = $("chat").scrollHeight;
 }
-// Imágenes y música: se guardan aparte (en este navegador, IndexedDB; en Fer Casa, su carpeta «datos/medios»), así no se pierden al recargar
+// Images and music: saved apart (in this browser, IndexedDB; in Fer Home, its «datos/medios» folder), so they aren't lost on reload
 const mediosCache = new Map();
 async function urlMedio(m) {
   if (mediosCache.has(m.id)) return mediosCache.get(m.id);
@@ -1275,11 +1275,11 @@ function medios(x) {
     else urlMedio(m).then((u) => { if (u) el.src = u; else if (el.isConnected) el.replaceWith(h("small", { class: "nota" }, m.tipo === "audio" ? "(the music isn't on this device)" : "(the image isn't on this device)")); });
     return el;
   });
-  // de la versión 6: solo las de esta sesión
+  // from version 6: only this session's
   return [...(x.imagenes || []).map((t) => imgsSesion.get(t)).filter(Boolean).map((u) => h("img", { src: u, alt: "Image created" })),
     ...(x.audios || []).map((t) => audiosSesion.get(t)).filter(Boolean).map((u) => h("audio", { src: u, controls: true, preload: "none" }))];
 }
-// Una reunión que propone el jefe: no empieza hasta que confirmas las rondas
+// A meeting the boss proposes: it doesn't start until you confirm the rounds
 function tarjetaReunion(id) {
   const r = (ed.e.reuniones || []).find((x) => x.id === id); if (!r) return null;
   const nombres = r.participantes.map((pid) => (ed.agenteExacto(pid) || {}).nombre).filter(Boolean).join(", ");
@@ -1308,9 +1308,9 @@ function pintarChatCab() {
   $("jefeCab").classList.toggle("hablando", estadoJefe === "speaking");
   $("pararVoz").hidden = estadoJefe !== "speaking";
   const av = $("avatar");
-  if (av.dataset.quien !== a.id) { av.dataset.quien = a.id; av.src = figura(a.aspecto); }   // al momento la figura pequeña; enseguida, la grande
+  if (av.dataset.quien !== a.id) { av.dataset.quien = a.id; av.src = figura(a.aspecto); }   // the small figure at once; right after, the big one
   asegurarFiguraGrande(a.aspecto).then((u) => { if (av.dataset.quien === a.id && av.getAttribute("src") !== u) av.src = u; });
-  // qué se puede hacer en este chat
+  // what can be done in this chat
   const habla = conversa(a), oye = habla && a.capacidades.includes("oir"), dice = habla && a.capacidades.includes("hablar"), ve = habla && a.capacidades.includes("ver");
   $("texto").disabled = !habla; $("enviar").disabled = !habla;
   $("texto").placeholder = tr(habla ? `Write to ${a.nombre}…` : `${a.nombre} doesn't chat`);
@@ -1331,13 +1331,13 @@ async function enviar(textoVoz, voz) {
   pensando = true; pararAudio(); ponerEstadoJefe("thinking");
   const imagen = adjunto; if (!voz) { $("texto").value = ""; crecer(); } quitarAdjunto();
   escribiendo = ""; pintarChat(true);
-  // ¿Contesta en voz alta? Entonces, respuestas cortas y voz frase a frase mientras escribe
+  // Does it answer out loud? Then short answers and the voice sentence by sentence while it writes
   const enVoz = a.capacidades.includes("hablar") && (voz ? (ed.e.ajustes.responderEnVozSiMicro !== false) || altavozOn() : altavozOn());
   let finVoz = null, porPartes = false;
   const alTrozo = (t, todo) => {
     porPartes = true;
     if (enVoz && chatId === a.id) {
-      if (!finVoz) { finVoz = vozEmpezar(null, a); if (conv.on) reanudarOido(); }   // ya habla: el micro vuelve a escuchar, para poder cortarle hablando
+      if (!finVoz) { finVoz = vozEmpezar(null, a); if (conv.on) reanudarOido(); }   // it's speaking now: the mic listens again, so you can interrupt by talking
       vozTrozo(t);
     }
     escribiendo = todo; pintarBorrador();
@@ -1350,18 +1350,18 @@ async function enviar(textoVoz, voz) {
     pensando = false; escribiendo = ""; ponerEstadoJefe(conv.on ? "listening" : "idle"); pintar(); pintarChat(true);
     const metas = $("mensajes").querySelectorAll(".msg.bot .meta"), meta = metas[metas.length - 1];
     if (enVoz && r.respuesta && chatId === a.id) {
-      if (finVoz && porPartes) { cola.meta = meta; vozFin(); }   // ya iba hablando mientras escribía
-      else finVoz = hablarTexto(r.respuesta, meta, a);           // si llegó entera (por ejemplo, con una imagen), se lee frase a frase
+      if (finVoz && porPartes) { cola.meta = meta; vozFin(); }   // it was already speaking while writing
+      else finVoz = hablarTexto(r.respuesta, meta, a);           // if it arrived whole (for example, with an image), it's read sentence by sentence
     } else if (finVoz) pararAudio();
   } catch (err) {
     pensando = false; escribiendo = ""; if (finVoz) pararAudio(); ponerEstadoJefe(conv.on ? "listening" : "idle");
     pendientesError.push(err.mostrado ? err.message : `No connection: ${err.message}`); pintarChat(true);
   }
-  // el oído vuelve enseguida (aunque siga hablando): si hablas tú, se calla
+  // hearing comes back at once (even if it's still speaking): if you talk, it goes quiet
   if (propio) { conv.procesando = false; await reanudarOido(); if (estadoJefe !== "speaking" && conv.on) ponerEstadoJefe("listening"); }
   if (!voz && chatId) $("texto").focus();
 }
-// Lo que va escribiendo el agente, en directo (solo en este navegador; Fer Casa manda la respuesta entera)
+// What the agent is writing, live (only in this browser; Fer Home sends the whole reply)
 let escribiendo = "";
 function pintarBorrador() {
   const el = $("mensajes").querySelector(".msg.bot.escribiendo .burbuja");
@@ -1372,16 +1372,16 @@ function quitarAdjunto() { adjunto = null; $("adjunto").hidden = true; }
 const altavozOn = () => $("altavoz").getAttribute("aria-pressed") === "true";
 
 // =====================================================================
-// Voz (boca) — cada agente con su modelo y su voz; OpenRouter o navegador
+// Voice (mouth) — each agent with its model and its voice; OpenRouter or the browser
 // =====================================================================
 const reproductor = new Audio(); reproductor.preload = "auto";
 let audioListo = false, finHablar = null, turnoVoz = 0;
 const SILENCIO = "data:audio/wav;base64,UklGRiQAAABXQVZFZm10IBAAAAABAAEAQB8AAIA+AAACABAAZGF0YQAAAAA=";
 function desbloquearAudio() { if (audioListo) return; audioListo = true; try { reproductor.src = SILENCIO; const p = reproductor.play(); if (p && p.catch) p.catch(() => {}); } catch {} }
-let finVozTs = 0;   // cuándo dejó de hablar el agente (para el filtro de eco)
+let finVozTs = 0;   // when the agent stopped speaking (for the echo filter)
 function terminarVoz() { const f = finHablar; finHablar = null; finVozTs = Date.now(); if (estadoJefe === "speaking") ponerEstadoJefe(conv.on ? "listening" : "idle"); if (f) f(); }
 function pararAudio() { turnoVoz++; cola.frases = []; cola.sonando = false; cola.cerrada = true; try { reproductor.pause(); } catch {} try { if (window.speechSynthesis) speechSynthesis.cancel(); } catch {} terminarVoz(); }
-// (cada frase avisa al terminar; la voz termina cuando no quedan frases)
+// (each sentence signals when it ends; the voice ends when there are no sentences left)
 function nota(metaEl, t) { if (!metaEl) return; let n = metaEl.querySelector(".nota-voz"); if (!n) { n = h("span", { class: "nota-voz" }); metaEl.append(n); } n.textContent = tr(t); }
 function pcmAWav(buf, rate = 24000) {
   const pcm = new Uint8Array(buf), head = new ArrayBuffer(44), v = new DataView(head);
@@ -1406,19 +1406,19 @@ async function costeVoz(modelo, chars, secs, genId, metaEl, quien) {
   pintar();
 }
 function vocesNavegador() { try { return window.speechSynthesis ? speechSynthesis.getVoices() : []; } catch { return []; } }
-// Si un agente no tiene voz elegida, se le da una distinta de las del modelo (siempre la misma para ese agente).
+// If an agent has no voice chosen, it's given a different one from the model's (always the same for that agent).
 const hashTxt = (t) => { let x = 0; for (const c of String(t)) x = (x * 31 + c.charCodeAt(0)) >>> 0; return x; };
 function vozDe(a) {
   const aj = ed.e.ajustes, propia = (a && a.voz) || {};
   const modelo = propia.modelo || aj.modeloVoz || BROWSER;
   if (propia.voz) return { modelo, voz: propia.voz };
-  if (a && a.rol === "jefe" && !propia.modelo) return { modelo, voz: aj.vozConcreta || "" };   // el jefe conserva la voz de Ajustes
+  if (a && a.rol === "jefe" && !propia.modelo) return { modelo, voz: aj.vozConcreta || "" };   // the boss keeps the voice from Settings
   const idioma = idiomaVoz().slice(0, 2);
   const lista = modelo === BROWSER ? vocesNavegador().filter((v) => (v.lang || "").slice(0, 2) === idioma).map((v) => v.voiceURI) : ((voces.find((m) => m.id === modelo) || {}).voices || []).map((v) => v.id);
   if (!lista.length) return { modelo, voz: "" };
   const delJefe = modelo === (aj.modeloVoz || BROWSER) ? aj.vozConcreta : "";
   let i = hashTxt(a ? a.id : "") % lista.length;
-  if (lista.length > 1 && lista[i] === delJefe) i = (i + 1) % lista.length;   // que no suene igual que el jefe
+  if (lista.length > 1 && lista[i] === delJefe) i = (i + 1) % lista.length;   // so it doesn't sound the same as the boss
   return { modelo, voz: lista[i] };
 }
 function nombreVoz(v) {
@@ -1427,14 +1427,14 @@ function nombreVoz(v) {
   const x = ((voces.find((m) => m.id === v.modelo) || {}).voices || []).find((y) => y.id === v.voz); return x ? x.name : v.voz;
 }
 // ---------------- Voz frase a frase ----------------
-// Mientras el agente escribe, cada frase terminada se convierte en voz; mientras suena una, se prepara la siguiente.
+// While the agent writes, each finished sentence becomes voice; while one plays, the next is prepared.
 const cola = { turno: -1, frases: [], resto: "", cerrada: true, sonando: false, meta: null, a: null, modelo: "", voz: "", chars: 0, coste: 0, estimado: false, dicho: "", prep: null };
 function trocearFrases(t, final) {
   const out = []; let r = String(t || "");
   const corte = () => { const m = r.match(/^[\s\S]*?(?:[.!?…]+["»”')\]]*\s+|\n+)/); if (!m) return null; r = r.slice(m[0].length); return m[0]; };
   for (;;) {
     let f = corte(); if (f === null) break;
-    while (paraVoz(f).length < 40) { const g = corte(); if (g === null) break; f += g; }   // las frases muy cortas van con la siguiente
+    while (paraVoz(f).length < 40) { const g = corte(); if (g === null) break; f += g; }   // very short sentences go with the next one
     if (paraVoz(f).length < 40 && !final && !out.length) { r = f + r; break; }
     if (paraVoz(f)) out.push(f);
   }
@@ -1450,7 +1450,7 @@ function vozEmpezar(metaEl, agente) {
 function vozTrozo(t) { if (cola.turno !== turnoVoz || cola.cerrada) return; const [fs, r] = trocearFrases(cola.resto + t, false); cola.resto = r; cola.frases.push(...fs); siguienteFrase(); }
 function vozFin() { if (cola.turno !== turnoVoz || cola.cerrada) return; const [fs] = trocearFrases(cola.resto, true); cola.resto = ""; cola.frases.push(...fs); cola.cerrada = true; siguienteFrase(); }
 function hablarTexto(texto, metaEl, agente) { const fin = vozEmpezar(metaEl, agente); vozTrozo(texto); vozFin(); return fin; }
-async function pedirVoz(limpio, modelo, voz) {   // OpenRouter: texto → audio (mp3; si el modelo no lo da, pcm)
+async function pedirVoz(limpio, modelo, voz) {   // OpenRouter: text → audio (mp3; if the model doesn't give it, pcm)
   const pedir = (formato) => { const b = { model: modelo, input: limpio, response_format: formato }; if (voz) b.voice = voz; return fetch(apiBase() + "/audio/speech", { method: "POST", headers: Object.assign(apiCab(true), { "X-Title": "Fer Agent" }), body: JSON.stringify(b) }); };
   let formato = "mp3", r = await pedir(formato);
   if (r.status === 400) { const r2 = await pedir("pcm"); if (r2.ok) { r = r2; formato = "pcm"; } }
@@ -1481,7 +1481,7 @@ function siguienteFrase() {
       if (cola.chars === 0) nota(cola.meta, "getting the voice ready…");
       const x = await prep;
       if (turno !== turnoVoz) return;
-      if (cola.frases.length) { const sig = cola.frases[0]; cola.prep = { texto: sig, p: pedirVoz(paraVoz(sig), cola.modelo, cola.voz) }; cola.prep.p.catch(() => {}); }   // la siguiente, mientras suena esta
+      if (cola.frases.length) { const sig = cola.frases[0]; cola.prep = { texto: sig, p: pedirVoz(paraVoz(sig), cola.modelo, cola.voz) }; cola.prep.p.catch(() => {}); }   // the next one, while this one plays
       reproductor.src = x.url;
       ponerEstadoJefe("speaking");
       await reproductor.play();
@@ -1493,11 +1493,11 @@ function siguienteFrase() {
     } catch (err) { if (turno !== turnoVoz) return; nota(cola.meta, err.message || "The voice couldn't be played."); cola.frases = []; terminarVoz(); }
   })();
 }
-// ¿Lo que ha oído el micro es su propia voz saliendo por el altavoz? (eco): entonces no se envía
-// ¿Lo que oyó el micro era la voz del propio agente por el altavoz? Solo puede serlo si empezó mientras él hablaba
-// (o justo al acabar). Si es corto, tiene que ser un trozo seguido de lo que dijo; si es largo, casi todo lo que dijo.
+// Is what the mic heard its own voice coming out of the speaker? (echo): then it isn't sent
+// Was what the mic heard the agent's own voice through the speaker? It can only be if it started while the agent was speaking
+// (or right at the end). If it's short, it has to be a continuous piece of what it said; if it's long, almost everything it said.
 function esEco(texto, inicio) {
-  if (!finHablar && inicio > finVozTs + 800) return false;   // empezaste a hablar cuando él ya había callado: eres tú
+  if (!finHablar && inicio > finVozTs + 800) return false;   // you started talking when it had already gone quiet: it's you
   const w = (t) => sinAcentos(t).replace(/[^a-z0-9ñ ]/g, " ").split(/\s+/).filter((x) => x.length > 2);
   const oidas = w(texto), dichasL = w(cola.dicho), dichas = new Set(dichasL);
   if (oidas.length < 2 || !dichas.size) return false;
@@ -1506,7 +1506,7 @@ function esEco(texto, inicio) {
 }
 
 // =====================================================================
-// Oído: modo conversación (detector Silero + Whisper, o el oído del navegador). Cada agente, con su oído.
+// Hearing: conversation mode (Silero detector + Whisper, or the browser's hearing). Each agent, with its own hearing.
 // =====================================================================
 const conv = { on: false, vad: null, rec: null, procesando: false };
 function cargarScript(src, sello) {
@@ -1550,15 +1550,15 @@ async function pausarOido() { try { if (conv.vad) await conv.vad.pause(); } catc
 async function reanudarOido() { if (!conv.on) return; try { if (conv.vad) await conv.vad.start(); } catch {} try { if (conv.rec) conv.rec.start(); } catch {} if (estadoJefe !== "speaking") ponerEstadoJefe("listening"); }
 async function oido(entrada, inicioDado) {
   if (!conv.on) return;
-  // cuándo empezó a sonar lo que se oyó (el detector da el audio a 16 kHz; el oído del navegador, solo el texto: se suponen 1,5 s)
+  // when what was heard started sounding (the detector gives the audio at 16 kHz; the browser's hearing, only the text: 1.5 s is assumed)
   const inicio = inicioDado || Date.now() - (typeof entrada === "string" ? 1500 : (entrada.length / 16000) * 1000);
-  if (conv.procesando) { conv.siguiente = { entrada, inicio }; return; }   // le has hablado mientras contestaba: va justo después
+  if (conv.procesando) { conv.siguiente = { entrada, inicio }; return; }   // you talked to it while it was answering: it goes right after
   conv.procesando = true;
   await pausarOido();
   try {
     let texto = entrada, voz = { model: "browser hearing", cost: 0, estimated: false, seconds: null };
     if (typeof entrada !== "string") { ponerEstadoJefe("transcribing"); voz = await transcribir(entrada); texto = voz.text; }
-    if (texto && esEco(texto, inicio)) { texto = ""; }   // era su propia voz por el altavoz: no se envía
+    if (texto && esEco(texto, inicio)) { texto = ""; }   // it was its own voice through the speaker: it isn't sent
     if (texto && conv.on) await enviar(texto, voz);
   } catch (err) { pendientesError.push(err.mostrado ? err.message : `Couldn't understand the audio: ${err.message}`); pintarChat(true); }
   finally {
@@ -1598,7 +1598,7 @@ async function empezarConversacion() {
       conv.vad = await window.vad.MicVAD.new({
         baseAssetPath: VAD_BASE, onnxWASMBasePath: ORT_BASE, redemptionMs: 1200, minSpeechMs: 500, preSpeechPadMs: 300,
         onSpeechStart: () => { if (conv.on && !conv.procesando && estadoJefe !== "speaking") ponerEstadoJefe("hearing"); },
-        // si hablas mientras él habla, se calla (tras medio segundo de voz de verdad, para no cortarse con un ruido)
+        // if you talk while it's speaking, it goes quiet (after half a second of real voice, so a noise doesn't cut it off)
         onSpeechRealStart: () => { if (estadoJefe === "speaking" && ed.e.ajustes.cortarAlHablar !== false) pararAudio(); if (conv.on && !conv.procesando) ponerEstadoJefe("hearing"); },
         onVADMisfire: () => { if (conv.on && !conv.procesando) ponerEstadoJefe("listening"); },
         onSpeechEnd: (audio) => oido(audio)
@@ -1617,7 +1617,7 @@ async function colgar() {
 }
 
 // =====================================================================
-// Bandeja de autorizaciones: todo lo que espera tu sí (quién, qué y cuánto cuesta)
+// Approval inbox: everything waiting for your yes (who, what and how much it costs)
 // =====================================================================
 const CLASE_TXT = { accion: "Action outside the website", agente: "New agent", reunion: "Meeting", moneda: "Coin", leccion: "New lesson", modelo: "Recommended model", falta: "Missing something" };
 let firmaBandeja = "";
@@ -1683,7 +1683,7 @@ function tarjetaPeticion(x) {
 }
 
 // =====================================================================
-// Agentes de serie: los que trae Fer Agent, para instalarlos cuando quieras
+// Built-in agents: the ones Fer Agent comes with, to install whenever you want
 // =====================================================================
 let firmaSerie = "";
 function pintarSerie(forzar) {
@@ -1717,7 +1717,7 @@ function pintarSerie(forzar) {
 }
 
 // =====================================================================
-// Agente del mes: clasificación por monedas y gasto
+// Agent of the month: ranking by coins and spending
 // =====================================================================
 const VISTAS = { mes: "vistaMes", salas: "vistaSalas", bandeja: "vistaBandeja", serie: "vistaSerie" };
 function abrirPantalla(cual) {
@@ -1770,7 +1770,7 @@ function pintarMes(forzar) {
 }
 
 // =====================================================================
-// Salas de reuniones: hasta 10 en la mesa, con orden del día; modera el jefe y al final, el acta
+// Meeting rooms: up to 10 at the table, with an agenda; the boss chairs and, at the end, the minutes
 // =====================================================================
 const ESTADO_REUNION = { propuesta: "proposed by the boss: waiting for your yes", lista: "called: ready to start", "en curso": "in progress", terminada: "finished", interrumpida: "interrupted", cancelada: "cancelled" };
 let salaSel = "", borradorSala = null;
@@ -1792,11 +1792,11 @@ function pintarSalas(forzar) {
   v.replaceChildren(cabPantalla("Called by you or the boss · the boss chairs · at the end, the minutes"), h("div", { class: "salas" }, lista, r ? vistaReunion(r) : formularioReunion()));
   v.scrollTop = sc;
 }
-// La mesa: el jefe en el centro del fondo y los demás alrededor; brilla quien está hablando
+// The table: the boss at the centre of the far end and the rest around; whoever is speaking glows
 function mesa(r) {
   const ags = r.participantes.map((id) => ed.agenteExacto(id)).filter(Boolean);
   const j = ags.find((a) => a.rol === "jefe"), resto = ags.filter((a) => a !== j);
-  const orden = []; resto.forEach((a, i) => (i % 2 ? orden.push(a) : orden.unshift(a)));   // reparte a izquierda y derecha
+  const orden = []; resto.forEach((a, i) => (i % 2 ? orden.push(a) : orden.unshift(a)));   // shares them out left and right
   const sitio = [...orden.slice(0, Math.ceil(orden.length / 2)), ...(j ? [j] : []), ...orden.slice(Math.ceil(orden.length / 2))];
   const n = sitio.length, cont = h("div", { class: "mesa" });
   const habla = new Set(r.estado === "en curso" ? [...ed.ocupados].filter((id) => r.participantes.includes(id)) : []);
@@ -1819,7 +1819,7 @@ function mesa(r) {
 function vistaReunion(r) {
   const caja = h("div", { class: "sala" }, h("h2", {}, crudo(r.titulo)),
     h("p", { class: "nota-osc", style: { margin: 0 } }, `${tr(ESTADO_REUNION[r.estado] || r.estado)} · ${tr(r.convoca === "tú" ? "called by you" : "called by the boss")} · ${fecha(r.creada)}${r.coste > 0 ? " · " + tr(`cost ${fmt(r.coste)}`) : ""}${r.estado === "en curso" && r.rondaActual ? " · " + tr(`round ${r.rondaActual} of ${r.rondas}`) : ""}`),
-    mesa(r), h("div", { class: "orden" }, h("b", {}, "Agenda"), "\n", crudo(String(r.ordenDelDia || "").replace(/^\s*\**\s*(orden del d[ií]a|agenda)\s*\**\s*[:.\-–]?\s*/i, ""))));   // si el jefe ya lo escribió con su título, no se repite
+    mesa(r), h("div", { class: "orden" }, h("b", {}, "Agenda"), "\n", crudo(String(r.ordenDelDia || "").replace(/^\s*\**\s*(orden del d[ií]a|agenda)\s*\**\s*[:.\-–]?\s*/i, ""))));   // if the boss already wrote it with its title, it isn't repeated
   if (r.estado === "propuesta" || r.estado === "lista") {
     const rondas = h("input", { type: "number", min: "1", step: "1", value: r.rondas, style: { width: "70px" } });
     const est = h("span", { class: "nota-osc" });
@@ -1881,7 +1881,7 @@ function formularioReunion() {
 }
 
 // =====================================================================
-// Cajón: Ajustes, Gasto, Vestir
+// Drawer: Settings, Spending, Look
 // =====================================================================
 let cajonTipo = "", cajonDatos = {}, focoAntes = null;
 const TITULOS = { ajustes: "Settings", gasto: "Spending", aspecto: "Appearance", agente: "Create agent", piso: "Create floor" };
@@ -1898,10 +1898,10 @@ function abrirCajon(tipo, datos) {
 function cerrarCajon() { $("cajon").hidden = true; $("velo").hidden = true; cajonTipo = ""; if (focoAntes && focoAntes.focus && focoAntes.isConnected) focoAntes.focus(); reemplazarNav(); }
 
 // =====================================================================
-// Navegación: el logo lleva a la portada, la flecha de atrás del navegador funciona y cada pantalla tiene «Volver»
+// Navigation: the logo takes you to the home page, the browser's back arrow works and each screen has «Back»
 // =====================================================================
 let aplicandoNav = false;
-const pilaNav = [{ v: "portada" }];   // lo que se veía en cada paso del historial (para saber adónde lleva «atrás»)
+const pilaNav = [{ v: "portada" }];   // what was shown at each step of the history (to know where «back» goes)
 const portadaVisible = () => !$("portada").hidden && !$("portada").classList.contains("fuera");
 function estadoNav() {
   if (portadaVisible()) return { v: "portada" };
@@ -1925,20 +1925,20 @@ function marcarNav() {
   pilaNav.length = n; pilaNav[n] = st; pasoVisto = n;
   try { history.pushState(Object.assign({}, st, { n }), ""); } catch {}
 }
-function reemplazarNav() {   // cerrar algo desde el programa (no con «Volver»): se apunta dónde estás sin añadir un paso
+function reemplazarNav() {   // closing something from the program (not with «Back»): where you are is noted without adding a step
   if (aplicandoNav) return;
   const st = estadoNav(), n = pasoNav();
   pilaNav[n] = st;
   try { history.replaceState(Object.assign({}, st, { n }), ""); } catch {}
 }
-// «Volver»: cierra lo de arriba. Si el paso anterior del historial es justo eso, es la flecha de atrás del navegador.
+// «Back»: closes what's on top. If the previous step of the history is exactly that, it's the browser's back arrow.
 function volverAtras() {
   let objetivo, cerrar;
   if (!$("cajon").hidden) { objetivo = estadoSinCajon(); cerrar = cerrarCajon; }
   else if (chatId) { objetivo = pantalla ? { v: "pantalla", id: pantalla } : plantaAbierta ? { v: "planta", id: plantaAbierta } : { v: "edificio" }; cerrar = cerrarChat; }
   else if (pantalla) { objetivo = plantaAbierta ? { v: "planta", id: plantaAbierta } : { v: "edificio" }; cerrar = cerrarPantalla; }
   else if (plantaAbierta) { objetivo = { v: "edificio" }; cerrar = () => { plantaAbierta = ""; pintar(); }; }
-  else if (panelAbierto()) { cerrarPanel(); return; }   // la ficha abierta al lado: se cierra y queda el edificio entero
+  else if (panelAbierto()) { cerrarPanel(); return; }   // the profile open beside: it closes and the whole building stays
   else { mostrarPortada(); return; }
   const n = pasoNav();
   if (n > 0 && mismoNav(pilaNav[n - 1], objetivo)) { history.back(); return; }
@@ -1966,12 +1966,12 @@ function aplicarNav(st) {
     else if (plantaAbierta && st.v === "edificio") { plantaAbierta = ""; pintar(); }
   } finally { aplicandoNav = false; }
 }
-let pasoVisto = 0;   // el paso del historial en el que estábamos (para saber si fue «atrás» o «adelante»)
+let pasoVisto = 0;   // the step of the history we were on (to know whether it was «back» or «forward»)
 window.addEventListener("popstate", (ev) => {
   if (!ed || !ed.e) return;
   const n = ev.state && Number.isInteger(ev.state.n) ? ev.state.n : 0, atras = n < pasoVisto;
   pasoVisto = n;
-  // un paso que deja la pantalla igual (pasa al cerrar algo desde el programa) se salta: «atrás» siempre cambia algo
+  // a step that leaves the screen the same (happens when closing something from the program) is skipped: «back» always changes something
   if (ev.state && mismoNav(ev.state, estadoNav())) { if (atras && n > 0) history.back(); else if (!atras) history.forward(); return; }
   aplicarNav(ev.state);
 });
@@ -1993,7 +1993,7 @@ function pintarCrearPiso() {
   setTimeout(() => nom.focus(), 50);
 }
 
-// ---------------- Crear agente (en blanco, o diseñado por el Creador) ----------------
+// ---------------- Create agent (blank, or designed by the Creator) ----------------
 let borrador = null;
 function borradorNuevo(d) {
   const pisos = ed.e.plantas.filter((x) => x.tipo === "piso");
@@ -2007,7 +2007,7 @@ function pintarCrearAgente(nuevo) {
   if (nuevo || !borrador) borrador = cajonDatos.ficha ? Object.assign(borradorNuevo({}), cajonDatos.ficha, { propuesta: cajonDatos.propuesta || "" }) : borradorNuevo(cajonDatos);
   const b = borrador, c = $("cajonCuerpo"), sc = c.scrollTop;
   c.innerHTML = "";
-  // 1. el Creador
+  // 1. the Creator
   const creador = ed.e.agentes.find((x) => x.rol === "creador");
   const pedido = h("textarea", { rows: "3", placeholder: "For example: I want one that every Monday prepares the week's menu and the shopping list for me", value: b.pedido });
   pedido.value = b.pedido || "";
@@ -2034,7 +2034,7 @@ function pintarCrearAgente(nuevo) {
     creador ? h("label", { class: "campo" }, h("span", {}, "What personality do you want it to have? (its tone, its humour and whether it gets to the point)"), perPedida, h("small", {}, "If you leave it blank, the Creator proposes one and you can change it below.")) : null,
     creador ? h("div", {}, boton) : null,
     b.propuesta ? h("p", { class: "porque" }, tr(b.porque || "Profile filled in by the Creator.") + (b.coste ? " " + tr(`Designing it cost ${fmt(b.coste)}.`) : "")) : null));
-  // 2. la ficha
+  // 2. the profile
   const nombre = h("input", { value: b.nombre, placeholder: "What it's called", maxlength: "40", oninput: (ev) => { b.nombre = ev.target.value; } });
   const selRol = h("select", { onchange: (ev) => { b.rol = ev.target.value; if (b.rol === "sabio") { b.planta = ed.e.plantas[0].id; b.puesto = "izquierda"; b.latido = { cada: 1, unidad: "peticion" }; if (!["abuelo", "abuela"].includes(b.aspecto.p)) b.aspecto = { p: "abuelo" }; } else { if (b.planta === ed.e.plantas[0].id) b.planta = (ed.e.plantas.find((x) => x.tipo === "piso") || { id: "nuevo" }).id; b.puesto = b.rol === "jefe_seccion" ? "despacho" : "oficina"; } pintarCrearAgente(false); } },
     [["jefe_seccion", "Section head"], ["subagente", "Sub-agent"], ["sabio", "Sage"]].map(([v, t]) => h("option", { value: v }, t)));
@@ -2071,7 +2071,7 @@ function pintarCrearAgente(nuevo) {
     h("div", { class: "campo" }, h("span", {}, "Resting, it wakes up"), h("div", { class: "fila-c" }, h("span", {}, "every"), num, uni)),
     b.rol === "sabio" ? null : campo("When it wakes up", alD),
     h("div", { class: "campo" }, h("span", {}, "Capabilities"), caps)));
-  // 3. su aspecto
+  // 3. its look
   c.append(h("div", { class: "bloque" }, h("h4", {}, "Its appearance"), selectorAspecto(b.aspecto, (A) => { b.aspecto = A; })));
   // 4. crear
   const crear = h("button", { class: "btn primario" }, "Create agent");
@@ -2090,13 +2090,13 @@ function pintarCrearAgente(nuevo) {
   c.scrollTop = nuevo ? 0 : sc;
 }
 
-// ---------------- Aspecto de un agente ----------------
+// ---------------- An agent's look ----------------
 function pintarAspecto() {
   const c = $("cajonCuerpo"); c.innerHTML = "";
   const a = ed.agente(cajonDatos.id) || ed.jefe();
   if (!a) return;
   $("cajonTitulo").textContent = tr("Photo and name of ") + a.nombre;
-  // el nombre, aquí mismo, junto a la foto
+  // the name, right here, next to the photo
   const nom = h("input", { value: a.nombre, maxlength: "40", "aria-label": "Name" });
   nom.onchange = () => { const v = nom.value.trim(); if (!v || v === a.nombre) { nom.value = a.nombre; return; } Motor.ejecutar({ tipo: "editarAgente", id: a.id, cambios: { nombre: v } }).then(() => { $("cajonTitulo").textContent = tr("Photo and name of ") + v; pintar(); }).catch(avisar); };
   c.append(h("div", { class: "bloque" }, campo("Name", nom, "Give it any name you like.")));
@@ -2118,7 +2118,7 @@ function pintarGastoCajon(soloDatos) {
     h("div", { class: "gastos3" }, ["hoy", "semana", "mes"].map((p) => h("div", {}, h("b", {}, fmt(ed.gastoEdificio(p))), h("small", {}, { hoy: "today", semana: "7 days", mes: "this month" }[p])))),
     h("div", { class: "barra" }, h("i", { class: faseClase(), style: { width: Math.min(100, uso * 100) + "%" } })),
     h("p", { class: "nota", style: { margin: 0 } }, tr(`Cap used: ${Math.round(uso * 100)} %.`) + " " + tr({ normal: "Everyone works.", congelacion1: "Priority 1 and 2 are frozen.", congelacion2: "Only priority 5 works.", tope: "Cap reached: everything frozen until tomorrow or until you raise the cap." }[ed.e.fase || "normal"]))));
-  // el interruptor general y quién gasta al despertar
+  // the master switch and who spends when waking up
   const pausa = aj.pausa !== false;
   const lista = ed.quienesGastan().filter((x) => !["memory"].includes(x.a.rol));
   const conLatido = lista.filter((x) => x.auto && !x.a.apagado);
@@ -2159,7 +2159,7 @@ function pintarGastoCajon(soloDatos) {
     h("small", { class: "nota" }, "In dollars. Brains, images and mic: what OpenRouter charges for each call. Voice: what was charged if OpenRouter reports it; if not, estimated at the model's price (“≈”).")));
 }
 
-// ---------------- Ajustes → Otras API (las de tus suscripciones) ----------------
+// ---------------- Settings → Other APIs (your subscriptions') ----------------
 function bloqueOtrasApi() {
   const conx = ed.conexiones();
   const guardarLista = (lista) => Motor.ejecutar({ tipo: "conexiones", conexiones: lista }).then(() => { pintar(); pintarAjustes(); }).catch(avisar);
@@ -2191,7 +2191,7 @@ function bloqueOtrasApi() {
     fila.append(h("div", { class: "fila-c" }, probar, fuera, msg));
     b.append(fila);
   }
-  // añadir: las conocidas (solo rellenan la dirección) u otra cualquiera
+  // adding: the known ones (they only fill in the address) or any other
   const conocidas = Object.entries(PROVEEDORES).filter(([k]) => k !== "openrouter" && !conx.some((c) => c.id === k));
   if (conocidas.length) b.append(h("div", { class: "campo" }, h("span", {}, "Add a known one"), h("div", { class: "fila-c" }, conocidas.map(([k, P]) => h("button", { class: "btn mini", type: "button", onclick: () => guardarLista([...listaActual(), { id: k }]) }, "+ " + P.nombre)))));
   const nom = h("input", { placeholder: "Name (for example, My API)" }), dir = h("input", { placeholder: "Address (for example, https://api.company.com/v1)" });
@@ -2212,7 +2212,7 @@ function pintarAjustes() {
   const c = $("cajonCuerpo"), sc = c.scrollTop; c.innerHTML = "";
   const aj = ed.e.ajustes;
   const guardarAj = (cambios, extra) => Motor.ejecutar(Object.assign({ tipo: "ajustes", cambios }, extra || {})).then(pintar).catch(avisar);
-  // dónde vive
+  // where it lives
   c.append(h("div", { class: "bloque" }, h("h4", {}, "Where your building lives"),
     h("div", { class: "donde" },
       esApp() ? h("div", { class: "aqui" }, h("b", {}, "In this app"), h("br"), h("span", { class: "nota" }, "On your computer, with no Terminal. The agents work while the app is open, with hands: their Chrome, their folder and their skills."), casaInfo.datos ? h("br") : null, casaInfo.datos ? h("small", { class: "nota" }, tr("Your data:") + " ", crudo(casaInfo.datos)) : null) : null,
@@ -2220,7 +2220,7 @@ function pintarAjustes() {
       h("div", { class: modo === "casa" && !esApp() ? "aqui" : "" }, h("b", {}, "Fer Home: a computer or phone that stays on"), h("br"), h("span", { class: "nota" }, "The fer-casa.mjs program runs this same building around the clock and gives the agents hands (their Chrome, their folder, their skills). You open the website from the address it gives you.")),
       h("div", {}, h("b", {}, "Fer Home in the cloud"), h("br"), h("span", { class: "nota" }, "The same program on a rented server. It works even when everything at home is off."))),
     h("small", { class: "nota" }, "How to install Fer Home: the README in the ZIP and the “Fer Agent · The Building” document.")));
-  // acceso: tu clave y tu dinero
+  // access: your key and your money
   if (modo === "local") {
     const k = h("input", { type: "password", autocomplete: "off", placeholder: "sk-or-...", value: store.get(K.clave) ? "••••••••••" : "" });
     k.onfocus = () => { if (k.value.startsWith("•")) k.value = ""; };
@@ -2230,7 +2230,7 @@ function pintarAjustes() {
       h("small", { class: "nota" }, "Safety net: put a spending limit on the key on the OpenRouter website."),
       comoSacarClave()));
   } else if (esApp()) {
-    // en la aplicación: la clave se pega aquí y se guarda en este ordenador; y se entra una vez en tus webs con el Chrome de los agentes
+    // in the app: the key is pasted here and saved on this computer; and you sign in to your websites once with the agents' Chrome
     const k = h("input", { type: "password", autocomplete: "off", placeholder: "sk-or-...", value: casaInfo.clave ? "••••••••••" : "" });
     k.onfocus = () => { if (k.value.startsWith("•")) k.value = ""; };
     c.append(h("div", { class: "bloque" }, h("h4", {}, "Your OpenRouter key"),
@@ -2256,7 +2256,7 @@ function pintarAjustes() {
       h("small", { class: "nota" }, "The keys live in Fer Home (datos/config.json), not on this device. The PIN stops anyone else on your network using your credit.")));
   }
   c.append(bloqueOtrasApi());
-  // nombre y objetivos del edificio
+  // the building's name and objectives
   const nom = h("input", { value: ed.e.nombre || "" });
   nom.onchange = () => guardarAj({}, { nombre: nom.value.trim() || "My building" });
   const obj = h("textarea", { rows: "5", placeholder: "For example:\nHelp my shop sell more online\nSave me two hours a day of email and paperwork\n…" }); obj.value = ed.e.objetivos || "";
@@ -2270,9 +2270,9 @@ function pintarAjustes() {
   obj.onchange = () => Motor.ejecutar({ tipo: "objetivos", texto: obj.value }).then((r) => { obj.value = r.objetivos; contar(); pintar(); }).catch(avisar);
   c.append(h("div", { class: "bloque" }, campo("Building name", nom),
     campo("Building objectives (yours or your company's)", obj, "Five lines at most. Every agent reads them when it wakes up, together with its own and its role's lessons. Keep it short: every letter is paid for in every heartbeat."), cuenta));
-  // el cerebro: biblioteca y memoria larga en una carpeta
+  // the brain: library and long-term memory in a folder
   c.append(bloqueCerebro());
-  // modelos por defecto del edificio (cada agente puede elegir el suyo en su ficha → Capacidades)
+  // the building's default models (each agent can choose its own in its profile → Capabilities)
   const selVista = selectorModelo("texto", aj.modeloVista, { vacio: "None", filtro: (m) => datosModelo(m).ve, alCambiar: (v) => guardarAj({ modeloVista: v }) });
   const selImg = selectorModelo("imagen", aj.modeloImagen, { vacio: "None", alCambiar: (v) => guardarAj({ modeloImagen: v }) });
   const selMus = selectorModelo("musica", aj.modeloMusica, { vacio: "None", alCambiar: (v) => guardarAj({ modeloMusica: v }) });
@@ -2303,7 +2303,7 @@ function pintarAjustes() {
     h("label", { class: "cap" }, chkCorta, h("span", {}, "Short answers when you talk by voice", h("small", {}, "One to three sentences; if you want more, ask for the details."))),
     h("label", { class: "cap" }, chkCortar, h("span", {}, "Stops talking when you speak", h("small", {}, "The mic stays open while it talks. With very loud speakers, if it cuts itself off, use headphones or turn this off."))),
     campo("Model that turns coins into lessons", selLec, "A cheap one: it writes the rule and you approve it in the inbox.")));
-  // modelos recomendados: arriba de cada selector. Arturito propone los nuevos; tú decides.
+  // recommended models: at the top of each picker. Artie proposes the new ones; you decide.
   const pendModelos = (ed.e.propuestasModelos || []).filter((x) => x.estado === "pendiente");
   const resumenRec = h("div", { class: "lista" }, Object.keys(TIPOS_MODELO).filter((t) => t !== "otros").map((t) => {
     const rec = ((aj.recomendados || {})[t]) || {};
@@ -2315,7 +2315,7 @@ function pintarAjustes() {
     pendModelos.length ? Object.keys(TIPOS_MODELO).map((t) => propuestasDe(t)).flat() : h("p", { class: "nota", style: { margin: 0 } }, "Artie has no pending proposals."),
     h("details", {}, h("summary", {}, "See the current recommended ones"), resumenRec),
     h("div", {}, h("button", { class: "btn mini", onclick: (ev) => confirmar(ev.target, "Go back to the original ones? Press again", () => Motor.ejecutar({ tipo: "recomendados.restablecer" }).then(() => { pintar(); pintarAjustes(); }).catch(avisar)) }, "Go back to the original recommended ones"))));
-  // lecciones y vista
+  // lessons and view
   const nLec = h("input", { type: "number", min: "1", max: "50", step: "1", value: aj.leccionesPorPapel || 5, onchange: (ev) => guardarAj({ leccionesPorPapel: Math.max(1, Math.min(50, parseInt(ev.target.value, 10) || 5)) }) });
   const selVistaEd = h("select", { onchange: (ev) => guardarAj({ vistaEdificio: ev.target.value }) }, [["auto", `Automatic: strips from ${AUTO_AGENTES + 1} agents or ${AUTO_PISOS + 1} floors`], ["dibujo", "Always the drawing"], ["franjas", "Always in strips"]].map(([v, t]) => h("option", { value: v }, t)));
   selVistaEd.value = aj.vistaEdificio || "auto";
@@ -2327,11 +2327,11 @@ function pintarAjustes() {
     selIdioma.value = idioma;
     c.append(h("label", { class: "bloque campo" }, h("span", {}, "Language (the website and what the agents are told)"), selIdioma));
   }
-  // los agentes de serie que renombraste, otra vez con su nombre oficial (en el idioma del edificio)
+  // the built-in agents you renamed, back to their official name (in the building's language)
   c.append(h("div", { class: "bloque" },
     h("button", { class: "btn mini", onclick: () => Motor.ejecutar({ tipo: "nombresDeSerie" }).then((r) => { pintar(); pintarAjustes(); avisoFlotante(r && r.cambiados ? tr(`Built-in names restored: ${r.cambiados}.`) : tr("They already have their built-in names.")); }).catch(avisar) }, "Restore the built-in names"),
     h("small", { class: "nota" }, "The built-in agents get back their official name in this language. The ones you created don't change.")));
-  // copias, mudanza y empezar de nuevo
+  // backups, moving and starting again
   const plantilla = (nombre, txt) => h("button", { class: "btn mini", onclick: (ev) => confirmar(ev.target, "Sure? The current building will be deleted", () => Motor.ejecutar({ tipo: "plantilla", nombre }).then(() => { seleccion = "jefe"; plantaAbierta = ""; pintar(); pintarChat(true); cerrarCajon(); }).catch(avisar)) }, txt);
   const fi = h("input", { type: "file", accept: "application/json,.json", hidden: true, onchange: async (ev) => { const f = ev.target.files[0]; if (!f) return; try { const r = await cargarCopia(await f.text()); pintar(); pintarChat(true); cerrarCajon(); avisoFlotante(r.mudanza ? "Move received: agents, settings, images and music. Paste your keys again in Settings (they don't travel in the file)." : (r.medios ? tr(`Backup loaded with ${r.medios} images and music tracks.`) : tr("Backup loaded."))); } catch (err) { avisar(err); } } });
   const t = ultimaCopia();
@@ -2351,7 +2351,7 @@ function pintarAjustes() {
   c.append(h("p", { class: "nota" }, `Fer Agent Building · version ${VERSION} · open source · prices and models come live from OpenRouter.`));
   c.scrollTop = sc;
 }
-// El cerebro en Ajustes: dónde vive, cómo conectarlo y qué ve la web
+// The brain in Settings: where it lives, how to connect it and what the website sees
 function bloqueCerebro() {
   const st = cerebro.estado, caja = h("div", { class: "bloque" }, h("h4", {}, "Brain: Library and Long-term memory"));
   if (esApp()) {
@@ -2402,7 +2402,7 @@ function bloqueCerebro() {
       h("li", {}, tr("“Credentials” (or “Clients”) → “Create credentials” → “OAuth client ID” → type “Web application”. Under “Authorised JavaScript origins” put") + " " + location.origin + " " + tr("(and, when you move, the new address too). There's no need to put anything under “Redirect URIs”.")),
       h("li", {}, "Copy the “Client ID” (it ends in .apps.googleusercontent.com), paste it above and press “Connect Google Drive”. Choose your account and grant permission. If Google warns that the app isn't verified, that's because it's yours and in testing: press “Continue”."),
       h("li", {}, "Repeat step 7 on your phone (same ID). The website will create the “Fer Agent” folder in your Drive. Don't create it by hand."))));
-  // carpeta de este ordenador
+  // a folder on this computer
   if (window.showDirectoryPicker) caja.append(h("div", { class: "campo" }, h("span", {}, "Or a folder on this computer (Chrome or Edge)"),
     h("div", {}, h("button", { class: "btn mini", type: "button", onclick: async () => {
       let hnd; try { hnd = await window.showDirectoryPicker({ mode: "readwrite", id: "fer-agent-cerebro" }); } catch { return; }
@@ -2428,9 +2428,9 @@ function exportar() { descargar(JSON.stringify(ed.e, null, 1), `fer-edificio-${n
 const copiaTecno = () => (modo === "local" ? store.json(K.copia, null) : null);
 
 // =====================================================================
-// El cerebro en una carpeta: Google Drive, una carpeta de este ordenador (Chrome) o la de Fer Casa.
-// Dentro: «Biblioteca» (tus notas), «Memoria larga» (una nota por tema, la escribe Memory) y «edificio.json» (la copia del edificio).
-// La web solo ve su carpeta. Las notas son de Obsidian (.md): las puedes abrir y corregir; la web lee lo que cambies.
+// The brain in a folder: Google Drive, a folder on this computer (Chrome) or Fer Home's.
+// Inside: the Library (your notes), the Long-term memory (one note per topic, written by Memory) and the building's backup (the names, per building: carpetasCerebro).
+// The website only sees its folder. The notes are Obsidian's (.md): you can open and correct them; the website reads what you change.
 // =====================================================================
 const cerebro = { ad: null, ocupado: false, cambios: 0, escritos: new Map(), vistos: new Map(), vistoEdificio: 0, miEdificio: 0, temporizador: null,
   estado: { conectado: false, tipo: "", nombre: "", ultimaSync: 0, ultimaCopia: 0, error: "", notas: 0, biblioteca: 0, necesitaPermiso: false } };
@@ -2542,7 +2542,7 @@ const nombresAgentes = () => Object.fromEntries(ed.e.agentes.map((a) => [a.id, a
 async function conectarCerebro(ad, interactivo) {
   try {
     await ad.conectar(interactivo);
-    if (cerebro.ad !== ad) { cerebro.escritos.clear(); cerebro.vistos.clear(); cerebro.miEdificio = 0; cerebro.vistoEdificio = 0; cerebro.conflicto = null; cerebro.estado.ultimaSync = 0; clearInterval(cerebro.temporizador); }   // otra carpeta: se empieza de cero
+    if (cerebro.ad !== ad) { cerebro.escritos.clear(); cerebro.vistos.clear(); cerebro.miEdificio = 0; cerebro.vistoEdificio = 0; cerebro.conflicto = null; cerebro.estado.ultimaSync = 0; clearInterval(cerebro.temporizador); }   // another folder: it starts from scratch
     cerebro.ad = ad;
     Object.assign(cerebro.estado, { conectado: true, tipo: ad.tipo, nombre: ad.nombre, error: "", necesitaPermiso: false });
     const guardado = (await idb.get("kv", "cerebroSync")) || {};
@@ -2556,24 +2556,24 @@ async function conectarCerebro(ad, interactivo) {
   } finally { pintar(); if (cajonTipo === "ajustes") pintarAjustes(); }
 }
 let esperaCerebro = null, cuandoCerebro = 0;
-function cerebroCambio(tipo) {   // el motor avisó: algo cambió → se escribe en la carpeta un poco después (todo junto)
+function cerebroCambio(tipo) {   // the engine said something changed → it's written to the folder a little later (all together)
   if (tipo === "estado") cerebro.cambios++;
   if (!cerebro.ad) return;
   const cuando = Date.now() + (tipo === "memoria" ? 4000 : 30000);
-  if (esperaCerebro && cuandoCerebro <= cuando) return;   // ya hay una escritura antes: esa lo lleva todo
+  if (esperaCerebro && cuandoCerebro <= cuando) return;   // there's already a write pending: that one takes everything
   clearTimeout(esperaCerebro); cuandoCerebro = cuando;
   esperaCerebro = setTimeout(() => { esperaCerebro = null; sincronizarCerebro({ soloEscribir: true }); }, cuando - Date.now());
 }
 async function sincronizarCerebro(op = {}) {
   const ad = cerebro.ad;
   if (!ad || !ed || !ed.e) return;
-  if (cerebro.ocupado) { cerebro.otraVez = true; return; }   // al acabar la que está en marcha, se hace otra
+  if (cerebro.ocupado) { cerebro.otraVez = true; return; }   // when the one in progress finishes, another one is done
   cerebro.ocupado = true;
   try {
     const desde = cerebro.estado.ultimaSync || 0, ahora = Date.now();
-    // Antes de escribir nada se mira la carpeta, para no pisar lo de tu otro aparato ni lo que corregiste a mano
-    if (await traerEdificio(ad)) return;   // había un edificio más nuevo de tu otro aparato: ya está cargado
-    // Memoria larga: lo que corregiste a mano entra (sin perder lo apuntado aquí después de la última vez)
+    // Before writing anything the folder is checked, so as not to overwrite your other device's work or what you corrected by hand
+    if (await traerEdificio(ad)) return;   // there was a newer building from your other device: it's already loaded
+    // Long-term memory: what you corrected by hand comes in (without losing what was noted here after the last time)
     const cc = carpetasCerebro(ed.e);
     for (const x of await ad.listar(cc.memoria, false)) {
       const nombre = x.ruta.split("/").pop();
@@ -2585,7 +2585,7 @@ async function sincronizarCerebro(op = {}) {
       await Motor.ejecutar({ tipo: "memoria.importar", tema: nombre.replace(/\.md$/i, ""), texto, conservarDesde: desde });
     }
     if (!op.soloEscribir) {
-      // Biblioteca: tus notas, para que Memory busque en ellas (solo lectura)
+      // Library: your notes, so Memory can search in them (read only)
       const docs = [];
       for (const x of (await ad.listar(cc.biblioteca, true)).filter((y) => /\.(md|txt)$/i.test(y.ruta))) {
         let c = await idb.get("biblio", ad.tipo + ":" + x.ruta);
@@ -2595,15 +2595,15 @@ async function sincronizarCerebro(op = {}) {
       ed.setBiblioteca(docs);
       cerebro.estado.biblioteca = docs.length;
     }
-    // lo que cambió aquí sale a la carpeta: las notas de la Memoria larga y la copia del edificio
+    // what changed here goes out to the folder: the Long-term memory notes and the building's backup
     const notas = notasMemoriaMd(ed.e.memoriaLarga, nombresAgentes(), cc);
     for (const n of notas) {
       if (cerebro.escritos.get(n.ruta) === n.texto) continue;
       await ad.escribir(n.ruta, n.texto);
-      cerebro.escritos.set(n.ruta, n.texto); cerebro.vistos.delete(n.ruta);   // la próxima vez se mira (si es lo mismo que escribimos, no se toca)
+      cerebro.escritos.set(n.ruta, n.texto); cerebro.vistos.delete(n.ruta);   // next time it's checked (if it's the same as what we wrote, it isn't touched)
     }
     cerebro.estado.notas = notas.length - 1;
-    if (!cerebro.conflicto && (cerebro.cambios || !cerebro.miEdificio)) await escribirEdificio(ad);   // con un conflicto sin decidir, no se escribe encima
+    if (!cerebro.conflicto && (cerebro.cambios || !cerebro.miEdificio)) await escribirEdificio(ad);   // with an undecided conflict, nothing is written over it
     cerebro.estado.ultimaSync = ahora; cerebro.estado.error = "";
     await idb.put("kv", "cerebroSync", { tipo: ad.tipo, ultimaSync: ahora, miEdificio: cerebro.miEdificio, vistoEdificio: cerebro.vistoEdificio });
   } catch (err) {
@@ -2619,13 +2619,13 @@ async function escribirEdificio(ad) {
   cerebro.miEdificio = ts; cerebro.vistoEdificio = Math.max(cerebro.vistoEdificio, ts); cerebro.cambios = 0;
   cerebro.estado.ultimaCopia = ts;
 }
-// ¿Tu otro aparato (el móvil o el Mac) guardó el edificio después? Si aquí no has cambiado nada, se carga; si sí, eliges.
+// Did your other device (the phone or the Mac) save the building later? If you haven't changed anything here, it's loaded; if you have, you choose.
 async function traerEdificio(ad) {
   const x = (await ad.listar("", false)).find((y) => y.ruta === carpetasCerebro(ed.e).copia);
   if (!x || x.modificado <= cerebro.vistoEdificio) return false;
   let d = null; try { d = JSON.parse(await ad.leer(x)); } catch { return false; }
   if (!d || d.tipo !== "fer-agent-edificio" || !d.edificio || d.aparato === aparato || (d.ts || 0) <= cerebro.miEdificio) { cerebro.vistoEdificio = x.modificado; return false; }
-  // los dos aparatos han cambiado cosas: eliges tú (y hasta entonces no se marca como visto ni se escribe encima)
+  // both devices have changed things: you choose (and until then it isn't marked as seen or written over)
   if (cerebro.cambios && cerebro.miEdificio) { cerebro.conflicto = { d, modificado: x.modificado }; avisoConflicto(d); return false; }
   cerebro.vistoEdificio = x.modificado;
   await Motor.ejecutar({ tipo: "importar", estado: d.edificio });
@@ -2643,7 +2643,7 @@ function avisoConflicto(d) {
       h("button", { class: "btn mini", onclick: async () => { caja.remove(); const c = cerebro.conflicto; cerebro.conflicto = null; if (c) cerebro.vistoEdificio = Math.max(cerebro.vistoEdificio, c.modificado); if (cerebro.ad) await escribirEdificio(cerebro.ad).catch(avisar); } }, "Keep the ones here")));
   document.body.append(caja);
 }
-// La Biblioteca sin carpeta (solo en este navegador) o subir notas a la carpeta
+// The Library without a folder (only in this browser) or uploading notes to the folder
 async function subirBiblioteca(archivos) {
   let n = 0;
   for (const f of archivos) {
@@ -2676,7 +2676,7 @@ async function arrancarCerebro() {
 }
 
 // =====================================================================
-// Copias del edificio (con imágenes y música) y mudanza a otra dirección
+// The building's backups (with images and music) and moving to another address
 // =====================================================================
 async function paquete({ conMedios, mudanza }) {
   const e = ed.e;
@@ -2762,7 +2762,7 @@ $("clip").onclick = () => $("fichero").click();
 $("fichero").onchange = (ev) => {
   const f = ev.target.files[0]; if (!f) return;
   const r = new FileReader();
-  r.onload = () => {   // se reduce a 1280 px para que sea barato de mirar
+  r.onload = () => {   // it's reduced to 1280 px so it's cheap to look at
     const img = new Image();
     img.onload = () => { const s = Math.min(1, 1280 / Math.max(img.width, img.height)); const c = document.createElement("canvas"); c.width = Math.round(img.width * s); c.height = Math.round(img.height * s); c.getContext("2d").drawImage(img, 0, 0, c.width, c.height); adjunto = c.toDataURL("image/jpeg", 0.85); $("adjuntoImg").src = adjunto; $("adjunto").hidden = false; };
     img.src = r.result;
@@ -2777,7 +2777,7 @@ try { if (window.speechSynthesis) speechSynthesis.onvoiceschanged = () => { if (
 // =====================================================================
 async function unaSolaPestana() {
   if (!navigator.locks) return true;
-  // la primera pestaña se queda el «candado» mientras esté abierta
+  // the first tab keeps the «lock» while it's open
   const mia = await new Promise((res) => {
     navigator.locks.request("fer-edificio-pestana", { ifAvailable: true }, (l) => { res(!!l); if (l) return new Promise(() => {}); }).catch(() => res(true));
   });
@@ -2789,13 +2789,13 @@ async function unaSolaPestana() {
   navigator.locks.request("fer-edificio-pestana", () => { location.reload(); return new Promise(() => {}); });
   return false;
 }
-// Cambiar de idioma: lo elige esta persona, el edificio pasa a ese idioma y la web se vuelve a abrir
+// Changing language: this person chooses it, the building moves to that language and the website reopens
 async function cambiarIdioma(id) {
   guardarIdioma(id);
   if (ed && ed.e && Array.isArray(ed.e.agentes) && ed.e.agentes.length) { try { await Motor.ejecutar({ tipo: "idioma", idioma: id }); } catch {} }
   location.reload();
 }
-// Al abrir: si esta persona eligió un idioma, su edificio pasa a ese; si no eligió, manda el del edificio
+// On opening: if this person chose a language, their building moves to it; if they didn't, the building's rules
 async function sincronizarIdioma() {
   if (!ed || !ed.e || !Array.isArray(ed.e.agentes) || !ed.e.agentes.length) return;
   let porDireccion = false; try { porDireccion = !!new URLSearchParams(location.search).get("lang"); } catch {}
@@ -2833,17 +2833,17 @@ async function sincronizarIdioma() {
       guardar: async (json) => {
         try { localStorage.setItem(K.estado, json); avisoLleno = false; }
         catch {
-          // si no cabe, primero se sacrifica la copia de Tecno (se puede descargar otra en Ajustes) y se reintenta
+          // if it doesn't fit, Techie's backup is sacrificed first (another can be downloaded in Settings) and it's retried
           try { if (localStorage.getItem(K.copia)) { localStorage.removeItem(K.copia); localStorage.setItem(K.estado, json); avisoLleno = false; return; } } catch {}
           if (!avisoLleno) { avisoLleno = true; pendientesError.push("The building couldn't be saved: this browser's storage is full. Download a backup in Settings and delete old tasks or memories."); pintarChat(true); } }
       },
       clave: () => store.get(K.clave),
       claves: () => Object.fromEntries((ed ? ed.conexiones() : []).map((c) => [c.id, store.get(claveApi(c.id))]).filter((x) => x[1])),
       guardarMedio: async (id, url, tipo, texto) => { mediosCache.set(id, url); await idb.put("medios", id, { id, url, tipo, texto: String(texto || "").slice(0, 300), ts: Date.now() }); },
-      // Tecno guarda los viernes una copia en este navegador (si cabe); también puedes descargarla en Ajustes.
+      // Techie saves a backup in this browser on Fridays (if it fits); you can also download it in Settings.
       copia: async (json, dia) => {
-        if (dia === "antes-de-v5") { localStorage.setItem(K.v4, json); return; }   // el edificio de la versión 4, tal cual
-        const e = JSON.parse(json);   // la configuración de todos (sin conversación, registro ni memoria corta)
+        if (dia === "antes-de-v5") { localStorage.setItem(K.v4, json); return; }   // the version 4 building, as it was
+        const e = JSON.parse(json);   // everyone's configuration (without conversation, log or short memory)
         delete e.conversacion; delete e.registro; for (const a of e.agentes || []) { a.memoriaCorta = []; a.tareas = (a.tareas || []).filter((t) => t.estado === "pendiente"); }
         const txt = JSON.stringify(e);
         if (txt.length > 1e6) throw new Error("the building is too big to store in the browser; download the backup in Settings");
@@ -2857,23 +2857,23 @@ async function sincronizarIdioma() {
     });
     await Promise.race([listas, sleep(6000)]);
     ed.setModelos(modelos);
-    await ed.iniciar("vacio", idioma);   // un edificio nuevo empieza solo con el jefe (los demás, en «Agentes de serie»), en el idioma de esta persona
-    // El aspecto del jefe de la versión anterior (guardado en este navegador) pasa a su ficha una vez.
+    await ed.iniciar("vacio", idioma);   // a new building starts with only the boss (the rest, in «Built-in agents»), in this person's language
+    // The previous version's boss look (saved in this browser) goes to its profile once.
     const look = store.json(K.look, null), j = ed.jefe();
     if (look && j && !look.pasado && look.p && sinColores(asp(j.aspecto)) && asp(j.aspecto).p === "chico") {
       await ed.ejecutar({ tipo: "editarAgente", id: j.id, cambios: { aspecto: Object.assign({ p: look.p }, look[look.p] || {}) } }).catch(() => {});
       look.pasado = true; store.set(K.look, JSON.stringify(look));
     }
     listas.then(() => { ed.setModelos(modelos); pintar(); });
-    // el latido del edificio: cada 20 segundos mira a quién le toca despertarse
-    // Si la web está abierta en varias pestañas, solo una hace latir el edificio (así no se gasta dos veces).
+    // the building's heartbeat: every 20 seconds it checks whose turn it is to wake up
+    // If the website is open in several tabs, only one makes the building beat (so nothing is spent twice).
     const latir = async () => {
       latirAntena(); if (!hayAcceso()) return;
       const trabajo = async () => { try { await ed.tick(); } catch {} };
       try { if (navigator.locks) await navigator.locks.request("fer-edificio-latido", { ifAvailable: true }, async (l) => { if (l) await trabajo(); }); else await trabajo(); } catch { await trabajo(); }
       pintar();
     };
-    window.addEventListener("storage", (ev) => {   // otra pestaña cambió el edificio: se carga su versión
+    window.addEventListener("storage", (ev) => {   // another tab changed the building: its version is loaded
       if (ev.key !== K.estado || !ev.newValue || pensando || ed.ocupados.size) return;
       try { ed.e = JSON.parse(ev.newValue); ed.reparar(); pintar(); if (chatId) pintarChat(true); } catch {}
     });
@@ -2884,7 +2884,7 @@ async function sincronizarIdioma() {
     const barata = imagenesModelos.slice().sort((x, y) => (n0(x.pricing.image) + n0(x.pricing.prompt)) - (n0(y.pricing.image) + n0(y.pricing.prompt)))[0];
     await Motor.ejecutar({ tipo: "ajustes", cambios: { modeloImagen: barata.id } }).catch(() => {});
   }
-  if (!ed.e.ajustes.modeloMusica && porTipo.musica.length) {   // música: Lyria si está; si no, el más barato
+  if (!ed.e.ajustes.modeloMusica && porTipo.musica.length) {   // music: Lyria if it's there; if not, the cheapest
     const lyria = porTipo.musica.find((m) => /lyria/i.test(m.id) && /clip/i.test(m.id)) || porTipo.musica.find((m) => /lyria/i.test(m.id));
     const barato = porTipo.musica.slice().sort((x, y) => (n0(x.pricing && x.pricing.request) + n0(x.pricing && x.pricing.prompt)) - (n0(y.pricing && y.pricing.request) + n0(y.pricing && y.pricing.prompt)))[0];
     await Motor.ejecutar({ tipo: "ajustes", cambios: { modeloMusica: (lyria || barato).id } }).catch(() => {});
@@ -2895,7 +2895,7 @@ async function sincronizarIdioma() {
   }
   microUI();
   await Promise.all(ed.e.agentes.map((a) => asegurarFigura(a.aspecto))).catch(() => {});
-  if (modo === "local") arrancarCerebro().catch(() => {});   // la carpeta del cerebro (Drive o la de este ordenador), si la conectaste
+  if (modo === "local") arrancarCerebro().catch(() => {});   // the brain folder (Drive or the one on this computer), if you connected it
   document.addEventListener("visibilitychange", () => { if (document.visibilityState === "visible" && cerebro.ad) sincronizarCerebro(); });
   verPestana(window.innerWidth <= 900 ? "edificio" : "ficha");
   pintar();

@@ -188,5 +188,5 @@ try:
 finally:
     servidor.terminate()
 if restos: print("ENGLISH LEFT IN THE SPANISH WEBSITE:\n" + "\n".join(f"  [{k}] {v}" for k, v in restos.items()))
-print("RESULTADO:", "OK" if ok else "FALLOS")
+print("RESULT:", "OK" if ok else "FAILURES")
 sys.exit(0 if ok else 1)

@@ -1,10 +1,10 @@
 // =====================================================================
-// Fer Agent · la aplicación de escritorio (versión 9)
-// Es el mismo edificio: arranca Fer Home (fer-casa.mjs) dentro de la aplicación,
-// solo en este ordenador (127.0.0.1), y abre su ventana. Sin Terminal:
-// el PIN lo pone la aplicación sola y la clave de OpenRouter se pega en Ajustes.
-// Los datos (edificio, claves, cerebro, Chrome de los agentes) quedan en la carpeta
-// de datos de la aplicación de cada usuario.
+// Fer Agent · the desktop app (version 9)
+// It's the same building: it starts Fer Home (fer-casa.mjs) inside the app,
+// only on this computer (127.0.0.1), and opens its window. No Terminal:
+// the app sets the PIN itself and the OpenRouter key is pasted in Settings.
+// The data (building, keys, brain, the agents' Chrome) stays in the app's data folder
+// of each user.
 // =====================================================================
 const { app, BrowserWindow, shell, dialog, Menu, ipcMain } = require("electron");
 const path = require("node:path");
@@ -15,9 +15,9 @@ const { pathToFileURL } = require("node:url");
 const RAIZ = path.join(__dirname, "..");
 let ventana = null, puerto = 0, pin = "", saliendo = false;
 
-if (!app.requestSingleInstanceLock()) app.quit();   // una sola aplicación abierta (un solo edificio latiendo)
+if (!app.requestSingleInstanceLock()) app.quit();   // only one app open (only one building beating)
 
-// Lo que escribe Fer Home va a un archivo en la carpeta de datos (para revisar si algo falla)
+// What Fer Home writes goes to a file in the data folder (to check if something fails)
 function registroEnArchivo(datos) {
   const f = path.join(datos, "fer-agent.log");
   try { if (fs.existsSync(f) && fs.statSync(f).size > 2e6) fs.renameSync(f, f + ".1"); } catch {}
@@ -44,7 +44,7 @@ function abrirVentana() {
     webPreferences: { contextIsolation: true, sandbox: true, nodeIntegration: false, preload: path.join(__dirname, "preload.cjs") }
   });
   ventana.once("ready-to-show", () => ventana.show());
-  // los enlaces de fuera (OpenRouter, GitHub…) se abren en tu navegador de siempre, no dentro de la aplicación
+  // outside links (OpenRouter, GitHub…) open in your usual browser, not inside the app
   ventana.webContents.setWindowOpenHandler(({ url }) => { if (/^https?:/.test(url) && !url.startsWith(local)) shell.openExternal(url); return { action: "deny" }; });
   ventana.webContents.on("will-navigate", (ev, url) => { if (!url.startsWith(local)) { ev.preventDefault(); if (/^https?:/.test(url)) shell.openExternal(url); } });
   ventana.loadURL(`${local}/app/entrar?t=${encodeURIComponent(pin)}`);
@@ -57,7 +57,7 @@ app.whenReady().then(async () => {
   registroEnArchivo(datos);
   if (process.platform !== "darwin") Menu.setApplicationMenu(null);
   puerto = await puertoLibre(Number(process.env.FER_PUERTO) || 8787);
-  // un edificio nuevo nace en el idioma del ordenador: español si está en español; si no, inglés
+  // a new building is born in the computer's language: Spanish if it's in Spanish; if not, English
   const idioma = /^es\b/i.test(app.getLocale() || "") ? "es" : "en";
   Object.assign(process.env, { FER_APP: "1", FER_DATOS: datos, FER_PUERTO: String(puerto), FER_IDIOMA: process.env.FER_IDIOMA || idioma });
   // the only two messages of this file, in the computer's language (the building isn't open yet, so there's no dictionary)
@@ -70,19 +70,19 @@ app.whenReady().then(async () => {
   abrirVentana();
   app.on("activate", () => { if (!ventana) abrirVentana(); });
 });
-// Lo único que la ventana puede pedirle a la aplicación: elegir la carpeta del cerebro y volver a abrirse
+// The only things the window can ask the app for: choosing the brain folder and reopening
 ipcMain.handle("elegir-carpeta", async () => {
   const r = await dialog.showOpenDialog(ventana, { title: "Fer Agent", properties: ["openDirectory", "createDirectory"] });
   return r.canceled || !r.filePaths.length ? "" : r.filePaths[0];
 });
 ipcMain.handle("reiniciar", () => { app.relaunch(); app.quit(); });
 app.on("second-instance", () => { if (ventana) { if (ventana.isMinimized()) ventana.restore(); ventana.focus(); } else if (app.isReady() && pin) abrirVentana(); });
-// En el Mac, cerrar la ventana no apaga el edificio (sigue en el Dock); en Windows y Linux, sí
+// On the Mac, closing the window doesn't switch the building off (it stays in the Dock); on Windows and Linux, it does
 app.on("window-all-closed", () => { if (process.platform !== "darwin") app.quit(); });
-// Al salir, Fer Home guarda el edificio y cierra el Chrome de los agentes
+// When quitting, Fer Home saves the building and closes the agents' Chrome
 app.on("before-quit", (ev) => {
   if (saliendo || !process.env.FER_APP) return;
   saliendo = true; ev.preventDefault();
   process.emit("SIGTERM");
-  setTimeout(() => app.exit(0), 8000);   // por si algo no responde
+  setTimeout(() => app.exit(0), 8000);   // in case something doesn't answer
 });

@@ -1,5 +1,5 @@
-"""Prueba de Fer Casa: arranca un OpenRouter simulado y el programa real, y comprueba la API, el PIN,
-la pasarela de voz, el latido y la web conectada. Uso: python3 pruebas/casa_test.py"""
+"""Test of Fer Home: it starts a simulated OpenRouter and the real program, and checks the API, the PIN,
+the voice gateway, the heartbeat and the connected website (a Spanish building). Usage: python3 pruebas/casa_test.py"""
 import json, os, sys, subprocess, time, threading, tempfile, urllib.request, urllib.error
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from playwright.sync_api import sync_playwright
@@ -54,7 +54,7 @@ def pedir(ruta, metodo="GET", cuerpo=None, pin=None):
 
 srv = ThreadingHTTPServer(("127.0.0.1", P_OR), OR); threading.Thread(target=srv.serve_forever, daemon=True).start()
 datos = tempfile.mkdtemp(prefix="fercasa-")
-env = dict(os.environ, FER_IDIOMA="es", OPENROUTER_BASE=f"http://127.0.0.1:{P_OR}/api/v1", OPENROUTER_API_KEY="sk-or-casa", FER_PIN="24681357", FER_PUERTO=str(P_CASA), FER_DATOS=datos, FER_LATIDO_SEG="1", FER_PLANTILLA="basico")   # v8: sin esto, Fer Casa nace solo con el jefe
+env = dict(os.environ, FER_IDIOMA="es", OPENROUTER_BASE=f"http://127.0.0.1:{P_OR}/api/v1", OPENROUTER_API_KEY="sk-or-casa", FER_PIN="24681357", FER_PUERTO=str(P_CASA), FER_DATOS=datos, FER_LATIDO_SEG="1", FER_PLANTILLA="basico")   # v8: without this, Fer Home is born with only the boss
 casa = subprocess.Popen(["node", os.path.join(RAIZ, "fer-casa.mjs")], env=env, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, stdin=subprocess.DEVNULL, text=True)
 salida = []
 threading.Thread(target=lambda: [salida.append(l) for l in casa.stdout], daemon=True).start()
@@ -62,54 +62,54 @@ try:
     for _ in range(50):
         if any("encendido" in l for l in salida): break
         time.sleep(0.2)
-    check(any("encendido" in l for l in salida), "Fer Casa arranca y enseña sus direcciones")
-    s, b, _ = pedir("/api/hola"); check(s == 200 and json.loads(b)["ferCasa"], "la web puede reconocer a Fer Casa")
-    s, b, _ = pedir("/api/estado"); check(s == 401, "sin PIN no se ve nada")
-    s, b, _ = pedir("/api/estado", pin="0000"); check(s == 401, "con PIN equivocado tampoco")
+    check(any("encendido" in l for l in salida), "Fer Home starts and shows its addresses")
+    s, b, _ = pedir("/api/hola"); check(s == 200 and json.loads(b)["ferCasa"], "the website can recognise Fer Home")
+    s, b, _ = pedir("/api/estado"); check(s == 401, "without a PIN nothing can be seen")
+    s, b, _ = pedir("/api/estado", pin="0000"); check(s == 401, "with a wrong PIN neither")
     for _ in range(6): pedir("/api/estado")
-    s, b, _ = pedir("/api/estado", pin="24681357"); check(s == 200, "peticiones sin PIN no bloquean al dueño")
+    s, b, _ = pedir("/api/estado", pin="24681357"); check(s == 200, "requests without a PIN don't lock the owner out")
     s, b, _ = pedir("/api/estado", pin="24681357"); e = json.loads(b)["estado"]
-    check(s == 200 and len(e["agentes"]) == 9 and [p["tipo"] for p in e["plantas"]] == ["cupula", "piso", "vestibulo"], f"con PIN: el edificio de serie con {len(e['agentes'])} agentes")
-    check(next(a for a in e["agentes"] if a["rol"] == "jefe")["cerebro"] == "anthropic/claude-sonnet-5.5", "Fer Casa elige cerebros con la lista de OpenRouter")
+    check(s == 200 and len(e["agentes"]) == 9 and [p["tipo"] for p in e["plantas"]] == ["cupula", "piso", "vestibulo"], f"with the PIN: the built-in building with {len(e['agentes'])} agents")
+    check(next(a for a in e["agentes"] if a["rol"] == "jefe")["cerebro"] == "anthropic/claude-sonnet-5.5", "Fer Home chooses brains with OpenRouter's list")
     s, b, _ = pedir("/api/accion", "POST", {"tipo": "hablar", "texto": "Hola"}, "24681357")
-    check(s == 200 and json.loads(b)["respuesta"] == "Hola desde Fer Casa.", "hablar con el jefe a través de Fer Casa")
-    check(all(a == "Bearer sk-or-casa" for (m, p, a) in recibido if m == "POST"), "la clave la pone Fer Casa; nunca viaja al navegador")
+    check(s == 200 and json.loads(b)["respuesta"] == "Hola desde Fer Casa.", "talking to the boss through Fer Home")
+    check(all(a == "Bearer sk-or-casa" for (m, p, a) in recibido if m == "POST"), "Fer Home puts the key in; it never travels to the browser")
     s, b, _ = pedir("/api/accion", "POST", {"tipo": "crearPlanta", "nombre": "Contenidos", "funcion": "Escribir"}, "24681357")
     s, b, _ = pedir("/api/accion", "POST", {"tipo": "crearAgente", "ficha": {"nombre": "Redactor", "rol": "subagente", "planta": json.loads(b)["id"], "cuerpo": "Escribes textos claros y cortos."}}, "24681357")
-    check(s == 200, "crear piso y agente a través de Fer Casa")
+    check(s == 200, "creating a floor and an agent through Fer Home")
     s, b, _ = pedir("/api/accion", "POST", {"tipo": "asignarTarea", "id": "Redactor", "texto": "Escribe algo", "ahora": True}, "24681357")
     time.sleep(2.5)
     s, b, _ = pedir("/api/estado", pin="24681357"); e = json.loads(b)["estado"]
     red = next(a for a in e["agentes"] if a["nombre"] == "Redactor")
-    check(any(t["texto"] == "Escribe algo" and t["estado"] == "hecha" for t in red["tareas"]), "el latido de Fer Casa despierta al Redactor y hace la tarea")
-    check(os.path.exists(os.path.join(datos, "edificio.json")) and "Escribe algo" in open(os.path.join(datos, "edificio.json")).read(), "el edificio se guarda en el disco")
-    check(any("Redactor" in l for l in salida), "Fer Casa escribe en pantalla lo que hacen los agentes")
-    # v6: chat con otro agente, JEV antes de buscar y una reunión, todo en Fer Casa
+    check(any(t["texto"] == "Escribe algo" and t["estado"] == "hecha" for t in red["tareas"]), "Fer Home's heartbeat wakes up the Redactor and it does the task")
+    check(os.path.exists(os.path.join(datos, "edificio.json")) and "Escribe algo" in open(os.path.join(datos, "edificio.json")).read(), "the building is saved on disk")
+    check(any("Redactor" in l for l in salida), "Fer Home writes on screen what the agents do")
+    # v6: chat with another agent, JEV before searching and a meeting, all in Fer Home
     s, b, _ = pedir("/api/accion", "POST", {"tipo": "hablar", "agente": red["id"], "texto": "¿Qué tal?"}, "24681357")
     s2, b2, _ = pedir("/api/estado", pin="24681357"); e = json.loads(b2)["estado"]
     red = next(a for a in e["agentes"] if a["nombre"] == "Redactor")
-    check(s == 200 and json.loads(b)["respuesta"] == "Trabajo hecho en casa." and len(red["chat"]) == 2, "chat con el Redactor (no con el jefe) a través de Fer Casa")
+    check(s == 200 and json.loads(b)["respuesta"] == "Trabajo hecho en casa." and len(red["chat"]) == 2, "chat with the Redactor (not the boss) through Fer Home")
     pedir("/api/accion", "POST", {"tipo": "editarAgente", "id": red["id"], "cambios": {"capacidades": ["escribir", "buscar"]}}, "24681357")
     pedir("/api/accion", "POST", {"tipo": "asignarTarea", "id": red["id"], "texto": "Busca imprentas", "ahora": True}, "24681357")
     time.sleep(2.5)
-    check(any(m == "POST" and p == "/api/alpha/decisions" and a == "Bearer sk-or-casa" for (m, p, a) in recibido), "antes de buscar, Fer Casa consulta a JEV (con la clave de Fer Casa)")
+    check(any(m == "POST" and p == "/api/alpha/decisions" and a == "Bearer sk-or-casa" for (m, p, a) in recibido), "before searching, Fer Home asks JEV (with Fer Home's key)")
     s, b, _ = pedir("/api/accion", "POST", {"tipo": "reunion.convocar", "titulo": "Prueba", "ordenDelDia": "Probar la sala.", "participantes": [red["id"]], "rondas": 1}, "24681357")
     rid = json.loads(b)["id"]
     pedir("/api/accion", "POST", {"tipo": "reunion.empezar", "reunion": rid}, "24681357")
     time.sleep(2.5)
     s, b, _ = pedir("/api/estado", pin="24681357"); r = next(x for x in json.loads(b)["estado"]["reuniones"] if x["id"] == rid)
-    check(r["estado"] == "terminada" and len(r["intervenciones"]) == 2 and r["acta"], "una reunión en la sala de Fer Casa: el jefe modera, habla el Redactor y queda el acta")
+    check(r["estado"] == "terminada" and len(r["intervenciones"]) == 2 and r["acta"], "a meeting in Fer Home's room: the boss chairs, the Redactor speaks and the minutes remain")
     for ruta in ("/textos.js", "/landing.js", "/textos/es.js"):
-        s, b, h = pedir(ruta); check(s == 200 and "javascript" in h.get("Content-Type", ""), f"Fer Casa sirve {ruta} (portada y textos para traducir)")
-    # imágenes del edificio: se sirven; lo demás de la carpeta, no
-    s, b, h = pedir("/img/piso.webp"); check(s == 200 and h.get("Content-Type") == "image/webp" and len(b) > 1000, "Fer Casa sirve las imágenes del edificio")
-    s, b, h = pedir("/img/pj-abuela-zonas.png"); check(s == 200 and h.get("Content-Type") == "image/png", "y los mapas de colores de los personajes")
-    check(all(pedir(r)[0] == 404 for r in ("/fer-casa.mjs", "/datos/config.json", "/img/../datos/config.json", "/LEEME.txt")), "pero no sirve ningún otro archivo (ni la configuración con la clave)")
-    # pasarela de voz
+        s, b, h = pedir(ruta); check(s == 200 and "javascript" in h.get("Content-Type", ""), f"Fer Home serves {ruta} (home page and texts to translate)")
+    # the building's images: served; nothing else in the folder
+    s, b, h = pedir("/img/piso.webp"); check(s == 200 and h.get("Content-Type") == "image/webp" and len(b) > 1000, "Fer Home serves the building's images")
+    s, b, h = pedir("/img/pj-abuela-zonas.png"); check(s == 200 and h.get("Content-Type") == "image/png", "and the characters' colour maps")
+    check(all(pedir(r)[0] == 404 for r in ("/fer-casa.mjs", "/datos/config.json", "/img/../datos/config.json", "/LEEME.txt")), "but it doesn't serve any other file (nor the configuration with the key)")
+    # voice gateway
     req = urllib.request.Request(f"http://localhost:{P_CASA}/api/or/audio/speech", method="POST", data=b'{"model":"x","input":"hola"}', headers={"Content-Type": "application/json", "X-Fer-Pin": "24681357"})
     with urllib.request.urlopen(req) as r: audio = r.read(); gid = r.headers.get("X-Generation-Id")
-    check(len(audio) > 1000 and gid == "gen-casa", "pasarela de voz: el audio pasa por Fer Casa con su identificador de coste")
-    s, b, _ = pedir("/api/or/chat/completions", "POST", {}, "24681357"); check(s == 403, "la pasarela solo deja pasar voz y oído")
+    check(len(audio) > 1000 and gid == "gen-casa", "voice gateway: the audio goes through Fer Home with its cost identifier")
+    s, b, _ = pedir("/api/or/chat/completions", "POST", {}, "24681357"); check(s == 403, "the gateway only lets voice and hearing through")
     # web conectada a Fer Casa
     with sync_playwright() as p:
         br = p.chromium.launch(); ctx = br.new_context(viewport={"width": 1300, "height": 860}, locale="es-ES")
@@ -119,19 +119,19 @@ try:
         page.goto(f"http://localhost:{P_CASA}/")
         page.click("#landing .boton-grande >> nth=0")
         page.wait_for_selector("text=PIN de Fer Casa")
-        check(True, "la web abierta desde Fer Casa pide el PIN (no la clave)")
+        check(True, "the website opened from Fer Home asks for the PIN (not the key)")
         page.fill("#cajonCuerpo input[type=password]", "24681357"); page.click("#cajonCuerpo >> text=Entrar")
         page.wait_for_selector(".tramo .pj[data-id]")
-        check(page.eval_on_selector_all(".tramo .pj", "p => p.length") == 10 and page.eval_on_selector_all(".fila-ag", "f => f.length") == 0, "la web dibuja el edificio de Fer Casa con sus agentes (v8: el directorio, solo en «Franjas»)")
-        check("Conectado a Fer Casa" in page.inner_text("#modo"), "la web dice que está conectada a Fer Casa (trabaja 24 h)")
+        check(page.eval_on_selector_all(".tramo .pj", "p => p.length") == 10 and page.eval_on_selector_all(".fila-ag", "f => f.length") == 0, "the website draws Fer Home's building with its agents (v8: the directory, only in “Franjas”)")
+        check("Conectado a Fer Casa" in page.inner_text("#modo"), "the website says it's connected to Fer Home (works 24 h)")
         page.click("#hablarJefe"); page.wait_for_selector("#vistaChat:not([hidden])")
         page.fill("#texto", "Hola"); page.keyboard.press("Enter")
         page.wait_for_function("[...document.querySelectorAll('.msg.bot .burbuja')].filter(b => b.textContent.includes('Hola desde Fer Casa')).length >= 2", timeout=15000)
-        check(True, "chat desde la web a través de Fer Casa (se ve también la conversación anterior)")
+        check(True, "chat from the website through Fer Home (the earlier conversation shows too)")
         page.wait_for_timeout(500)
         page.screenshot(path=os.path.join(SALIDA, "fer-casa.png"))
-        check(not errores, f"web en Fer Casa sin errores: {errores}")
+        check(not errores, f"website on Fer Home with no errors: {errores}")
         br.close()
 finally:
     casa.terminate(); casa.wait(timeout=5); srv.shutdown()
-print("RESULTADO:", "OK" if ok else "FALLOS"); sys.exit(0 if ok else 1)
+print("RESULT:", "OK" if ok else "FAILURES"); sys.exit(0 if ok else 1)

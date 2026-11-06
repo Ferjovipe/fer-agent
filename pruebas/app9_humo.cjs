@@ -1,8 +1,8 @@
-// Prueba de humo de la aplicación de escritorio YA FABRICADA (o de la de desarrollo):
-// la abre con Electron, entra, mira Ajustes, pega una clave, abre el Chrome de los agentes y la cierra.
-// Uso (Linux, sin pantalla):  xvfb-run -a node pruebas/app9_humo.cjs [ruta del ejecutable fabricado]
-//   sin ruta, usa node_modules/electron con esta carpeta.
-// Necesita Playwright (npm install -g playwright, o la variable PLAYWRIGHT con su ruta).
+// Smoke test of the desktop app ALREADY BUILT (or the development one):
+// it opens it with Electron, goes in, looks at Settings, pastes a key, opens the agents' Chrome and closes it.
+// Usage (Linux, no screen):  xvfb-run -a node pruebas/app9_humo.cjs [path of the built executable]
+//   without a path, it uses node_modules/electron with this folder.
+// Needs Playwright (npm install -g playwright, or the PLAYWRIGHT variable with its path).
 const path = require("node:path"), fs = require("node:fs"), os = require("node:os"), http = require("node:http");
 const { _electron: electron } = require(process.env.PLAYWRIGHT || "playwright");
 const RAIZ = path.join(__dirname, "..");
@@ -12,7 +12,7 @@ let ok = true;
 const check = (c, t) => { console.log((c ? "PASS " : "FAIL ") + t); ok = ok && !!c; };
 
 (async () => {
-  // un OpenRouter de mentira, para que el jefe conteste
+  // a fake OpenRouter, so the boss answers
   const or = http.createServer((req, res) => {
     let b = ""; req.on("data", (c) => (b += c)); req.on("end", () => {
       res.setHeader("Content-Type", "application/json");
@@ -22,7 +22,7 @@ const check = (c, t) => { console.log((c ? "PASS " : "FAIL ") + t); ok = ok && !
       res.statusCode = 404; res.end("{}");
     });
   }).listen(9941, "127.0.0.1");
-  const casaUsuario = fs.mkdtempSync(path.join(os.tmpdir(), "feragent-humo-"));   // un usuario nuevo: carpeta de datos vacía
+  const casaUsuario = fs.mkdtempSync(path.join(os.tmpdir(), "feragent-humo-"));   // a new user: empty data folder
   const fabricado = process.argv[2];
   const app = await electron.launch({
     executablePath: fabricado || path.join(RAIZ, "node_modules", "electron", "dist", "electron"),
@@ -33,41 +33,41 @@ const check = (c, t) => { console.log((c ? "PASS " : "FAIL ") + t); ok = ok && !
   const datos = path.join(await app.evaluate(({ app }) => app.getPath("userData")), "datos");
   const win = await app.firstWindow();
   await win.waitForSelector("#landing .heroe-txt", { timeout: 30000 });
-  check(await win.title() !== "" && /127\.0\.0\.1:8852\/$/.test(win.url()), `la ventana abre el edificio en este ordenador (${win.url()})`);
+  check(await win.title() !== "" && /127\.0\.0\.1:8852\/$/.test(win.url()), `the window opens the building on this computer (${win.url()})`);
   check(await win.evaluate(() => !!(window.ferApp && window.ferApp.elegirCarpeta && window.ferApp.reiniciar)) && await win.evaluate(() => typeof require === "undefined"),
-    "la ventana solo puede pedir elegir carpeta y volver a abrirse (sin acceso al ordenador)");
-  check((await win.innerText("#landing h1")) === "You have an agentic company at your service.", "un ordenador en inglés, la aplicación en inglés");
-  check((await win.locator("#landing .boton-borde").count()) === 0, "dentro de la aplicación no sale «Download the app»");
+    "the window can only ask to choose a folder and reopen (no access to the computer)");
+  check((await win.innerText("#landing h1")) === "You have an agentic company at your service.", "a computer in English, the app in English");
+  check((await win.locator("#landing .boton-borde").count()) === 0, "inside the app “Download the app” doesn't appear");
   await win.screenshot({ path: path.join(SALIDA, "app9-humo-portada.png") });
   await win.waitForTimeout(2000);
   await win.click("#landing .boton-grande >> nth=0");
   await win.waitForSelector("#cajon:not([hidden]) #cajonCuerpo h4", { timeout: 15000 });
   check((await win.innerText("#modo")) === "In this app · works while it's open", "arriba: «In this app»");
-  check(await win.isVisible("#cajonCuerpo button:text-is('Change the folder')"), "Ajustes → cerebro: botón «Change the folder»");
+  check(await win.isVisible("#cajonCuerpo button:text-is('Change the folder')"), "Settings → brain: “Change the folder” button");
   await win.screenshot({ path: path.join(SALIDA, "app9-humo-ajustes.png") });
   const bloque = "#cajonCuerpo .bloque:has(h4:text-is('Your OpenRouter key'))";
   await win.fill(`${bloque} input[type=password]`, "sk-or-v1-humohumohumohumo");
   await win.click(`${bloque} button:text-is('Save')`);
   await win.waitForTimeout(800);
   const conf = JSON.parse(fs.readFileSync(path.join(datos, "config.json"), "utf8"));
-  check(conf.clave === "sk-or-v1-humohumohumohumo", "la clave pegada queda en la carpeta de datos de la aplicación");
+  check(conf.clave === "sk-or-v1-humohumohumohumo", "the pasted key stays in the app's data folder");
   await win.click("#hablarJefe"); await win.waitForSelector("#vistaChat:not([hidden])");
   await win.fill("#texto", "Hello"); await win.keyboard.press("Enter");
   await win.waitForSelector("#mensajes .msg.bot:not(.saludo) .meta", { timeout: 20000 });
-  check((await win.innerText("#mensajes")).includes("Hello from the desktop app."), "el jefe contesta");
+  check((await win.innerText("#mensajes")).includes("Hello from the desktop app."), "the boss answers");
   await win.screenshot({ path: path.join(SALIDA, "app9-humo-chat.png") });
   await win.click("#cerrarChat");
-  // el Chrome de los agentes (Playwright va dentro de la aplicación)
+  // the agents' Chrome (Playwright goes inside the app)
   await win.click("#abrirAjustes"); await win.waitForSelector("#cajonCuerpo h4");
   const web = "#cajonCuerpo .bloque:has(h4:text-is(\"Your websites, in the agents' Chrome\"))";
   await win.fill(`${web} input`, "http://127.0.0.1:9941/web"); await win.click(`${web} button:text-is('Open')`);
   await win.waitForTimeout(8000);
   const aviso = await win.innerText("#avisoFlotante").catch(() => "");
-  check(aviso.startsWith("The agents' Chrome is open") && fs.existsSync(path.join(datos, "chrome-agentes")), `se abre el Chrome de los agentes: «${aviso.slice(0, 60)}»`);
+  check(aviso.startsWith("The agents' Chrome is open") && fs.existsSync(path.join(datos, "chrome-agentes")), `the agents' Chrome opens: “${aviso.slice(0, 60)}”`);
   await app.close();
   const log = fs.readFileSync(path.join(datos, "fer-agent.log"), "utf8");
-  check(/Saving and quitting/.test(log) && fs.existsSync(path.join(datos, "edificio.json")), "al cerrar, guarda el edificio (fer-agent.log, en el idioma del edificio: inglés)");
+  check(/Saving and quitting/.test(log) && fs.existsSync(path.join(datos, "edificio.json")), "on closing, it saves the building (fer-agent.log, in the building's language: English)");
   or.close();
-  console.log("RESULTADO:", ok ? "OK" : "FALLOS");
+  console.log("RESULT:", ok ? "OK" : "FAILURES");
   process.exit(ok ? 0 : 1);
 })().catch((e) => { console.error("FALLO:", e.message); process.exit(1); });

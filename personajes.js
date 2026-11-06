@@ -1,5 +1,5 @@
-// Los personajes (imágenes aportadas por el dueño del proyecto). Los cuatro primeros traen sus mapas de zonas
-// para cambiar el color de piel, pelo, ojos y ropa conservando luces y sombras; los de la v8 van con sus colores tal cual («acento»: el color de su ropa).
+// The characters (images provided by the project's owner). The first four come with their zone maps
+// to change the colour of skin, hair, eyes and clothes keeping lights and shadows; the version 8 ones keep their colours as they are («acento»: the colour of their clothes).
 export const PERSONAJES = {
  "chico": {
   "w": 433,

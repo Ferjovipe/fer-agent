@@ -41,7 +41,7 @@
   :focus-visible { outline: 3px solid color-mix(in srgb, var(--acento) 70%, var(--tinta)); outline-offset: 2px; }
   [hidden] { display: none !important; }
 
-  /* ---------- Barra superior ---------- */
+  /* ---------- Top bar ---------- */
   .top { display: flex; align-items: center; gap: 12px; padding: 10px 18px; background: var(--papel); border-bottom: 1px solid var(--linea); flex-wrap: wrap; }
   .marca { font: 600 22px/1 var(--display); letter-spacing: .01em; }
   .marca small { font: 500 14px var(--body); color: var(--suave); margin-left: 8px; }
@@ -72,11 +72,11 @@
   .solo-lector { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
   .btn:disabled { opacity: .5; cursor: default; }
 
-  /* ---------- Disposición ---------- */
+  /* ---------- Layout ---------- */
   body { display: flex; flex-direction: column; height: 100dvh; }
   .top { flex: none; }
   .layout { flex: 1; min-height: 0; display: grid; grid-template-columns: minmax(400px, 1.25fr) minmax(360px, 1fr); }
-  /* v8: el edificio entero a todo lo ancho; la ficha sale solo al tocar un agente o entrar en un piso */
+  /* v8: the whole building full width; the profile only appears when you touch an agent or go into a floor */
   @media (min-width: 901px) {
     body:not(.con-panel) .layout { grid-template-columns: 1fr; }
     body:not(.con-panel) .panel { display: none; }
@@ -85,10 +85,10 @@
   .cerrar-panel { margin-left: auto; align-self: center; width: 34px; height: 34px; border-radius: 50%; border: 1px solid var(--linea); background: var(--papel); font-size: 15px; line-height: 1; color: var(--tinta2, inherit); }
   .cerrar-panel:hover { background: var(--papel); border-color: currentColor; }
   @media (max-width: 900px) { .cerrar-panel { display: none; } }
-  @media (max-width: 480px) { .tramo .placa { top: var(--movil); } }   /* en un teléfono el piso es tan bajo que el letrero de arriba taparía cabezas: todos, en la losa de su planta */
+  @media (max-width: 480px) { .tramo .placa { top: var(--movil); } }   /* on a phone a floor is so low that the sign on top would cover heads: all of them, on their floor's slab */
   .panel { display: flex; flex-direction: column; min-width: 0; min-height: 0; background: var(--papel2); border-left: 1px solid var(--linea); }
 
-  /* ---------- La ciudad de noche (siempre de noche, como el dibujo) ---------- */
+  /* ---------- The city at night (always night, like the drawing) ---------- */
   .ciudad {
     --oro: #FFC56B; --oro-tinta: #FFE7B8; --coral: #FF8A65; --hielo-c: #8FD3FF; --apagado-c: #6B7290; --vidrio: rgba(9, 16, 52, .78); --borde-oro: rgba(255, 205, 130, .45);
     overflow-y: auto; position: relative; color: var(--oro-tinta);
@@ -108,7 +108,7 @@
   .ciudad :focus-visible { outline-color: var(--oro); }
   .edificio { width: min(100% - 28px, 900px); margin: 6px auto 0; position: relative; }
 
-  /* cada trozo del dibujo */
+  /* each piece of the drawing */
   .tramo { position: relative; width: 100%; }
   .tramo .fondo { position: absolute; inset: 0; width: 100%; height: 100%; display: block; user-select: none; }
   .tramo .entrar { position: absolute; inset: 0; border: 0; background: transparent; padding: 0; border-radius: 4px; }
@@ -125,7 +125,7 @@
   @keyframes latido { 0% { box-shadow: 0 0 0 0 rgba(255, 90, 78, .8); transform: scale(1.4); } 100% { box-shadow: 0 0 0 16px rgba(255, 90, 78, 0); transform: scale(1); } }
   .suelo-calle { height: 22px; background: linear-gradient(180deg, #3A2E6B, #17123A); border-radius: 0 0 10px 10px; }
 
-  /* los agentes */
+  /* the agents */
   .pj { position: absolute; transform: translateX(-50%); aspect-ratio: 433 / 880; border: 0; padding: 0; background: transparent; z-index: 1; }
   .pj img { width: 100%; height: 100%; object-fit: contain; display: block; filter: drop-shadow(0 2px 2px rgba(0, 0, 0, .35)); transition: transform .15s ease; pointer-events: none; }
   .pj:hover img { transform: translateY(-3%); }
@@ -136,7 +136,7 @@
   .pj.apagado img { filter: grayscale(1) brightness(.55); }
   .pj .pendiente { position: absolute; left: 50%; top: -9%; width: 22%; aspect-ratio: 1; margin-left: -11%; border-radius: 50%; background: var(--coral); box-shadow: 0 0 6px var(--coral); }
   .pj .etiqueta { position: absolute; top: calc(100% + 3px); left: 50%; transform: translateX(-50%); white-space: nowrap; font: 600 12px/1.3 var(--display); background: var(--vidrio); color: var(--oro-tinta); border: 1px solid var(--borde-oro); border-radius: 999px; padding: 0 8px; }
-  /* v8: el nombre del agente al pasar el ratón; la planta se ilumina también al pasar por su letrero */
+  /* v8: the agent's name on hover; the floor also lights up when hovering over its sign */
   .pj .etiqueta.al-pasar { opacity: 0; pointer-events: none; transition: opacity .12s; z-index: 3; }
   .pj:hover, .pj:focus-visible { z-index: 4; }
   .pj:hover .etiqueta.al-pasar, .pj:focus-visible .etiqueta.al-pasar { opacity: 1; }
@@ -146,7 +146,7 @@
   .hueco { position: absolute; transform: translateX(-50%); aspect-ratio: 1; border-radius: 50%; border: 2px dashed rgba(255, 231, 184, .7); background: rgba(9, 16, 52, .35); color: var(--oro-tinta); font: 600 18px/1 var(--display); padding: 0; opacity: .55; display: grid; place-items: center; }
   .hueco:hover, .hueco:focus-visible { opacity: 1; background: rgba(9, 16, 52, .6); }
 
-  /* una planta por dentro */
+  /* a floor from the inside */
   .edificio.abierta { width: min(100% - 28px, 1400px); padding-top: 16px; }
   .planta-cab { display: grid; gap: 2px; margin-bottom: 12px; }
   .volver { justify-self: start; background: transparent; border: 0; color: #B9C4F0; padding: 2px 0; font-weight: 600; font-size: 14px; }
@@ -207,7 +207,7 @@
   .otra-pestana p { margin: 0; color: #DCE3FF; }
   .otra-pestana .nota { color: #AEB8E6; }
 
-  /* ---------- Franjas (edificio grande) ---------- */
+  /* ---------- Strips (big building) ---------- */
   .interruptor { display: inline-flex; }
   .interruptor .btn { border-radius: 0; } .interruptor .btn:first-child { border-radius: 999px 0 0 999px; } .interruptor .btn:last-child { border-radius: 0 999px 999px 0; margin-left: -1px; }
   .ciudad .interruptor .btn[aria-pressed="true"] { background: rgba(255, 197, 107, .22); border-color: var(--oro); }
@@ -222,7 +222,7 @@
   .puntos i.trabajando { background: var(--oro); opacity: 1; box-shadow: 0 0 5px var(--oro); } .puntos i.activo { background: var(--coral); opacity: 1; }
   .puntos i.congelado { background: var(--hielo-c); opacity: 1; } .puntos i.apagado { background: var(--apagado-c); opacity: 1; }
 
-  /* ---------- Directorio: lista de agentes con buscador y filtros ---------- */
+  /* ---------- Directory: list of agents with a search box and filters ---------- */
   .dir-cab { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; margin: 22px 0 10px; }
   .dir-cab h3 { margin: 0; font: 600 18px var(--display); color: var(--oro-tinta); flex: 1; }
   .buscador { width: min(100%, 260px); background: rgba(255, 255, 255, .07); border: 1px solid var(--borde-oro); color: var(--oro-tinta); border-radius: 999px; padding: 6px 14px; }
@@ -245,7 +245,7 @@
   .est-punto.trabajando { background: var(--oro); opacity: 1; } .est-punto.activo { background: var(--coral); opacity: 1; } .est-punto.congelado { background: var(--hielo-c); opacity: 1; } .est-punto.apagado { background: var(--apagado-c); opacity: 1; }
   .sin-resultados { color: #B9C4F0; font-size: 14px; }
 
-  /* ---------- Pantallas completas: chat, agente del mes, reuniones ---------- */
+  /* ---------- Full screens: chat, agent of the month, meetings ---------- */
   .pantalla { position: fixed; left: 0; right: 0; top: 0; bottom: var(--pie); z-index: 20; display: flex; flex-direction: column; background: var(--papel2); }
   .pantalla.oscura { background: linear-gradient(180deg, #020B33 0%, #071A5E 60%, #1B1C55 100%); color: #FFE7B8; overflow-y: auto; }
   .pantalla-cab { display: flex; align-items: center; gap: 10px; padding: 10px 18px; border-bottom: 1px solid var(--linea); background: var(--papel); flex: none; }
@@ -279,7 +279,7 @@
   .tarjeta-reunion input { width: 70px; }
   .globo { display: inline-grid; place-items: center; min-width: 18px; height: 18px; border-radius: 999px; background: #D8432F; color: #fff; font-size: 11px; font-weight: 700; margin-left: 6px; padding: 0 5px; }
 
-  /* ---------- v7: logo, interruptor general, copia, bandeja, parar, monedas ---------- */
+  /* ---------- v7: logo, master switch, backup, inbox, stop, coins ---------- */
   button.marca { border: 0; background: transparent; padding: 0; color: inherit; text-align: left; }
   button.marca:hover { color: var(--acento); }
   .gasto-grupo { display: inline-flex; align-items: stretch; gap: 6px; }
@@ -291,7 +291,7 @@
   .pausa-btn[aria-pressed="false"] .pausa-ico { background: var(--ok); }
   .pausa-btn[aria-pressed="false"] .pausa-ico::after { left: 16px; }
   .pausa-btn[aria-pressed="true"] { border-color: color-mix(in srgb, var(--aviso) 65%, transparent); background: color-mix(in srgb, var(--aviso) 13%, var(--papel)); }
-  /* v8: la barra de arriba en una sola línea */
+  /* v8: the top bar on a single line */
   @media (min-width: 901px) {
     .top { flex-wrap: nowrap; gap: 8px; }
     .top .btn:not(.icono) { padding: 7px 12px; }
@@ -353,7 +353,7 @@
   .pasos-drive { margin: 8px 0 0; padding-left: 20px; display: grid; gap: 6px; }
   .ajustes-skill { display: grid; gap: 8px; padding: 10px; border-radius: 10px; background: var(--papel2); }
 
-  /* Agente del mes */
+  /* Agent of the month */
   .mes { width: min(100% - 32px, 1000px); margin: 0 auto; padding: 24px 0 40px; }
   .mes h1 { font: 600 clamp(28px, 4vw, 42px)/1.1 var(--display); margin: 0 0 4px; }
   .mes .nota-osc { color: #AEB8E6; margin: 0 0 22px; }
@@ -377,7 +377,7 @@
   .pantalla.oscura .btn { background: rgba(255, 255, 255, .07); color: #FFE7B8; border-color: rgba(255, 205, 130, .45); }
   .pantalla.oscura .btn.primario { background: #FFC56B; color: #2B1A04; border-color: transparent; }
 
-  /* Salas de reuniones */
+  /* Meeting rooms */
   .salas { display: grid; grid-template-columns: minmax(240px, 300px) 1fr; gap: 22px; width: min(100% - 32px, 1300px); margin: 0 auto; padding: 22px 0 40px; }
   .salas-lista { display: grid; gap: 8px; align-content: start; }
   .salas-lista h1 { font: 600 28px/1.1 var(--display); margin: 0 0 6px; }
@@ -406,7 +406,7 @@
   .elegir-asistentes label { display: inline-flex; gap: 6px; align-items: center; font-weight: 500; background: rgba(255, 255, 255, .06); border-radius: 999px; padding: 3px 10px 3px 6px; }
   .elegir-asistentes img { width: 22px; height: 22px; object-fit: cover; object-position: 50% 0; border-radius: 50%; }
 
-  /* Ficha en pestañas */
+  /* Profile in tabs */
   .ficha-pestanas { display: flex; gap: 2px; margin-top: 14px; border-bottom: 1px solid var(--linea); overflow-x: auto; }
   .ficha-pestanas button { border: 0; background: none; padding: 8px 12px; font-weight: 600; color: var(--suave); border-bottom: 3px solid transparent; white-space: nowrap; }
   .ficha-pestanas button[aria-selected="true"] { color: var(--tinta); border-bottom-color: var(--acento); }
@@ -425,7 +425,7 @@
   .dec.seguir { color: var(--ok); } .dec.parar { color: var(--peligro); } .dec.aprovechar { color: var(--hielo); } .dec.preguntar_jefe { color: var(--aviso); }
 
 
-  /* ---------- v6: franjas, avisos, ficha, mesa ---------- */
+  /* ---------- v6: strips, notices, profile, table ---------- */
   .tramo.franja { aspect-ratio: 1438 / 84; min-height: 50px; }
   .tramo.franja .fondo { object-fit: cover; object-position: 50% 42%; }
   .tramo.franja + .tramo.franja { border-top: 1px solid rgba(255, 205, 130, .12); }
@@ -455,7 +455,7 @@
   .sala .orden { margin: 0; }
   .redondo:disabled, #enviar:disabled, #texto:disabled { opacity: .45; cursor: not-allowed; }
 
-  /* ---------- Portada: la landing ---------- */
+  /* ---------- Home page: the landing ---------- */
   .portada { position: fixed; inset: 0; z-index: 30; background: #020B33; overflow-y: auto; color: #FFE7B8; transition: opacity .45s ease; }
   .portada.fuera { opacity: 0; pointer-events: none; }
   .heroe { position: relative; min-height: 100dvh; display: grid; align-items: center; overflow: hidden; }
@@ -501,14 +501,14 @@
   .final-l { text-align: center; padding-bottom: calc(var(--pie) + 64px); }
   .final-l h2 { margin-bottom: 18px; }
 
-  /* ---------- Panel derecho ---------- */
+  /* ---------- Right panel ---------- */
   .pestanas { display: flex; gap: 4px; padding: 10px 14px 0; background: var(--papel); border-bottom: 1px solid var(--linea); }
   .pestanas button { border: 0; background: transparent; padding: 9px 14px; border-radius: 10px 10px 0 0; font-weight: 600; color: var(--suave); border-bottom: 3px solid transparent; }
   .pestanas button[aria-selected="true"] { color: var(--tinta); border-bottom-color: var(--acento); }
   .vista { flex: 1; min-height: 0; display: flex; flex-direction: column; }
   .scroll { flex: 1; overflow-y: auto; padding: 16px 18px; }
 
-  /* chat del jefe */
+  /* the boss's chat */
   .jefe-cab { display: flex; align-items: center; gap: 14px; padding: 12px 18px; background: var(--papel); border-bottom: 1px solid var(--linea); }
   .jefe-cab .marco { width: 72px; height: 72px; border-radius: 50%; overflow: hidden; flex: none; background: color-mix(in srgb, var(--acento) 25%, var(--papel)); cursor: default; }
   .jefe-cab .marco img { width: 100%; height: auto; display: block; margin-top: 3px; }
@@ -556,7 +556,7 @@
   #pista { font-size: 12.5px; color: var(--suave); padding-top: 6px; text-align: center; }
   #pista:empty { display: none; }
 
-  /* ficha */
+  /* profile */
   .ficha-cab { display: flex; gap: 14px; align-items: center; }
   .marco-ficha { width: 78px; height: 78px; flex: none; border-radius: 50%; overflow: hidden; padding: 0; border: 2px solid var(--linea); background: color-mix(in srgb, var(--acento) 22%, var(--papel)); }
   .marco-ficha img { width: 100%; height: auto; display: block; margin-top: 3px; }
@@ -576,7 +576,7 @@
   .fila-c { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
   .fila-c > input[type=number] { width: 80px; }
   .campo .fila-c > select { width: 0; flex: 1 1 140px; min-width: 0; }
-  /* los desplegables con opciones largas no deben ensanchar el cajón */
+  /* drop-downs with long options mustn't widen the drawer */
   .cajon .scroll > *, .bloque > *, .dos > *, .campo > * { min-width: 0; }
   .campo select, .campo input, .campo textarea, .bloque textarea, .dos input { max-width: 100%; min-width: 0; }
   .creador textarea, .dos > input { width: 100%; font-size: 14.5px; padding: 8px 10px; border-radius: 10px; border: 1px solid var(--linea); background: var(--papel2); }
@@ -604,7 +604,7 @@
   .registro .hora { color: var(--suave); font-size: 12px; font-variant-numeric: tabular-nums; }
   .registro .coste { font-variant-numeric: tabular-nums; font-size: 12px; color: var(--suave); }
 
-  /* ---------- Cajón lateral ---------- */
+  /* ---------- Side drawer ---------- */
   .velo { position: fixed; inset: 0; background: color-mix(in srgb, #000 35%, transparent); z-index: 10; }
   .velo.claro { background: transparent; }
   .cajon { position: fixed; top: 0; right: 0; bottom: var(--pie); width: min(480px, 100%); z-index: 11; background: var(--papel); border-left: 1px solid var(--linea); display: flex; flex-direction: column; box-shadow: -18px 0 40px color-mix(in srgb, #000 18%, transparent); }
@@ -645,7 +645,7 @@
   .donde b { font-family: var(--display); font-weight: 600; }
   .donde .aqui { border-color: var(--acento); box-shadow: 0 0 0 2px color-mix(in srgb, var(--acento) 25%, transparent); }
 
-  /* ---------- Franja de abajo (deja sitio a la etiqueta de Netlify) ---------- */
+  /* ---------- Bottom strip (leaves room for Netlify's badge) ---------- */
   .como-clave { margin-top: 10px; font-size: 13px; line-height: 1.45; }
   .como-clave ol { margin: 6px 0 0; padding-left: 20px; }
   .como-clave li { margin-bottom: 4px; }
@@ -654,7 +654,7 @@
   .pie { flex: none; height: var(--pie); display: flex; align-items: center; padding: 0 18px; font-size: 12px; color: var(--suave); background: var(--papel); border-top: 1px solid var(--linea); }
 
   @media (max-width: 1560px) { .top .modo { display: none; } }
-  /* ---------- Móvil ---------- */
+  /* ---------- Mobile ---------- */
   .solo-movil { display: none; }
   @media (max-width: 900px) {
     .top { flex: none; }
@@ -710,7 +710,7 @@
 </style>
 </head>
 <body>
-<!-- Portada: la landing (la rellena landing.js) -->
+<!-- Home page: the landing (filled in by landing.js) -->
 <div class="portada" id="portada"><div id="landing"></div></div>
 
 <header class="top">
@@ -774,10 +774,10 @@
   </section>
 </div>
 
-<!-- Franja de abajo: deja libre la esquina donde Netlify pone su etiqueta, para que no tape nada -->
+<!-- Bottom strip: leaves free the corner where Netlify puts its badge, so it doesn't cover anything -->
 <footer class="pie"><span>Fer Agent · open source · version <span id="version"></span></span></footer>
 
-<!-- Chat con un agente, a pantalla completa -->
+<!-- Chat with an agent, full screen -->
 <section class="pantalla" id="vistaChat" hidden aria-label="Chat">
   <header class="pantalla-cab">
     <button class="volver-btn" id="cerrarChat">← Back to the building</button>
@@ -820,11 +820,11 @@
   </div>
 </section>
 
-<!-- Agente del mes -->
+<!-- Agent of the month -->
 <section class="pantalla oscura" id="vistaMes" hidden aria-label="Agent of the month"></section>
-<!-- Salas de reuniones -->
+<!-- Meeting rooms -->
 <section class="pantalla oscura" id="vistaSalas" hidden aria-label="Meeting rooms"></section>
-<!-- Bandeja de autorizaciones -->
+<!-- Approval inbox -->
 <section class="pantalla oscura" id="vistaBandeja" hidden aria-label="Approval inbox"></section>
 
 <section class="pantalla oscura" id="vistaSerie" hidden aria-label="Built-in agents"></section>

@@ -24,7 +24,7 @@ The interface is in **English** and **Spanish** (EN · ES switch on the home pag
 
 1. **The desktop app** (Mac and Windows): download it from [Releases](https://github.com/Ferjovipe/fer-agent/releases), install it with a double click and paste your OpenRouter key in Settings. No Terminal. The agents work while the app is open, with “hands”: their own Chrome (it uses the Google Chrome installed on your computer), their folder and skills in the `SKILL.md` format.
 2. **In your browser** (no install): open the website, paste your OpenRouter key in Settings. The agents work while the website is open on some device.
-3. **Fer Home** (`fer-casa.mjs`, Node 18+): the same program as the app, run from the Terminal, for an always-on computer, an old phone or a rented server behind a secure tunnel. *Its Terminal messages and its skills are still in Spanish.*
+3. **Fer Home** (`fer-casa.mjs`, Node 18+): the same program as the app, run from the Terminal, for an always-on computer, an old phone or a rented server behind a secure tunnel. It speaks its building's language in the Terminal and on Telegram.
 
 You move the building from one to another with **Save backup** and **Load a backup or a move**. Keys never travel in backups.
 
@@ -51,7 +51,7 @@ You move the building from one to another with **Save backup** and **Load a back
 | `index.html`, `app.js` | The website: the building, floors, chats, profiles, inbox, meetings, spending and settings |
 | `landing.js` | The home page |
 | `engine.js` | The engine, shared by the website and Fer Home |
-| `textos.js`, `textos/` | Languages: `textos/en.js` (English) and `textos/es.js` (template to translate into another language) |
+| `textos.js`, `textos/` | Languages: the program is written in English; `textos/es.js` is the Spanish translation (and the model for any other language) |
 | `personajes.js`, `img/` | The ten characters and the building drawings |
 | `fer-casa.mjs`, `manos.mjs`, `skills/` | Fer Home and the agents' hands |
 | `app/`, `build/`, `package.json` | The desktop app (Electron) and how its installers are made |
@@ -59,7 +59,7 @@ You move the building from one to another with **Save backup** and **Load a back
 
 ## Adding a language
 
-Copy `textos/es.js` as `textos/xx.js`, write the translation on the right of each text (keep the `{1}`, `{2}`… placeholders and the spaces at the start and end), and add the language to `IDIOMAS` in `textos.js` and `IDIOMAS_MOTOR` in `engine.js`. The same file translates the screens and what the engine tells the agents.
+The program is written in English. Copy `textos/es.js` (English on the left, Spanish on the right) as `textos/xx.js`, replace the right-hand side of each text with your translation (keep the `{1}`, `{2}`… placeholders and the spaces at the start and end), and add the language to `IDIOMAS` in `textos.js` and `IDIOMAS_MOTOR` in `engine.js`. The same file translates the screens and what the engine tells the agents.
 
 ## Status
 
@@ -73,13 +73,13 @@ python3 pruebas/web_test.py      # website (Spanish), v6 features   — needs Pl
 python3 pruebas/web7_test.py     # website (Spanish), v7 features
 python3 pruebas/web8_test.py     # website (Spanish), v8 features
 python3 pruebas/web82_test.py    # website in English: no Spanish left on any screen
+python3 pruebas/web9_test.py     # website in Spanish: no English left on any screen, nothing missing from the dictionary
 python3 pruebas/casa_test.py     # Fer Home
 python3 pruebas/casa7_test.py    # Fer Home with hands, Telegram, brain folder and another API
 python3 pruebas/app9_test.py     # the desktop app inside: keys in Settings, local only, the agents' Chrome
 node pruebas/app9_humo.cjs dist/linux-unpacked/fer-agent   # the built app, opened for real (needs a screen or xvfb-run)
 ```
 
-The code comments are in Spanish for now.
 
 ## License
 
