@@ -91,6 +91,7 @@ try:
         page.click("#vistaSerie .volver-btn"); page.wait_for_selector("#vistaSerie", state="hidden")
         # ---------- Letreros arriba, barra en una línea, directorio solo en «Franjas» ----------
         page.wait_for_selector(".tramo.piso .placa")
+        page.wait_for_function("(() => { const t = document.querySelector('.tramo.piso'); return t && t.getBoundingClientRect().height > 0; })()")   # que el dibujo haya acabado de pintarse
         tramo, placa = caja(page, ".tramo.piso"), caja(page, ".tramo.piso .placa")
         check((placa[1] - tramo[1]) / (tramo[3] - tramo[1]) < 0.1, f"el letrero de cada planta, arriba ({(placa[1] - tramo[1]) / (tramo[3] - tramo[1]):.2f} del alto)")
         tops = page.eval_on_selector_all(".tramo .placa", "ps => ps.map(p => { const t = p.closest('.tramo').getBoundingClientRect(), r = p.getBoundingClientRect(); return (r.top - t.top) / t.height; })")
