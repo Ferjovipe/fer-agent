@@ -1,14 +1,14 @@
 ---
 name: buscar-web
-title: Buscar en internet (gratis)
-description: Busca en DuckDuckGo con el Chrome de los agentes y devuelve los primeros resultados (título, dirección y resumen). No cuesta nada.
+title: Search the internet (free)
+description: Searches DuckDuckGo with the agents' Chrome and returns the first results (title, address and summary). It costs nothing.
 efecto: lee
 fija: false
-datos: {"consulta": "…"}
+datos: {"query": "…"}
 script: buscar.mjs
 ---
-# Buscar en internet (gratis)
+# Search the internet (free)
 
-Busca la consulta en DuckDuckGo (su versión sencilla, sin anuncios) y devuelve hasta 8 resultados. Para leer uno entero, usa después la skill «leer-web» con su dirección.
+Searches DuckDuckGo (its simple version, without ads) for the query and returns up to 8 results. To read one in full, then use the "leer-web" skill with its address.
 
-Es la alternativa gratis a la búsqueda de OpenRouter (que cuesta unos 0,005-0,007 $ cada vez).
+It's the free alternative to OpenRouter's search (which costs about $0.005–0.007 each time).

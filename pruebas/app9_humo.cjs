@@ -66,7 +66,7 @@ const check = (c, t) => { console.log((c ? "PASS " : "FAIL ") + t); ok = ok && !
   check(aviso.startsWith("The agents' Chrome is open") && fs.existsSync(path.join(datos, "chrome-agentes")), `se abre el Chrome de los agentes: «${aviso.slice(0, 60)}»`);
   await app.close();
   const log = fs.readFileSync(path.join(datos, "fer-agent.log"), "utf8");
-  check(/Guardando y saliendo/.test(log) && fs.existsSync(path.join(datos, "edificio.json")), "al cerrar, guarda el edificio (fer-agent.log)");
+  check(/Saving and quitting/.test(log) && fs.existsSync(path.join(datos, "edificio.json")), "al cerrar, guarda el edificio (fer-agent.log, en el idioma del edificio: inglés)");
   or.close();
   console.log("RESULTADO:", ok ? "OK" : "FALLOS");
   process.exit(ok ? 0 : 1);

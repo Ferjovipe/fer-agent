@@ -2,7 +2,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import { Edificio, elegirModelo, tipoModelo, nivelDePrecio, precioUnidad, precioOidoSegundo, sinPrecioPublicado, limpiarObjetivos,
-  notasMemoriaMd, leerMemoriaMd, trocear, REGLA_INVENTOS, VERSION } from "../engine.js";
+  notasMemoriaMd, leerMemoriaMd, trocear, REGLA_INVENTOS, VERSION, traducir , SIN_TRADUCIR } from "../engine.js";
 
 const M = (id, prompt, completion, extra = {}) => Object.assign({ id, name: id, pricing: { prompt: String(prompt), completion: String(completion) }, architecture: { input_modalities: ["text"], output_modalities: ["text"] }, context_length: 200000 }, extra);
 const MODELOS = [
@@ -97,7 +97,7 @@ test("qué agentes gastan al despertar: estimación por latido y por día", asyn
 test("regla contra inventos: si le falta algo, lo dice, no avanza solo y queda en la bandeja hasta que lo resuelvas", async () => {
   const { ed, llamadas, ahoraRef } = crear((url, b) => {
     if (url === DECISIONES) return jevDice("seguir");
-    assert.ok(String(b.messages[0].content).includes(REGLA_INVENTOS), "la regla va en cada llamada");
+    assert.ok(String(b.messages[0].content).includes(traducir("es", REGLA_INVENTOS)), "la regla va en cada llamada");
     return resp("ME FALTA: acceso a las métricas de Instagram y TikTok; no tengo subagentes.");
   });
   await ed.iniciar("basico");
@@ -615,4 +615,9 @@ test("voz: el filtro de eco no se come tus respuestas cortas cuando el agente ya
   assert.equal(hacer(dicho, true, 0)("para, para", t), false);
   // un trozo largo de lo que dijo, oído justo al acabar: eco
   assert.equal(hacer(dicho, false, t)("también puedo esperar al lunes y preparar el presupuesto", t + 300), true);
+});
+
+// v9: the engine is written in English; everything it said in these Spanish buildings was in textos/es.js
+test("v9: everything the engine said in Spanish was in the dictionary", () => {
+  assert.deepEqual([...SIN_TRADUCIR].filter((x) => !["min", "h"].includes(x)), []);
 });

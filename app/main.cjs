@@ -60,9 +60,12 @@ app.whenReady().then(async () => {
   // un edificio nuevo nace en el idioma del ordenador: español si está en español; si no, inglés
   const idioma = /^es\b/i.test(app.getLocale() || "") ? "es" : "en";
   Object.assign(process.env, { FER_APP: "1", FER_DATOS: datos, FER_PUERTO: String(puerto), FER_IDIOMA: process.env.FER_IDIOMA || idioma });
+  // the only two messages of this file, in the computer's language (the building isn't open yet, so there's no dictionary)
+  const msg = idioma === "es" ? { noArranca: "No se pudo arrancar el edificio: ", noAbre: "El edificio no arrancó. Mira el archivo fer-agent.log en " }
+    : { noArranca: "The building couldn't start: ", noAbre: "The building didn't start. Look at the fer-agent.log file in " };
   try { await import(pathToFileURL(path.join(RAIZ, "fer-casa.mjs")).href); }
-  catch (e) { dialog.showErrorBox("Fer Agent", "No se pudo arrancar el edificio: " + e.message); app.quit(); return; }
-  if (!(await esperar(`http://127.0.0.1:${puerto}/api/hola`, 30000))) { dialog.showErrorBox("Fer Agent", "El edificio no arrancó. Mira el archivo fer-agent.log en " + datos); app.quit(); return; }
+  catch (e) { dialog.showErrorBox("Fer Agent", msg.noArranca + e.message); app.quit(); return; }
+  if (!(await esperar(`http://127.0.0.1:${puerto}/api/hola`, 30000))) { dialog.showErrorBox("Fer Agent", msg.noAbre + datos); app.quit(); return; }
   try { pin = JSON.parse(fs.readFileSync(path.join(datos, "config.json"), "utf8")).pin; } catch {}
   abrirVentana();
   app.on("activate", () => { if (!ventana) abrirVentana(); });

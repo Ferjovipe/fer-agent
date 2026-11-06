@@ -611,13 +611,13 @@ try:
         # ---------- Traducción: un diccionario de prueba cambia los textos sin tocar el código ----------
         b = p.chromium.launch()
         ctx = b.new_context(viewport={"width": 1280, "height": 860}); ctx.add_init_script(INIT); ctx.route("https://**/*", router)
-        ctx.route("**/textos/zz.js", lambda r: r.fulfill(status=200, content_type="text/javascript", body='export default { "Tienes una empresa agéntica a tu servicio.": "You have an agentic company at your service.", "Hablar con {1}": "Talk to {1}", "Ajustes": "Settings", "Hoy, sin gasto": "Today, no spend" };'))
+        ctx.route("**/textos/zz.js", lambda r: r.fulfill(status=200, content_type="text/javascript", body='export default { "You have an agentic company at your service.": "ZZ · una empresa agéntica a tu servicio.", "Talk to {1}": "ZZ hablar con {1}", "Settings": "ZZ ajustes", "Today, no spending": "ZZ hoy, sin gasto" };'))   # v9: the code is in English; a dictionary has English on the left
         page = ctx.new_page(); errores = []; page.on("pageerror", lambda e: errores.append(str(e)))
         page.goto(URL + "?lang=zz"); page.evaluate("localStorage.setItem('ferAgent.key','sk-or-test')"); page.goto(URL + "?lang=zz")
         page.wait_for_selector("#landing h1")
-        check(page.inner_text("#landing h1") == "You have an agentic company at your service.", "traducción: la portada sale del diccionario")
-        entrar(page); page.wait_for_selector(".tramo")
-        check(page.inner_text("#hablarJefe") == "Talk to Jefe" and page.get_attribute("#abrirAjustes", "aria-label") == "Settings" and page.inner_text("#medHoy") == "Today, no spend", "traducción: también la cabecera, con frases que llevan datos («Talk to Fer»)")
+        check(page.inner_text("#landing h1") == "ZZ · una empresa agéntica a tu servicio.", "traducción: la portada sale del diccionario")
+        entrar(page, equipo=False); page.wait_for_selector(".tramo")
+        check(page.inner_text("#hablarJefe") == "ZZ hablar con Jefe" and page.get_attribute("#abrirAjustes", "aria-label") == "ZZ ajustes" and page.inner_text("#medHoy") == "ZZ hoy, sin gasto", "traducción: también la cabecera, con frases que llevan datos («ZZ hablar con Jefe»)")
         check(not errores, f"traducción sin errores: {errores}")
         b.close()
 

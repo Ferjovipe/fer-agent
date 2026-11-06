@@ -1,7 +1,7 @@
 // Pruebas del motor sin red: OpenRouter simulado. Ejecutar: node --test pruebas/
 import test from "node:test";
 import assert from "node:assert/strict";
-import { Edificio, crearPlantilla, elegirModelo, intervaloMs, reparto, tipoModelo, recomendadosIniciales, nivelDePrecio, MODELO_JEV, VERSION } from "../engine.js";
+import { Edificio, crearPlantilla, elegirModelo, intervaloMs, reparto, tipoModelo, recomendadosIniciales, nivelDePrecio, MODELO_JEV, VERSION , SIN_TRADUCIR } from "../engine.js";
 // v7: las lecciones nacen como propuesta y esperan tu sí (bandeja); en las pruebas de la v6 se aprueban todas
 const aprobarLecciones = async (ed) => { for (const l of ed.e.lecciones.filter((x) => x.estado === "propuesta")) await ed.ejecutar({ tipo: "leccion.aprobar", leccion: l.id }); };
 
@@ -759,4 +759,9 @@ test("revisión v6: precio variable (-1) nunca es «gratis» ni recomendado; la 
   const { ed: ed2 } = crear(() => ({ status: 200, text: 'data: {"error":{"code":402,"message":"sin crédito"}}\n\n' }));
   ed2.setModelos([...MODELOS, lyria]); await ed2.iniciar("basico"); ed2.e.ajustes.modeloMusica = lyria.id;
   await assert.rejects(() => ed2.crearMusica(ed2.jefe(), "x"), (e) => !/no devolvió audio/.test(e.message), "un error a mitad se cuenta tal cual");
+});
+
+// v9: the engine is written in English; everything it said in these Spanish buildings was in textos/es.js
+test("v9: everything the engine said in Spanish was in the dictionary", () => {
+  assert.deepEqual([...SIN_TRADUCIR].filter((x) => !["min", "h"].includes(x)), []);
 });

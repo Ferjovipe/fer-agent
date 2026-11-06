@@ -118,7 +118,7 @@ for P, H in [(P_OR, OR), (P_ANT, ANT), (P_TG, TG), (P_X, X)]:
     s = ThreadingHTTPServer(("127.0.0.1", P), H); threading.Thread(target=s.serve_forever, daemon=True).start()
 datos = tempfile.mkdtemp(prefix="fercasa7-")
 json.dump({"clave": "sk-or-casa", "pin": PIN, "claves": {"anthropic": "sk-ant-casa"}, "telegram": {"token": "TOK", "chat": 777}}, open(os.path.join(datos, "config.json"), "w"))
-env = dict(os.environ, OPENROUTER_BASE=f"http://127.0.0.1:{P_OR}/api/v1", ANTHROPIC_BASE=f"http://127.0.0.1:{P_ANT}/v1", TELEGRAM_API=f"http://127.0.0.1:{P_TG}",
+env = dict(os.environ, FER_IDIOMA="es", OPENROUTER_BASE=f"http://127.0.0.1:{P_OR}/api/v1", ANTHROPIC_BASE=f"http://127.0.0.1:{P_ANT}/v1", TELEGRAM_API=f"http://127.0.0.1:{P_TG}",
            FER_PUERTO=str(P_CASA), FER_DATOS=datos, FER_LATIDO_SEG="1", FER_CEREBRO_SEG="2", FER_CHROME_CANAL="chromium", FER_PLANTILLA="basico")
 casa = subprocess.Popen(["node", os.path.join(RAIZ, "fer-casa.mjs")], env=env, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, stdin=subprocess.DEVNULL, text=True)
 salida = []

@@ -1,9 +1,9 @@
 <!doctype html>
-<html lang="es">
+<html lang="en">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<title>Fer Agent · Edificio</title>
+<title>Fer Agent · Building</title>
 <meta name="theme-color" content="#CFE0F5" media="(prefers-color-scheme: light)">
 <meta name="theme-color" content="#0E1326" media="(prefers-color-scheme: dark)">
 <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -714,60 +714,60 @@
 <div class="portada" id="portada"><div id="landing"></div></div>
 
 <header class="top">
-  <button class="marca" id="irPortada" type="button" title="Ir a la portada">Fer Agent<small id="nombreEdificio">Mi edificio</small></button>
-  <span class="modo" id="modo">En este navegador</span>
+  <button class="marca" id="irPortada" type="button" title="Go to the home page">Fer Agent<small id="nombreEdificio">My building</small></button>
+  <span class="modo" id="modo">In this browser</span>
   <span class="grow"></span>
-  <button class="btn primario" id="hablarJefe">Hablar con el jefe</button>
-  <button class="btn" id="abrirBandeja" title="Lo que espera tu sí">Bandeja<span class="globo" id="globoBandeja" hidden></span></button>
-  <button class="btn" id="abrirMes">Agente del mes<span class="globo" id="globoMes" hidden></span></button>
-  <button class="btn" id="abrirSalas">Reuniones</button>
+  <button class="btn primario" id="hablarJefe">Talk to the boss</button>
+  <button class="btn" id="abrirBandeja" title="What&#x27;s waiting for your yes">Inbox<span class="globo" id="globoBandeja" hidden></span></button>
+  <button class="btn" id="abrirMes">Agent of the month<span class="globo" id="globoMes" hidden></span></button>
+  <button class="btn" id="abrirSalas">Meetings</button>
   <span class="gasto-grupo">
-    <button class="medidor" id="medidor" title="Ver el gasto y quién gasta al despertar">
-      <span class="fila"><span id="medHoy">Hoy, sin gasto</span><span id="medTope">tope 1 $</span></span>
+    <button class="medidor" id="medidor" title="See the spending and who spends when they wake up">
+      <span class="fila"><span id="medHoy">Today, no spending</span><span id="medTope">cap $1</span></span>
       <span class="barra"><i id="medBarra"></i></span>
     </button>
-    <button class="pausa-btn" id="pausa" type="button" aria-pressed="true" title="Interruptor general de lo automático">
-      <span class="pausa-ico" aria-hidden="true"></span><span class="pausa-txt"><b id="pausaTxt">En pausa</b><small id="pausaSub">nada gasta solo</small></span>
+    <button class="pausa-btn" id="pausa" type="button" aria-pressed="true" title="Master switch for everything automatic">
+      <span class="pausa-ico" aria-hidden="true"></span><span class="pausa-txt"><b id="pausaTxt">Paused</b><small id="pausaSub">nothing spends on its own</small></span>
     </button>
   </span>
-  <button class="btn icono copia-btn" id="copiaRapida" type="button" title="Guardar ahora una copia de todo el edificio" aria-label="Guardar copia"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 3h11l3 3v13a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2zm2 0v5h8V3M7 21v-7h10v7" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/></svg><i class="punto-copia" aria-hidden="true"></i><small id="copiaCuando" class="solo-lector">nunca</small></button>
-  <button class="btn icono" id="abrirAjustes" title="Ajustes" aria-label="Ajustes"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 15.5a3.5 3.5 0 1 0 0-7 3.5 3.5 0 0 0 0 7zm7.4-2.1.1-1.4-.1-1.4 2-1.6-2-3.4-2.4 1a7.6 7.6 0 0 0-2.4-1.4L14.2 2h-4l-.4 2.6a7.6 7.6 0 0 0-2.4 1.4l-2.4-1-2 3.4 2 1.6-.1 1.4.1 1.4-2 1.6 2 3.4 2.4-1a7.6 7.6 0 0 0 2.4 1.4l.4 2.6h4l.4-2.6a7.6 7.6 0 0 0 2.4-1.4l2.4 1 2-3.4z" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/></svg></button>
+  <button class="btn icono copia-btn" id="copiaRapida" type="button" title="Save a backup of the whole building now" aria-label="Save backup"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 3h11l3 3v13a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2zm2 0v5h8V3M7 21v-7h10v7" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/></svg><i class="punto-copia" aria-hidden="true"></i><small id="copiaCuando" class="solo-lector">never</small></button>
+  <button class="btn icono" id="abrirAjustes" title="Settings" aria-label="Settings"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 15.5a3.5 3.5 0 1 0 0-7 3.5 3.5 0 0 0 0 7zm7.4-2.1.1-1.4-.1-1.4 2-1.6-2-3.4-2.4 1a7.6 7.6 0 0 0-2.4-1.4L14.2 2h-4l-.4 2.6a7.6 7.6 0 0 0-2.4 1.4l-2.4-1-2 3.4 2 1.6-.1 1.4.1 1.4-2 1.6 2 3.4 2.4-1a7.6 7.6 0 0 0 2.4 1.4l.4 2.6h4l.4-2.6a7.6 7.6 0 0 0 2.4-1.4l2.4 1 2-3.4z" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/></svg></button>
 </header>
 
 <div class="layout">
-  <section class="ciudad" aria-label="Edificio">
+  <section class="ciudad" aria-label="Building">
     <div class="ciudad-barra" id="ciudadBarra">
-      <button class="btn mini volver-portada" id="volverPortada" type="button">← Volver a la portada</button>
-      <button class="btn primario mini" id="crearAgente">Crear agente</button>
-      <button class="btn mini" id="crearPiso">Crear piso</button>
-      <button class="btn mini" id="abrirSerie">Agentes de serie</button>
-      <button class="btn mini" id="abrirActividad">Actividad</button>
-      <span class="interruptor" role="group" aria-label="Cómo se ve el edificio">
-        <button class="btn mini" id="verDibujo" aria-pressed="false">Dibujo</button><button class="btn mini" id="verFranjas" aria-pressed="false">Franjas</button>
+      <button class="btn mini volver-portada" id="volverPortada" type="button">← Back to the home page</button>
+      <button class="btn primario mini" id="crearAgente">Create agent</button>
+      <button class="btn mini" id="crearPiso">Create floor</button>
+      <button class="btn mini" id="abrirSerie">Built-in agents</button>
+      <button class="btn mini" id="abrirActividad">Activity</button>
+      <span class="interruptor" role="group" aria-label="How the building is shown">
+        <button class="btn mini" id="verDibujo" aria-pressed="false">Drawing</button><button class="btn mini" id="verFranjas" aria-pressed="false">Strips</button>
       </span>
-      <span class="pista">Toca una planta para entrar, o un agente para ver su ficha</span>
+      <span class="pista">Tap a floor to go in, or an agent to see their profile</span>
     </div>
     <div class="edificio" id="edificio"></div>
     <div class="leyenda">
-      <span><i class="l-trabajando"></i>trabajando</span>
-      <span><i class="l-pendiente"></i>con tareas pendientes</span>
-      <span><i class="l-congelado"></i>congelado por gasto</span>
-      <span><i class="l-apagado"></i>apagado</span>
+      <span><i class="l-trabajando"></i>working</span>
+      <span><i class="l-pendiente"></i>with pending tasks</span>
+      <span><i class="l-congelado"></i>frozen by spending</span>
+      <span><i class="l-apagado"></i>off</span>
     </div>
   </section>
 
   <section class="panel" id="panel">
     <nav class="pestanas" role="tablist">
-      <button role="tab" id="tabEdificio" class="solo-movil" aria-selected="false">Edificio</button>
-      <button role="tab" id="tabFicha" aria-selected="true">Ficha</button>
-      <button role="tab" id="tabActividad" aria-selected="false">Actividad</button>
-      <button class="cerrar-panel" id="cerrarPanel" type="button" title="Cerrar y ver el edificio entero" aria-label="Cerrar">✕</button>
+      <button role="tab" id="tabEdificio" class="solo-movil" aria-selected="false">Building</button>
+      <button role="tab" id="tabFicha" aria-selected="true">Profile</button>
+      <button role="tab" id="tabActividad" aria-selected="false">Activity</button>
+      <button class="cerrar-panel" id="cerrarPanel" type="button" title="Close and see the whole building" aria-label="Close">✕</button>
     </nav>
     <div class="vista" id="vistaFicha"><div class="scroll" id="ficha"></div></div>
     <div class="vista" id="vistaActividad" hidden>
       <div class="sub-pestanas" role="tablist">
-        <button role="tab" id="actTodo" aria-selected="true">Todo</button>
-        <button role="tab" id="actJev" aria-selected="false">Consultas a JEV</button>
+        <button role="tab" id="actTodo" aria-selected="true">Everything</button>
+        <button role="tab" id="actJev" aria-selected="false">Questions to JEV</button>
       </div>
       <div class="scroll"><div class="lista registro" id="registro"></div></div>
     </div>
@@ -775,44 +775,44 @@
 </div>
 
 <!-- Franja de abajo: deja libre la esquina donde Netlify pone su etiqueta, para que no tape nada -->
-<footer class="pie"><span>Fer Agent · código abierto · versión <span id="version"></span></span></footer>
+<footer class="pie"><span>Fer Agent · open source · version <span id="version"></span></span></footer>
 
 <!-- Chat con un agente, a pantalla completa -->
 <section class="pantalla" id="vistaChat" hidden aria-label="Chat">
   <header class="pantalla-cab">
-    <button class="volver-btn" id="cerrarChat">← Volver al edificio</button>
+    <button class="volver-btn" id="cerrarChat">← Back to the building</button>
     <span class="grow"></span>
-    <button class="btn mini" id="verFichaChat">Ver su ficha</button>
-    <button class="btn mini" id="nuevaConv" title="Empezar una conversación nueva">Nueva conversación</button>
+    <button class="btn mini" id="verFichaChat">See their profile</button>
+    <button class="btn mini" id="nuevaConv" title="Start a new conversation">New conversation</button>
   </header>
   <div class="chat-cuerpo">
     <aside class="chat-pj" id="jefeCab">
-      <div class="pj-grande" id="marcoJefe" title="Toca para que se calle mientras habla"><img id="avatar" alt=""></div>
+      <div class="pj-grande" id="marcoJefe" title="Tap to make it stop talking"><img id="avatar" alt=""></div>
       <div class="chat-quien">
-        <h2 id="jefeNombre">Jefe</h2>
+        <h2 id="jefeNombre">Boss</h2>
         <p id="jefeRol" class="nota"></p>
-        <p id="jefeEstado">Listo para hablar</p>
-        <button class="parar-btn" id="pararVoz" type="button" hidden><span class="cuadro" aria-hidden="true"></span>Parar</button>
+        <p id="jefeEstado">Ready to talk</p>
+        <button class="parar-btn" id="pararVoz" type="button" hidden><span class="cuadro" aria-hidden="true"></span>Stop</button>
       </div>
     </aside>
     <div class="chat-principal">
       <div class="scroll" id="chat"><div id="mensajes"></div></div>
       <div class="redactor">
         <div class="fila">
-          <button class="redondo" id="micro" aria-pressed="false" title="Hablarle por el micro (modo conversación)" aria-label="Micrófono">
+          <button class="redondo" id="micro" aria-pressed="false" title="Talk through the mic (conversation mode)" aria-label="Microphone">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="9" y="3" width="6" height="11" rx="3"/><path d="M5 11a7 7 0 0 0 14 0M12 18v3"/></svg>
           </button>
-          <button class="redondo" id="clip" title="Adjuntar una imagen para que la vea" aria-label="Adjuntar imagen">
+          <button class="redondo" id="clip" title="Attach an image for it to see" aria-label="Attach image">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 12.5l-8.4 8.4a5.5 5.5 0 0 1-7.8-7.8l8.8-8.8a3.7 3.7 0 0 1 5.2 5.2l-8.8 8.8a1.8 1.8 0 0 1-2.6-2.6l8-8"/></svg>
           </button>
-          <textarea id="texto" rows="1" placeholder="Escribe aquí…" aria-label="Mensaje"></textarea>
-          <button class="redondo" id="altavoz" aria-pressed="false" title="Leer sus respuestas en voz alta" aria-label="Altavoz">
+          <textarea id="texto" rows="1" placeholder="Type here…" aria-label="Message"></textarea>
+          <button class="redondo" id="altavoz" aria-pressed="false" title="Read the replies out loud" aria-label="Speaker">
             <svg class="on" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 9v6h4l5 4V5L8 9H4z"/><path d="M16.5 8.5a5 5 0 0 1 0 7M19 6a8.5 8.5 0 0 1 0 12"/></svg>
             <svg class="off" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 9v6h4l5 4V5L8 9H4z"/><path d="M17 9l5 6M22 9l-5 6"/></svg>
           </button>
-          <button class="btn primario" id="enviar">Enviar</button>
+          <button class="btn primario" id="enviar">Send</button>
         </div>
-        <div class="adjunto" id="adjunto" hidden><img id="adjuntoImg" alt=""><span>Imagen adjunta</span><button class="btn mini" id="quitarAdjunto">Quitar</button></div>
+        <div class="adjunto" id="adjunto" hidden><img id="adjuntoImg" alt=""><span>Attached image</span><button class="btn mini" id="quitarAdjunto">Remove</button></div>
         <input type="file" id="fichero" accept="image/*" hidden>
         <div id="pista" aria-live="polite"></div>
       </div>
@@ -821,17 +821,17 @@
 </section>
 
 <!-- Agente del mes -->
-<section class="pantalla oscura" id="vistaMes" hidden aria-label="Agente del mes"></section>
+<section class="pantalla oscura" id="vistaMes" hidden aria-label="Agent of the month"></section>
 <!-- Salas de reuniones -->
-<section class="pantalla oscura" id="vistaSalas" hidden aria-label="Salas de reuniones"></section>
+<section class="pantalla oscura" id="vistaSalas" hidden aria-label="Meeting rooms"></section>
 <!-- Bandeja de autorizaciones -->
-<section class="pantalla oscura" id="vistaBandeja" hidden aria-label="Bandeja de autorizaciones"></section>
+<section class="pantalla oscura" id="vistaBandeja" hidden aria-label="Approval inbox"></section>
 
-<section class="pantalla oscura" id="vistaSerie" hidden aria-label="Agentes de serie"></section>
+<section class="pantalla oscura" id="vistaSerie" hidden aria-label="Built-in agents"></section>
 
 <div class="velo" id="velo" hidden></div>
 <aside class="cajon" id="cajon" hidden role="dialog" aria-modal="true" aria-labelledby="cajonTitulo">
-  <header><button class="btn" id="cerrarCajon">← Volver</button><h2 id="cajonTitulo">Ajustes</h2></header>
+  <header><button class="btn" id="cerrarCajon">← Back</button><h2 id="cajonTitulo">Settings</h2></header>
   <div class="scroll" id="cajonCuerpo"></div>
 </aside>
 

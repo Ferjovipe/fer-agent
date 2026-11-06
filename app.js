@@ -6,7 +6,7 @@
 // =====================================================================
 import { LOCALE, fijarIdioma, Edificio, ROLES, CAPACIDADES, PUESTOS, POR_POOL, MAX_OFICINAS, MAX_POOLS, MAX_REUNION, VERSION, MODELO_JEV, TIPOS_MODELO, NIVELES, NOMBRE_NIVEL,
   reparto, limpiarAspecto, textoLatido, nivelClave, tipoModelo, precioVariable, fmt, fmtTope, explicarError, PROVEEDORES, filtrarModelosApi, MAX_PERSONALIDAD, MAX_LINEAS_OBJETIVOS,
-  limpiarObjetivos, precioUnidad, precioOidoSegundo, sinPrecioPublicado, precioDescrito, tokensImagen, notasMemoriaMd, limpiarTema, versionModelo, elegirModelo } from "./engine.js";
+  limpiarObjetivos, precioUnidad, precioOidoSegundo, sinPrecioPublicado, precioDescrito, tokensImagen, notasMemoriaMd, limpiarTema, versionModelo, elegirModelo, carpetasCerebro } from "./engine.js";
 import { PERSONAJES } from "./personajes.js";
 import { tr, trSiempre, fijarNombres, cargarIdioma, traducirPagina, idioma, IDIOMAS, guardarIdioma, idiomaGuardado } from "./textos.js";
 import { pintarLanding } from "./landing.js";
@@ -70,12 +70,12 @@ const idb = {
 // Lo que escribe la gente o un agente (mensajes, tareas, notas, motivos, títulos) va tal cual: no pasa por el diccionario
 const crudo = (t) => document.createTextNode(String(t ?? ""));
 // Para quien no ha usado nunca OpenRouter: cómo sacar la clave
-const comoSacarClave = () => h("div", { class: "como-clave" }, h("b", {}, "¿Aún no tienes clave? Se saca en unos minutos:"),
+const comoSacarClave = () => h("div", { class: "como-clave" }, h("b", {}, "No key yet? You can get one in a few minutes:"),
   h("ol", {},
-    h("li", {}, "Crea una cuenta en OpenRouter: con tu correo, con Google o con GitHub. ", h("a", { href: "https://openrouter.ai", target: "_blank", rel: "noopener" }, "openrouter.ai")),
-    h("li", {}, "En «Credits», añade saldo. Se paga por adelantado y solo se gasta lo que usen tus agentes. ", h("a", { href: "https://openrouter.ai/credits", target: "_blank", rel: "noopener" }, "openrouter.ai/credits")),
-    h("li", {}, "En «Keys», pulsa «Create Key», ponle un límite de gasto y copia la clave: solo se ve una vez. Pégala aquí arriba y pulsa «Guardar». ", h("a", { href: "https://openrouter.ai/keys", target: "_blank", rel: "noopener" }, "openrouter.ai/keys"))));
-const entreComillas = (t) => { const [a, b] = tr("«{1}»").split("{1}"); return [a, crudo(t), b]; };   // «…» en español, “…” en inglés
+    h("li", {}, "Create an OpenRouter account: with your email, Google or GitHub. ", h("a", { href: "https://openrouter.ai", target: "_blank", rel: "noopener" }, "openrouter.ai")),
+    h("li", {}, "In “Credits”, add some balance. You pay in advance and only what your agents use is spent. ", h("a", { href: "https://openrouter.ai/credits", target: "_blank", rel: "noopener" }, "openrouter.ai/credits")),
+    h("li", {}, "In “Keys”, press “Create Key”, give it a spending limit and copy the key: it's only shown once. Paste it above and press “Save”. ", h("a", { href: "https://openrouter.ai/keys", target: "_blank", rel: "noopener" }, "openrouter.ai/keys"))));
+const entreComillas = (t) => { const [a, b] = tr("“{1}”").split("{1}"); return [a, crudo(t), b]; };   // «…» en español, “…” en inglés
 function h(tag, attrs, ...kids) {
   const el = document.createElement(tag);
   for (const [k, v] of Object.entries(attrs || {})) {
@@ -101,7 +101,7 @@ let porTipo = { texto: [], imagen: [], musica: [], voz: [], oido: [], decisiones
 const Motor = {
   async ejecutar(acc) {
     if (modo === "local") return ed.ejecutar(acc);
-    if (!pin || pinRechazado) { pedirPin(); throw Object.assign(new Error("Falta el PIN de Fer Casa o no es correcto (Ajustes)."), { mostrado: true }); }
+    if (!pin || pinRechazado) { pedirPin(); throw Object.assign(new Error("The Fer Home PIN is missing or wrong (Settings)."), { mostrado: true }); }
     const porPartes = acc.tipo === "hablar" && typeof acc.alTrozo === "function";
     const r = await fetch("./api/accion", { method: "POST", headers: Object.assign({ "Content-Type": "application/json", "X-Fer-Pin": pin }, porPartes ? { "X-Fer-Trozos": "1" } : {}), body: JSON.stringify(acc) });
     if (porPartes && r.ok && r.body && /ndjson/.test(r.headers.get("content-type") || "")) {
@@ -112,11 +112,11 @@ const Motor = {
       for (;;) { const { value, done } = await rd.read(); if (done) break; buf += dec.decode(value, { stream: true }); let i; while ((i = buf.indexOf("\n")) >= 0) { linea(buf.slice(0, i)); buf = buf.slice(i + 1); } }
       linea(buf);
       await refrescarCasa();
-      if (error || !fin) throw Object.assign(new Error(error || "Fer Casa cortó la respuesta."), { mostrado: true });
+      if (error || !fin) throw Object.assign(new Error(error || "Fer Home cut the reply short."), { mostrado: true });
       return fin;
     }
     let d = {}; try { d = await r.json(); } catch {}
-    if (r.status === 401) { pinRechazado = true; pedirPin(); throw Object.assign(new Error("Falta el PIN de Fer Casa o no es correcto (Ajustes)."), { mostrado: true }); }
+    if (r.status === 401) { pinRechazado = true; pedirPin(); throw Object.assign(new Error("The Fer Home PIN is missing or wrong (Settings)."), { mostrado: true }); }
     if (!r.ok) throw Object.assign(new Error(d.error || ("Error " + r.status)), { mostrado: true });
     await refrescarCasa();
     return d;
@@ -132,7 +132,7 @@ const esApp = () => modo === "casa" && (casaApp || !!casaInfo.app);
 async function llamarApp(ruta, datos) {
   const r = await fetch("." + ruta, { method: "POST", headers: { "Content-Type": "application/json", "X-Fer-Pin": pin }, body: JSON.stringify(datos) });
   const d = await r.json().catch(() => ({}));
-  if (!r.ok) throw Object.assign(new Error(d.error || "No se pudo."), { mostrado: true });
+  if (!r.ok) throw Object.assign(new Error(d.error || "It couldn't be done."), { mostrado: true });
   return d;
 }
 let pinRechazado = false;
@@ -183,26 +183,26 @@ const porMillon = (p) => (p * 1e6).toLocaleString(LOCALE, { maximumFractionDigit
 const datosModelo = (m) => ({ id: m.id, name: m.name || m.id, inPrice: n0((m.pricing || {}).prompt), outPrice: n0((m.pricing || {}).completion), ve: ((m.architecture && m.architecture.input_modalities) || []).includes("image"), out: (m.architecture && m.architecture.output_modalities) || ["text"] });
 const dinero = (n, dec = 3) => n.toLocaleString(LOCALE, { maximumFractionDigits: dec });
 // El precio, dicho como se cobra cada tipo de modelo
-const POR_TXT = { song: "canción", clip: "clip", track: "pista", image: "imagen", minute: "minuto", hour: "hora", request: "petición", generation: "generación", second: "segundo" };
+const POR_TXT = { song: "song", clip: "clip", track: "track", image: "image", minute: "minute", hour: "hour", request: "request", generation: "generation", second: "second" };
 function precioTxt(m) {
   const p = m.pricing || {}, a = n0(p.prompt), b = n0(p.completion), t = tipoModelo(m);
-  if (precioVariable(m)) return tr("precio variable");
+  if (precioVariable(m)) return tr("variable price");
   // imágenes: OpenRouter da el precio por token de imagen («image_output»); aquí, por imagen de 1024×1024 (≈)
-  if (t === "imagen" && precioUnidad(m)) return tr(`≈${dinero(precioUnidad(m))} $ por imagen`);
-  if (t === "musica" && n0(p.request)) return tr(`${dinero(n0(p.request))} $ por canción`);
-  if (t !== "texto" && sinPrecioPublicado(m)) { const d = precioDescrito(m); return tr(d ? `precio no publicado (su descripción dice ${dinero(d.usd)} $ por ${POR_TXT[d.por] || d.por})` : "precio no publicado"); }
-  if (t === "voz" && (a || b)) return tr(a && !b ? `${porMillon(a)} $ por millón de caracteres` : !a && b ? `${dinero(b * 3600, 2)} $ por hora de audio` : `≈${dinero(b * 32 * 3600, 2)} $ por hora de audio`);
-  if (t === "oido" && a && !b) return tr(`${dinero(precioOidoSegundo(m) * 3600)} $ por hora de voz`);
+  if (t === "imagen" && precioUnidad(m)) return tr(`≈$${dinero(precioUnidad(m))} per image`);
+  if (t === "musica" && n0(p.request)) return tr(`$${dinero(n0(p.request))} per song`);
+  if (t !== "texto" && sinPrecioPublicado(m)) { const d = precioDescrito(m); return tr(d ? `price not published (its description says $${dinero(d.usd)} per ${POR_TXT[d.por] || d.por})` : "price not published"); }
+  if (t === "voz" && (a || b)) return tr(a && !b ? `$${porMillon(a)} per million characters` : !a && b ? `$${dinero(b * 3600, 2)} per hour of audio` : `≈$${dinero(b * 32 * 3600, 2)} per hour of audio`);
+  if (t === "oido" && a && !b) return tr(`$${dinero(precioOidoSegundo(m) * 3600)} per hour of speech`);
   const otros = n0(p.image) + n0(p.request) + n0(p.audio) + n0(p.image_output) + n0(p.audio_output);
-  if (!a && !b && !otros) return tr("gratis");
-  return tr(`${porMillon(a)} / ${porMillon(b)} $`);
+  if (!a && !b && !otros) return tr("free");
+  return tr(`$${porMillon(a)} / $${porMillon(b)}`);
 }
 function etiquetaModelo(m) {
   const d = datosModelo(m);
-  if (precioVariable(m)) return `${d.name} · ${tr("precio variable (depende del modelo que elija)")}`;
+  if (precioVariable(m)) return `${d.name} · ${tr("variable price (depends on the model it chooses)")}`;
   const nivel = nivelClave(Object.assign({}, m, d));
   if (nivel === "sinprecio") return `${d.name} · ${precioTxt(m)}`;
-  return `${d.name} · ${tr(NOMBRE_NIVEL[nivel])} · ${precioTxt(m)}${d.ve && tipoModelo(m) === "texto" ? " · " + tr("ve") : ""}`;
+  return `${d.name} · ${tr(NOMBRE_NIVEL[nivel])} · ${precioTxt(m)}${d.ve && tipoModelo(m) === "texto" ? " · " + tr("sees") : ""}`;
 }
 // Selector de modelos: arriba los recomendados por nivel; debajo, todos los de ese tipo (y en «Cerebro», también «Otros»).
 // v8: en el desplegable, solo los recomendados (15 como mucho) y el que tiene ahora; el resto, con el buscador de al lado
@@ -223,29 +223,29 @@ function selectorModelo(tipo, actual, { vacio, extra, alCambiar, filtro } = {}) 
       const ids = (rec[nivel] || []).filter((id) => porId.has(id) && !puestos.has(id)).slice(0, MAX_RECOMENDADOS - puestos.size);
       if (!ids.length) continue;
       ids.forEach((id) => puestos.add(id));
-      sel.append(h("optgroup", { label: tr("Recomendados") + " · " + tr(NOMBRE_NIVEL[nivel]) }, ids.map((id) => h("option", { value: id }, etiquetaModelo(porId.get(id))))));
+      sel.append(h("optgroup", { label: tr("Recommended") + " · " + tr(NOMBRE_NIVEL[nivel]) }, ids.map((id) => h("option", { value: id }, etiquetaModelo(porId.get(id))))));
     }
     // debajo, TODOS los de OpenRouter de este tipo (cientos), como en la versión 7; y los «Otros», por si acaso
-    sel.append(h("optgroup", { label: tr("Todos") + " · " + tr(TIPOS_MODELO[tipo]) + ` (${lista.length})` }, lista.map((m) => h("option", { value: m.id }, etiquetaModelo(m)))));
-    if (tipo === "texto" && !filtro && porTipo.otros.length) sel.append(h("optgroup", { label: tr("Otros (puede que no sirvan aquí)") }, porTipo.otros.map((m) => h("option", { value: m.id }, etiquetaModelo(m) + " · " + ((m.architecture && m.architecture.output_modalities) || []).join("+")))));
-    if (valor && ![...sel.options].some((o) => o.value === valor)) sel.prepend(h("option", { value: valor }, porId.has(valor) ? etiquetaModelo(porId.get(valor)) : valor + (valor === MODELO_JEV ? "" : " " + tr("(no está en la lista)"))));
+    sel.append(h("optgroup", { label: tr("All") + " · " + tr(TIPOS_MODELO[tipo]) + ` (${lista.length})` }, lista.map((m) => h("option", { value: m.id }, etiquetaModelo(m)))));
+    if (tipo === "texto" && !filtro && porTipo.otros.length) sel.append(h("optgroup", { label: tr("Others (may not work here)") }, porTipo.otros.map((m) => h("option", { value: m.id }, etiquetaModelo(m) + " · " + ((m.architecture && m.architecture.output_modalities) || []).join("+")))));
+    if (valor && ![...sel.options].some((o) => o.value === valor)) sel.prepend(h("option", { value: valor }, porId.has(valor) ? etiquetaModelo(porId.get(valor)) : valor + (valor === MODELO_JEV ? "" : " " + tr("(not in the list)"))));
     sel.value = valor || "";
   };
   rellenar(actual || "");
   if (alCambiar) sel.addEventListener("change", () => alCambiar(sel.value));
   if (todos.length > MAX_RECOMENDADOS) {
     // además, «Buscar entre todos»: escribes parte del nombre y eliges (es lo mismo que buscarlo en el desplegable, más rápido)
-    const boton = h("button", { type: "button", class: "btn mini buscar-modelo" }, tr(`Buscar entre todos (${todos.length})`));
+    const boton = h("button", { type: "button", class: "btn mini buscar-modelo" }, tr(`Search all (${todos.length})`));
     let caja = null;
     boton.onclick = (ev) => {
       ev.preventDefault();
       if (caja && caja.isConnected) { caja.remove(); caja = null; return; }
-      const q = h("input", { type: "search", placeholder: tr("Escribe parte del nombre: claude, gpt, gemini, flux…"), "aria-label": "Buscar modelo" });
+      const q = h("input", { type: "search", placeholder: tr("Type part of the name: claude, gpt, gemini, flux…"), "aria-label": "Search model" });
       const res = h("div", { class: "busca-modelos" });
       const pintarRes = () => {
         const t = sinAcentos(q.value.trim()), hall = todos.filter((m) => !t || sinAcentos(m.id + " " + (m.name || "")).includes(t)).slice(0, 40);
         res.replaceChildren(...hall.map((m) => h("button", { type: "button", class: "modelo-res", onclick: (e2) => { e2.preventDefault(); rellenar(m.id); caja.remove(); caja = null; sel.dispatchEvent(new Event("change")); } }, etiquetaModelo(m))),
-          hall.length ? h("small", { class: "nota" }, tr(hall.length === 40 ? "Hay más: escribe un poco más del nombre." : `${hall.length} encontrados`)) : h("small", { class: "nota" }, tr("Ninguno con ese nombre.")));
+          hall.length ? h("small", { class: "nota" }, tr(hall.length === 40 ? "There are more: type a bit more of the name." : `${hall.length} found`)) : h("small", { class: "nota" }, tr("None with that name.")));
       };
       q.oninput = pintarRes;
       caja = h("div", { class: "buscador-modelos" }, q, res);
@@ -258,9 +258,9 @@ function selectorModelo(tipo, actual, { vacio, extra, alCambiar, filtro } = {}) 
 // Lo que propone Arturito para este tipo de modelo (tú decides)
 function propuestasDe(tipo) {
   return (ed.e.propuestasModelos || []).filter((x) => x.tipo === tipo && x.estado === "pendiente").map((pm) => h("div", { class: "propuesta-modelo" },
-    h("span", {}, `${tr("Arturito propone")} ${pm.modelo} ${tr("para el nivel")} ${tr(NOMBRE_NIVEL[pm.nivel] || pm.nivel)}: ${pm.motivo}`),
-    h("button", { class: "btn mini primario", onclick: () => Motor.ejecutar({ tipo: "modelo.aceptar", propuesta: pm.id }).then(() => pintar(true)).catch(avisar) }, "Aceptar"),
-    h("button", { class: "btn mini", onclick: () => Motor.ejecutar({ tipo: "modelo.descartar", propuesta: pm.id }).then(() => pintar(true)).catch(avisar) }, "Descartar")));
+    h("span", {}, `${tr("Artie proposes")} ${pm.modelo} ${tr("for the level")} ${tr(NOMBRE_NIVEL[pm.nivel] || pm.nivel)}: ${pm.motivo}`),
+    h("button", { class: "btn mini primario", onclick: () => Motor.ejecutar({ tipo: "modelo.aceptar", propuesta: pm.id }).then(() => pintar(true)).catch(avisar) }, "Accept"),
+    h("button", { class: "btn mini", onclick: () => Motor.ejecutar({ tipo: "modelo.descartar", propuesta: pm.id }).then(() => pintar(true)).catch(avisar) }, "Dismiss")));
 }
 
 // =====================================================================
@@ -292,13 +292,13 @@ const paraVoz = (t) => String(t).replace(/```[\s\S]*?```/g, " ").replace(/<[^>]*
 // Personajes: chico, chica, abuelo y abuela, con colores a elegir
 // =====================================================================
 const ZONAS = { piel: 1, pelo: 2, ojos: 3, ropa: 4 };
-const NOMBRE_PJ = { chico: "Chico", chica: "Chica", abuelo: "Abuelo", abuela: "Abuela", morado: "Traje morado", verde: "Traje verde", coral: "Coral", azul: "Traje azul", turquesa: "Traje turquesa", camisa: "Camisa azul" };
-const NOMBRE_ZONA = { ropa: "Ropa", ojos: "Ojos", pelo: "Pelo", piel: "Piel" };
+const NOMBRE_PJ = { chico: "Boy", chica: "Girl", abuelo: "Grandpa", abuela: "Grandma", morado: "Purple suit", verde: "Green suit", coral: "Coral", azul: "Blue suit", turquesa: "Teal suit", camisa: "Blue shirt" };
+const NOMBRE_ZONA = { ropa: "Clothes", ojos: "Eyes", pelo: "Hair", piel: "Skin" };
 const PALETAS = {
-  ropa: [["#1F3A93", "azul marino"], ["#3A9FE3", "azul cielo"], ["#2E9E5B", "verde"], ["#7B3FB5", "morado"], ["#E8C22C", "amarillo"], ["#EF6AA6", "rosa"], ["#8E1B2C", "granate"], ["#2A2C36", "negro"], ["#E9EDF2", "blanco"]],
-  ojos: [["#6B3E1E", "marrones"], ["#9A7434", "avellana"], ["#3F8F4E", "verdes"], ["#8C99A6", "grises"], ["#2B1D14", "negros"], ["#7A4FB8", "violeta"]],
-  pelo: [["#1E1A18", "negro"], ["#5A3820", "castaño"], ["#8B5A2B", "castaño claro"], ["#E0B85A", "rubio"], ["#B8B8B8", "canoso"], ["#3D6BE0", "azul"], ["#E85C9A", "rosa"]],
-  piel: [["#F6D9C6", "muy clara"], ["#E8B896", "clara"], ["#D9A27E", "media"], ["#B67A52", "morena"], ["#8A5636", "oscura"], ["#5C3A24", "muy oscura"]]
+  ropa: [["#1F3A93", "navy blue"], ["#3A9FE3", "sky blue"], ["#2E9E5B", "green"], ["#7B3FB5", "purple"], ["#E8C22C", "yellow"], ["#EF6AA6", "pink"], ["#8E1B2C", "maroon"], ["#2A2C36", "black"], ["#E9EDF2", "white"]],
+  ojos: [["#6B3E1E", "brown"], ["#9A7434", "hazel"], ["#3F8F4E", "green"], ["#8C99A6", "grey"], ["#2B1D14", "black"], ["#7A4FB8", "violet"]],
+  pelo: [["#1E1A18", "black"], ["#5A3820", "chestnut"], ["#8B5A2B", "light brown"], ["#E0B85A", "blond"], ["#B8B8B8", "silver"], ["#3D6BE0", "blue"], ["#E85C9A", "pink"]],
+  piel: [["#F6D9C6", "very light"], ["#E8B896", "light"], ["#D9A27E", "medium"], ["#B67A52", "tan"], ["#8A5636", "dark"], ["#5C3A24", "very dark"]]
 };
 const cachePj = {};
 const cargarImg = (src) => new Promise((res, rej) => { const i = new Image(); i.onload = () => res(i); i.onerror = rej; i.src = src; });
@@ -395,32 +395,32 @@ function asegurarFiguraGrande(aspecto) {
 function selectorAspecto(actual, alCambiar) {
   let A = asp(actual);
   const caja = h("div", { class: "aspecto" });
-  const vista = h("img", { class: "vista-pj", alt: "Cómo queda" });
+  const vista = h("img", { class: "vista-pj", alt: "Preview" });
   const refrescarVista = () => { asegurarFigura(A).then((u) => { vista.src = u; }); };
   const pintarSel = () => {
     caja.innerHTML = "";
-    const pick = h("div", { class: "pick4", role: "radiogroup", "aria-label": "Personaje" });
+    const pick = h("div", { class: "pick4", role: "radiogroup", "aria-label": "Character" });
     for (const nombre of Object.keys(PERSONAJES)) {
       pick.append(h("button", { type: "button", role: "radio", "aria-checked": String(A.p === nombre), onclick: () => { A = asp({ p: nombre }); alCambiar(A); pintarSel(); } },
         h("img", { src: PERSONAJES[nombre].img, alt: "" }), h("span", {}, NOMBRE_PJ[nombre])));
     }
     const colores = h("div", { class: "colores" });
-    if (!PERSONAJES[A.p].regiones) colores.append(h("small", { class: "nota" }, tr("Este personaje va con sus colores tal cual.")));
+    if (!PERSONAJES[A.p].regiones) colores.append(h("small", { class: "nota" }, tr("This character keeps its own colours.")));
     else for (const zona of ["ropa", "ojos", "pelo", "piel"]) {
       const original = PERSONAJES[A.p].regiones[zona].original;
       const fila = h("div", { class: "muestras", role: "radiogroup", "aria-label": NOMBRE_ZONA[zona] });
       for (const [hex, nombre] of [[null, "original"], ...PALETAS[zona]]) {
-        fila.append(h("button", { type: "button", class: "sw" + (hex ? "" : " orig"), style: { "--c": hex || original }, title: nombre[0].toUpperCase() + nombre.slice(1), role: "radio", "aria-label": `${NOMBRE_ZONA[zona]}: ${nombre}`, "aria-checked": String((A[zona] || null) === hex),
+        fila.append(h("button", { type: "button", class: "sw" + (hex ? "" : " orig"), style: { "--c": hex || original }, title: `${NOMBRE_ZONA[zona]}: ${nombre}`, role: "radio", "aria-label": `${NOMBRE_ZONA[zona]}: ${nombre}`, "aria-checked": String((A[zona] || null) === hex),
           onclick: () => { A = asp(Object.assign({}, A, { [zona]: hex })); alCambiar(A); pintarSel(); } }));
       }
       const libre = !!A[zona] && !PALETAS[zona].some(([x]) => x === A[zona]);
-      const inp = h("input", { type: "color", value: A[zona] || original, "aria-label": `${NOMBRE_ZONA[zona]}: otro color` });
+      const inp = h("input", { type: "color", value: A[zona] || original, "aria-label": `${NOMBRE_ZONA[zona]}: another colour` });
       inp.oninput = () => { A = asp(Object.assign({}, A, { [zona]: inp.value.toUpperCase() })); refrescarVista(); };
       inp.onchange = () => { alCambiar(A); pintarSel(); };
-      fila.append(h("label", { class: "libre", title: "Otro color", style: libre ? { background: A[zona], borderStyle: "solid" } : {} }, inp, h("span", {}, libre ? "" : "+")));
+      fila.append(h("label", { class: "libre", title: "Another colour", style: libre ? { background: A[zona], borderStyle: "solid" } : {} }, inp, h("span", {}, libre ? "" : "+")));
       colores.append(h("div", { class: "campo" }, h("span", {}, NOMBRE_ZONA[zona]), fila));
     }
-    caja.append(h("div", { class: "aspecto-cab" }, h("div", { class: "marco-vista" }, vista), h("div", { class: "campo", style: { flex: 1 } }, h("span", {}, "Personaje"), pick)), colores);
+    caja.append(h("div", { class: "aspecto-cab" }, h("div", { class: "marco-vista" }, vista), h("div", { class: "campo", style: { flex: 1 } }, h("span", {}, "Character"), pick)), colores);
     refrescarVista();
   };
   pintarSel();
@@ -447,8 +447,8 @@ const SITIOS = {
 const MODULO = { despacho: [0, 348], pool: [348, 828], oficina: [828, 941], fin: [1382, 1438] };
 // Recorte que se ve al entrar en la cúpula y en el vestíbulo: [x0, x1, y0, y1]
 const CORTE = { cupula: [400, 1040, 22, 187], vestibulo: [0, 1438, 0, 219] };
-const NOMBRE_PUESTO = { centro: "centro", izquierda: "izquierda", derecha: "derecha", despacho: "despacho", oficina: "oficina", pool: "pool", recepcion: "recepción" };
-const PUESTOS_TXT = { cupula: [["izquierda", "A la izquierda del jefe"], ["derecha", "A la derecha del jefe"]], piso: [["despacho", "Despacho (jefe de sección)"], ["oficina", "Oficina"], ["pool", "Pool (varios agentes sencillos)"]], vestibulo: [["recepcion", "Recepción"], ["izquierda", "Despacho de la izquierda"], ["derecha", "Despacho de la derecha"]] };
+const NOMBRE_PUESTO = { centro: "centre", izquierda: "left", derecha: "right", despacho: "head office", oficina: "office", pool: "pool", recepcion: "reception" };
+const PUESTOS_TXT = { cupula: [["izquierda", "To the boss's left"], ["derecha", "To the boss's right"]], piso: [["despacho", "Head office (section head)"], ["oficina", "Office"], ["pool", "Pool (several simple agents)"]], vestibulo: [["recepcion", "Reception"], ["izquierda", "Left office"], ["derecha", "Right office"]] };
 
 let seleccion = "jefe", pestana = "ficha", pintarPend = false, plantaAbierta = "";
 let fichaTab = "identidad", vistaAct = "todo", pantalla = "", chatId = "";
@@ -469,43 +469,43 @@ function pintar() {
 function faseClase() { return { normal: "", congelacion1: "c1", congelacion2: "c2", tope: "tope" }[ed.e.fase || "normal"] || ""; }
 function pintarTop() {
   const aj = ed.e.ajustes, hoy = ed.gastoEdificio("hoy"), uso = ed.usoPresupuesto(), j = ed.jefe();
-  $("nombreEdificio").textContent = ed.e.nombre || tr("Mi edificio");
+  $("nombreEdificio").textContent = ed.e.nombre || tr("My building");
   // el contador siempre a la vista; con cero, «Hoy, sin gasto» en vez de «0,0000 $»
-  $("medHoy").textContent = hoy > 0 ? tr("Hoy " + fmt(hoy)) : tr("Hoy, sin gasto");
-  $("medTope").textContent = n0(aj.topeDiario) ? tr("tope " + fmtTope(n0(aj.topeDiario))) : tr("sin tope");
+  $("medHoy").textContent = hoy > 0 ? tr(`Today ${fmt(hoy)}`) : tr("Today, no spending");
+  $("medTope").textContent = n0(aj.topeDiario) ? tr(`cap ${fmtTope(n0(aj.topeDiario))}`) : tr("no cap");
   const b = $("medBarra"); b.style.width = Math.min(100, uso * 100) + "%"; b.className = faseClase();
-  $("modo").textContent = tr(esApp() ? "En esta aplicación · trabaja mientras esté abierta" : modo === "casa" ? "Conectado a Fer Casa · trabaja 24 h" : "En este navegador · trabaja mientras esté abierto");
+  $("modo").textContent = tr(esApp() ? "In this app · works while it's open" : modo === "casa" ? "Connected to Fer Home · works 24 h" : "In this browser · works while it's open");
   $("modo").classList.toggle("casa", modo === "casa");
-  $("hablarJefe").textContent = tr("Hablar con " + (j ? j.nombre : "el jefe"));
+  $("hablarJefe").textContent = tr(`Talk to ${j ? j.nombre : "the boss"}`);
   const pend = (ed.e.monedas || []).filter((m) => m.estado === "propuesta").length;
   $("globoMes").hidden = !pend; $("globoMes").textContent = pend;
-  $("globoMes").title = tr(pend === 1 ? "1 moneda propuesta espera tu decisión" : `${pend} monedas propuestas esperan tu decisión`);
+  $("globoMes").title = tr(pend === 1 ? "1 proposed coin is waiting for your decision" : `${pend} proposed coins are waiting for your decision`);
   // la bandeja: todo lo que espera tu sí
   const nb = ed.bandeja().length;
   $("globoBandeja").hidden = !nb; $("globoBandeja").textContent = nb;
-  $("abrirBandeja").title = tr(nb ? (nb === 1 ? "1 cosa espera tu sí" : `${nb} cosas esperan tu sí`) : "Nada espera tu sí");
+  $("abrirBandeja").title = tr(nb ? (nb === 1 ? "1 thing is waiting for your yes" : `${nb} things are waiting for your yes`) : "Nothing is waiting for your yes");
   // el interruptor general
   const pausa = aj.pausa !== false, gastan = ed.quienesGastan().filter((x) => x.auto && x.est.gasta && !x.a.apagado);
   $("pausa").setAttribute("aria-pressed", String(pausa));
-  $("pausaTxt").textContent = tr(pausa ? "En pausa" : "Automático");
-  $("pausaSub").textContent = tr(pausa ? "nada gasta solo" : (gastan.length === 1 ? "1 agente puede gastar solo" : `${gastan.length} agentes pueden gastar solos`));
-  $("pausa").title = tr(pausa ? "Pausa general: ningún agente que gaste se despierta solo. Pulsa para ponerlo en marcha." : "En marcha: los latidos funcionan. Pulsa para parar todo lo automático.");
+  $("pausaTxt").textContent = tr(pausa ? "Paused" : "Automatic");
+  $("pausaSub").textContent = tr(pausa ? "nothing spends on its own" : (gastan.length === 1 ? "1 agent can spend on its own" : `${gastan.length} agents can spend on their own`));
+  $("pausa").title = tr(pausa ? "General pause: no agent that spends wakes up on its own. Press to start." : "Running: heartbeats are on. Press to stop everything automatic.");
   pintarCopiaTop();
 }
 // «Guardar copia»: cuándo se hizo la última (descargada o en la carpeta del cerebro)
 function ultimaCopia() { return Math.max(Number(store.get(K.ultimaCopia, "0")) || 0, (cerebro.estado && cerebro.estado.ultimaCopia) || 0); }
 function haceCuanto(ts) {
-  if (!ts) return tr("nunca");
+  if (!ts) return tr("never");
   const m = Math.round((Date.now() - ts) / 60e3);
-  if (m < 1) return tr("ahora mismo"); if (m < 60) return tr(`hace ${m} min`);
-  const hh = Math.round(m / 60); if (hh < 24) return tr(`hace ${hh} h`);
-  const d = Math.round(hh / 24); return d === 1 ? tr("hace 1 día") : tr(`hace ${d} días`);
+  if (m < 1) return tr("just now"); if (m < 60) return tr(`${m} min ago`);
+  const hh = Math.round(m / 60); if (hh < 24) return tr(`${hh} h ago`);
+  const d = Math.round(hh / 24); return d === 1 ? tr("1 day ago") : tr(`${d} days ago`);
 }
 function pintarCopiaTop() {
   const t = ultimaCopia(), vieja = !t || Date.now() - t > 7 * 86400e3;
-  $("copiaCuando").textContent = tr("última: " + haceCuanto(t));
+  $("copiaCuando").textContent = tr(`last: ${haceCuanto(t)}`);
   $("copiaRapida").classList.toggle("vieja", vieja);
-  $("copiaRapida").title = tr(t ? `Última copia: ${new Date(t).toLocaleString(LOCALE)}. Pulsa para guardar otra ahora.` : "Todavía no hay ninguna copia. Pulsa para guardar una ahora.");
+  $("copiaRapida").title = tr(t ? `Last backup: ${new Date(t).toLocaleString(LOCALE)}. Press to save another one now.` : "There's no backup yet. Press to save one now.");
 }
 function estadoVisible(a) {
   if (a.estado === "trabajando" || ed.ocupados.has(a.id)) return "trabajando";
@@ -514,7 +514,7 @@ function estadoVisible(a) {
   if (a.tareas.some((t) => t.estado === "pendiente")) return "activo";
   return "reposo";
 }
-const ESTADO_TXT = { trabajando: "trabajando", apagado: "apagado", congelado: "congelado", activo: "con tareas pendientes", reposo: "en reposo" };
+const ESTADO_TXT = { trabajando: "working", apagado: "off", congelado: "frozen", activo: "with pending tasks", reposo: "resting" };
 const pct = (n) => (n * 100).toFixed(3) + "%";
 // La voz y el oído, en el idioma de la web (con el acento del navegador si es el mismo idioma: en-GB, es-MX…)
 const idiomaVoz = () => ((navigator.language || "").slice(0, 2).toLowerCase() === idioma ? navigator.language : LOCALE);
@@ -554,11 +554,11 @@ function monedasDe(a) {
 function monedasFigura(a) {
   const c = monedasDe(a);
   if (!c.oro && !c.roja) return null;
-  return h("span", { class: "monedas-pj", "aria-label": `${c.oro} doradas y ${c.roja} rojas` },
+  return h("span", { class: "monedas-pj", "aria-label": `${c.oro} gold and ${c.roja} red` },
     c.oro ? h("span", {}, h("i", { class: "moneda oro" }), String(c.oro)) : null, c.roja ? h("span", {}, h("i", { class: "moneda roja" }), String(c.roja)) : null);
 }
 function hueco(T, x, x0, ancho, planta, puesto) {
-  return h("button", { class: "hueco", type: "button", title: "Poner aquí un agente nuevo", "aria-label": `Crear un agente en ${NOMBRE_PUESTO[puesto]}`,
+  return h("button", { class: "hueco", type: "button", title: "Put a new agent here", "aria-label": `Create an agent: ${NOMBRE_PUESTO[puesto]}`,
     style: { left: pct((x - x0) / ancho), top: pct((T.suelo - T.fig * 0.62) / T.alto), height: pct(T.fig * 0.5 / T.alto) },
     onclick: (ev) => { ev.stopPropagation(); abrirCajon("agente", { planta: planta.id, puesto }); } }, "+");
 }
@@ -594,13 +594,13 @@ function tramoEdificio(p) {
   const el = h("div", { class: "tramo " + p.tipo, style: { aspectRatio: `${ANCHO} / ${T.alto}` } });
   el.append(h("img", { class: "fondo", src: T.img, alt: "", draggable: "false" }));
   if (p.tipo === "cupula") el.append(h("span", { class: "luz", id: "luzAntena", style: { left: pct(717 / ANCHO), top: pct(12 / T.alto) }, "aria-hidden": "true" }));
-  el.append(h("button", { class: "entrar", type: "button", "aria-label": `Entrar en ${p.nombre}`, title: `Entrar en ${p.nombre}${p.funcion ? ": " + p.funcion : ""}`, onclick: () => abrirPlanta(p.id) }));
+  el.append(h("button", { class: "entrar", type: "button", "aria-label": `Go into ${p.nombre}`, title: `Go into ${p.nombre}${p.funcion ? ": " + p.funcion : ""}`, onclick: () => abrirPlanta(p.id) }));
   let fuera = 0;
   for (const [puesto, ags] of Object.entries(r)) {
     const xs = (sitios[puesto] || []).slice(0, p.tipo === "piso" && puesto === "pool" ? Math.min(POR_POOL, (p.pools || 0) * POR_POOL) : undefined);
     ags.forEach((a, i) => { if (i < xs.length) el.append(personaje(a, T, xs[i], 0, ANCHO)); else fuera++; });
   }
-  if (fuera) el.append(h("button", { class: "mas", type: "button", onclick: () => abrirPlanta(p.id), title: "Ver todos" }, `+${fuera}`));
+  if (fuera) el.append(h("button", { class: "mas", type: "button", onclick: () => abrirPlanta(p.id), title: "See all" }, `+${fuera}`));
   const g = gastoPlanta(p);
   el.append(h("button", { class: "placa", type: "button", style: { "--arriba": pct(T.placa / T.alto), "--movil": pct((T.placaMovil || T.placa) / T.alto) }, onclick: () => abrirPlanta(p.id), title: p.funcion || "" },
     h("b", {}, p.nombre), g > 0 ? h("span", {}, fmt(g)) : null));
@@ -610,21 +610,21 @@ function tramoEdificio(p) {
 function franjaPiso(p) {
   const ags = ed.e.agentes.filter((a) => a.planta === p.id), est = ags.map(estadoVisible);
   const trab = est.filter((x) => x === "trabajando").length, g = gastoPlanta(p);
-  const datos = tr(ags.length === 1 ? "1 agente" : `${ags.length} agentes`) + " · " + tr(`${trab} trabajando`) + (g > 0 ? " · " + fmt(g) : "");
+  const datos = tr(ags.length === 1 ? "1 agent" : `${ags.length} agents`) + " · " + tr(`${trab} working`) + (g > 0 ? " · " + fmt(g) : "");
   return h("div", { class: "tramo piso franja" },
     h("img", { class: "fondo", src: TRAMO.piso.img, alt: "", draggable: "false" }),
-    h("button", { class: "entrar", type: "button", "aria-label": `Entrar en ${p.nombre}`, title: `Entrar en ${p.nombre}${p.funcion ? ": " + p.funcion : ""}`, onclick: () => abrirPlanta(p.id) }),
+    h("button", { class: "entrar", type: "button", "aria-label": `Go into ${p.nombre}`, title: `Go into ${p.nombre}${p.funcion ? ": " + p.funcion : ""}`, onclick: () => abrirPlanta(p.id) }),
     h("div", { class: "franja-txt" },
       h("span", { class: "f-nombre" }, h("b", {}, p.nombre), p.funcion ? h("small", {}, p.funcion) : null),
       h("span", { class: "f-datos" }, datos, ags.length ? h("span", { class: "puntos", "aria-hidden": "true" }, ags.map((a, i) => h("i", { class: est[i] }))) : null)));
 }
 
 // ---------------- Directorio: todos los agentes, con buscador y filtros ----------------
-const FILTROS = [["", "Todos"], ["trabajando", "Trabajando"], ["activo", "Con tareas pendientes"], ["congelado", "Congelados"], ["apagado", "Apagados"]];
+const FILTROS = [["", "All"], ["trabajando", "Working"], ["activo", "With pending tasks"], ["congelado", "Frozen"], ["apagado", "Off"]];
 const sinAcentos = (t) => String(t || "").toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g, "");
 function cabDirectorio() {
-  const buscar = h("input", { class: "buscador", type: "search", placeholder: "Buscar por nombre, papel o planta", "aria-label": "Buscar un agente", oninput: (ev) => { busqueda = ev.target.value; pintarDirectorio(); } });
-  dirCab = h("div", { class: "dir-cabecera" }, h("div", { class: "dir-cab" }, h("h3", {}, "Directorio"), buscar), h("div", { class: "filtros", role: "group", "aria-label": "Filtrar por estado" }));
+  const buscar = h("input", { class: "buscador", type: "search", placeholder: "Search by name, role or floor", "aria-label": "Find an agent", oninput: (ev) => { busqueda = ev.target.value; pintarDirectorio(); } });
+  dirCab = h("div", { class: "dir-cabecera" }, h("div", { class: "dir-cab" }, h("h3", {}, "Directory"), buscar), h("div", { class: "filtros", role: "group", "aria-label": "Filter by status" }));
 }
 function pintarDirectorio() {
   const filtros = dirCab.querySelector(".filtros"), est = new Map(ed.e.agentes.map((a) => [a.id, estadoVisible(a)]));
@@ -640,16 +640,16 @@ function pintarDirectorio() {
     if (!ags.length && (q || filtroDir)) continue;
     const g = gastoPlanta(p);
     grupos.push(h("div", { class: "grupo-dir" },
-      h("button", { type: "button", onclick: () => abrirPlanta(p.id), title: p.funcion || "" }, p.nombre, h("small", {}, `${todos.length === 1 ? "1 agente" : todos.length + " agentes"}${g > 0 ? " · " + fmt(g) : ""}`)),
+      h("button", { type: "button", onclick: () => abrirPlanta(p.id), title: p.funcion || "" }, p.nombre, h("small", {}, `${todos.length === 1 ? "1 agent" : `${todos.length} agents`}${g > 0 ? " · " + fmt(g) : ""}`)),
       ags.length ? ags.map((a) => {
         const e = est.get(a.id), ga = ed.gastoAgente(a, "hoy");
         return h("button", { class: "fila-ag" + (seleccion === a.id ? " sel" : ""), type: "button", onclick: () => elegir(a) },
           h("img", { src: figura(a.aspecto), alt: "" }),
           h("span", { class: "fa-txt" }, h("b", {}, a.nombre), h("small", {}, `${rolTxt(a)} · ${tr(ESTADO_TXT[e])}${a.motivoEstado && e === "congelado" ? " · " + a.motivoEstado : ""}`)),
           h("span", { class: "fa-der" }, gastoTxt(ga), h("i", { class: "est-punto " + e, "aria-hidden": "true" })));
-      }) : h("p", { class: "sin-resultados" }, p.tipo === "piso" ? "Piso vacío." : "Vacío.")));
+      }) : h("p", { class: "sin-resultados" }, p.tipo === "piso" ? "Empty floor." : "Empty.")));
   }
-  dirLista.replaceChildren(...(grupos.length ? grupos : [h("p", { class: "sin-resultados" }, "Ningún agente coincide con la búsqueda o el filtro.")]));
+  dirLista.replaceChildren(...(grupos.length ? grupos : [h("p", { class: "sin-resultados" }, "No agent matches the search or the filter.")]));
 }
 let centrarPendiente = false;
 function abrirPlanta(id) {
@@ -673,13 +673,13 @@ function pintarPlanta(cont, p) {
   const T = TRAMO[p.tipo], r = reparto(ed.e, p.id), ags = ed.e.agentes.filter((a) => a.planta === p.id);
   const ejecutar = (acc) => Motor.ejecutar(acc).then(pintar).catch(avisar);
   // cabecera: volver, nombre y función (se cambian escribiendo)
-  const nombre = h("input", { class: "nombre-planta", value: p.nombre, "aria-label": "Nombre de la planta", onchange: (ev) => ejecutar({ tipo: "editarPlanta", id: p.id, nombre: ev.target.value }) });
-  const funcion = h("textarea", { class: "funcion-planta", rows: "1", maxlength: "300", placeholder: "¿Para qué sirve esta planta?", "aria-label": "Función de la planta", onchange: (ev) => ejecutar({ tipo: "editarPlanta", id: p.id, funcion: ev.target.value.replace(/\s*\n\s*/g, " ") }) });
+  const nombre = h("input", { class: "nombre-planta", value: p.nombre, "aria-label": "Name of the floor", onchange: (ev) => ejecutar({ tipo: "editarPlanta", id: p.id, nombre: ev.target.value }) });
+  const funcion = h("textarea", { class: "funcion-planta", rows: "1", maxlength: "300", placeholder: "What is this floor for?", "aria-label": "What the floor does", onchange: (ev) => ejecutar({ tipo: "editarPlanta", id: p.id, funcion: ev.target.value.replace(/\s*\n\s*/g, " ") }) });
   funcion.value = p.funcion || "";
   cont.append(h("div", { class: "planta-cab" },
-    h("button", { class: "volver", type: "button", onclick: volverAtras }, "← Volver a todo el edificio"),
+    h("button", { class: "volver", type: "button", onclick: volverAtras }, "← Back to the whole building"),
     nombre, funcion,
-    h("p", { class: "planta-datos" }, tr(ags.length === 1 ? "1 agente" : `${ags.length} agentes`) + (gastoPlanta(p) > 0 ? " · " + tr(`hoy ${fmt(gastoPlanta(p))}`) : "") + (p.tipo === "piso" ? " · " + tr(p.oficinas === 1 ? "1 oficina" : `${p.oficinas} oficinas`) + " · " + tr(p.pools === 1 ? "1 pool" : `${p.pools} pools`) : ""))));
+    h("p", { class: "planta-datos" }, tr(ags.length === 1 ? "1 agent" : `${ags.length} agents`) + (gastoPlanta(p) > 0 ? " · " + tr(`today ${fmt(gastoPlanta(p))}`) : "") + (p.tipo === "piso" ? " · " + tr(p.oficinas === 1 ? "1 office" : `${p.oficinas} offices`) + " · " + tr(p.pools === 1 ? "1 pool" : `${p.pools} pools`) : ""))));
   // la planta dibujada
   const tira = h("div", { class: "tira " + p.tipo });
   if (p.tipo === "piso") {
@@ -696,8 +696,8 @@ function pintarPlanta(cont, p) {
     tira.append(lienzo);
   }
   const marco = h("div", { class: "marco-tira" }, tira,
-    h("button", { class: "flecha izq", type: "button", "aria-label": "Ver más a la izquierda", onclick: () => tira.scrollBy({ left: -tira.clientWidth * 0.8, behavior: "smooth" }) }, "‹"),
-    h("button", { class: "flecha der", type: "button", "aria-label": "Ver más a la derecha", onclick: () => tira.scrollBy({ left: tira.clientWidth * 0.8, behavior: "smooth" }) }, "›"));
+    h("button", { class: "flecha izq", type: "button", "aria-label": "See more to the left", onclick: () => tira.scrollBy({ left: -tira.clientWidth * 0.8, behavior: "smooth" }) }, "‹"),
+    h("button", { class: "flecha der", type: "button", "aria-label": "See more to the right", onclick: () => tira.scrollBy({ left: tira.clientWidth * 0.8, behavior: "smooth" }) }, "›"));
   const anchoCont = Math.max(280, cont.clientWidth || 700);
   if (p.tipo === "cupula") marco.style.setProperty("--h", Math.min(270, Math.floor(anchoCont * (CORTE.cupula[3] - CORTE.cupula[2]) / (CORTE.cupula[1] - CORTE.cupula[0]))) + "px");
   let ventanaPlano = null, plano = null;
@@ -729,16 +729,16 @@ function pintarPlanta(cont, p) {
   });
   // acciones de la planta
   const acc = h("div", { class: "planta-acciones" },
-    p.tipo === "cupula" && r.izquierda.length && r.derecha.length ? null : h("button", { class: "btn primario mini", onclick: () => abrirCajon("agente", { planta: p.id, puesto: p.tipo === "cupula" ? (r.izquierda.length ? "derecha" : "izquierda") : "" }) }, p.tipo === "cupula" ? "+ Sabio" : "+ Agente en esta planta"));
+    p.tipo === "cupula" && r.izquierda.length && r.derecha.length ? null : h("button", { class: "btn primario mini", onclick: () => abrirCajon("agente", { planta: p.id, puesto: p.tipo === "cupula" ? (r.izquierda.length ? "derecha" : "izquierda") : "" }) }, p.tipo === "cupula" ? "+ Sage" : "+ Agent on this floor"));
   if (p.tipo === "piso") {
     acc.append(...[
-      h("button", { class: "btn mini", disabled: p.oficinas >= MAX_OFICINAS, onclick: () => ejecutar({ tipo: "ampliarPlanta", id: p.id, que: "oficina", cambio: 1 }) }, "+ Oficina"),
-      h("button", { class: "btn mini", disabled: p.oficinas <= Math.max(1, r.oficina.length), onclick: () => ejecutar({ tipo: "ampliarPlanta", id: p.id, que: "oficina", cambio: -1 }) }, "− Oficina"),
+      h("button", { class: "btn mini", disabled: p.oficinas >= MAX_OFICINAS, onclick: () => ejecutar({ tipo: "ampliarPlanta", id: p.id, que: "oficina", cambio: 1 }) }, "+ Office"),
+      h("button", { class: "btn mini", disabled: p.oficinas <= Math.max(1, r.oficina.length), onclick: () => ejecutar({ tipo: "ampliarPlanta", id: p.id, que: "oficina", cambio: -1 }) }, "− Office"),
       h("button", { class: "btn mini", disabled: p.pools >= MAX_POOLS, onclick: () => ejecutar({ tipo: "ampliarPlanta", id: p.id, que: "pool", cambio: 1 }) }, "+ Pool"),
       h("button", { class: "btn mini", disabled: !p.pools || (p.pools - 1) * POR_POOL < r.pool.length, onclick: () => ejecutar({ tipo: "ampliarPlanta", id: p.id, que: "pool", cambio: -1 }) }, "− Pool"),
-      h("button", { class: "btn mini", onclick: () => ejecutar({ tipo: "subirPlanta", id: p.id }) }, "Subir"),
-      h("button", { class: "btn mini", onclick: () => ejecutar({ tipo: "bajarPlanta", id: p.id }) }, "Bajar"),
-      ags.length ? null : h("button", { class: "btn mini peligro", onclick: (ev) => confirmar(ev.target, "¿Borrar el piso? Pulsa otra vez", () => Motor.ejecutar({ tipo: "borrarPlanta", id: p.id }).then(() => { plantaAbierta = ""; pintar(); }).catch(avisar)) }, "Borrar piso")].filter(Boolean));
+      h("button", { class: "btn mini", onclick: () => ejecutar({ tipo: "subirPlanta", id: p.id }) }, "Move up"),
+      h("button", { class: "btn mini", onclick: () => ejecutar({ tipo: "bajarPlanta", id: p.id }) }, "Move down"),
+      ags.length ? null : h("button", { class: "btn mini peligro", onclick: (ev) => confirmar(ev.target, "Delete the floor? Press again", () => Motor.ejecutar({ tipo: "borrarPlanta", id: p.id }).then(() => { plantaAbierta = ""; pintar(); }).catch(avisar)) }, "Delete floor")].filter(Boolean));
   }
   cont.append(acc);
   // quién trabaja aquí
@@ -748,9 +748,9 @@ function pintarPlanta(cont, p) {
     const est = estadoVisible(a);
     lista.append(h("button", { class: "quien " + est + (seleccion === a.id ? " sel" : ""), type: "button", onclick: () => elegir(a) },
       h("img", { src: figura(a.aspecto), alt: "" }),
-      h("span", { class: "q-txt" }, h("b", {}, a.nombre), h("small", {}, `${rolTxt(a)} · ${NOMBRE_PUESTO[a.puesto] || a.puesto}`), h("small", {}, `${tr(ESTADO_TXT[est])} · ${["interventor", "memory"].includes(a.rol) ? tr("no gasta") : textoLatido(a.latido)}${ed.gastoAgente(a, "hoy") > 0 ? " · " + tr(`hoy ${fmt(ed.gastoAgente(a, "hoy"))}`) : ""}`))));
+      h("span", { class: "q-txt" }, h("b", {}, a.nombre), h("small", {}, `${rolTxt(a)} · ${NOMBRE_PUESTO[a.puesto] || a.puesto}`), h("small", {}, `${tr(ESTADO_TXT[est])} · ${["interventor", "memory"].includes(a.rol) ? tr("doesn't spend") : textoLatido(a.latido)}${ed.gastoAgente(a, "hoy") > 0 ? " · " + tr(`today ${fmt(ed.gastoAgente(a, "hoy"))}`) : ""}`))));
   }
-  cont.append(ags.length ? lista : h("p", { class: "planta-vacia" }, p.tipo === "piso" ? "Planta vacía. Pon un jefe de sección en el despacho y sus subagentes en las oficinas o en el pool." : "Planta vacía."));
+  cont.append(ags.length ? lista : h("p", { class: "planta-vacia" }, p.tipo === "piso" ? "Empty floor. Put a section head in the head office and their sub-agents in the offices or the pool." : "This floor is empty."));
 }
 // Los módulos de un piso: despacho, uno o más pools, las oficinas y el cierre de cristal.
 function modulosPiso(p, r, T, grande) {
@@ -767,7 +767,7 @@ function modulosPiso(p, r, T, grande) {
 function latirAntena() { const l = $("luzAntena"); if (!l) return; l.classList.remove("late"); void l.offsetWidth; l.classList.add("late"); }
 // Errores: en el chat si está abierto; si no, un aviso abajo que se va solo.
 function avisar(err) {
-  const t = err && err.mostrado ? err.message : "Algo falló: " + ((err && err.message) || err);
+  const t = err && err.mostrado ? err.message : `Something went wrong: ${(err && err.message) || err}`;
   if (chatId) { pendientesError.push(t); pintarChat(true); return; }
   avisoFlotante(t);
 }
@@ -791,15 +791,15 @@ function verPestana(p) {
 
 // ---------------- Ficha de un agente, en cuatro pestañas ----------------
 const QUE_HACE = {
-  tecno: "Cada día hace su ronda sin gastar: revisa las altas, cada dos noches mira que todos hayan trabajado y dejado su señal, los viernes guarda una copia, recoge lo ya atendido, quita recuerdos repetidos y vigila que nada se envíe, se borre o se pague sin tu sí. Los lunes revisa los costes y solo entonces usa su cerebro, para decir si compensan.",
-  mejora: "Sigue cada día cómo avanzan los agentes de IA y propone al jefe mejoras para el edificio. Usa la búsqueda en internet. Cuando sale un modelo nuevo, te lo propone como recomendado; tú decides.",
-  creador: "Diseña agentes nuevos a partir de lo que le cuentas con tus palabras. Úsalo desde «Crear agente» o pidiéndoselo al jefe. Nada se crea sin que lo aceptes.",
-  interventor: "Vigila el gasto con reglas fijas: congela a los menos importantes cuando el gasto se acerca al tope. Sin cerebro: no gasta. Puede proponerte monedas rojas; tú las confirmas.",
-  jev: "Antes de que un agente haga algo que cuesta (buscar en internet, reintentar lo que falló o crear otro agente), decide: seguir, aprovechar lo que ya hay, parar o preguntar al jefe. Usa el modelo Jev. Puede proponerte monedas rojas; tú las confirmas.",
-  memory: "Guarda la memoria larga del edificio y la busca por palabras cuando dices «recuerdas…». Sin cerebro: no gasta.",
-  sabio: "Solo habla cuando el jefe le consulta una decisión importante. Es caro: tiene tope de una consulta al día."
+  tecno: "Every day it does its round without spending: it checks new agents, every other night it makes sure everyone has worked and left their mark, on Fridays it saves a backup, clears what's been dealt with, removes duplicate memories and makes sure nothing is sent, deleted or paid without your yes. On Mondays it reviews the costs, and only then does it use its brain, to say whether they pay off.",
+  mejora: "Follows every day how AI agents are moving forward and suggests improvements for the building to the boss. It uses internet search. When a new model comes out, it proposes it to you as a recommended one; you decide.",
+  creador: "Designs new agents from what you tell it in your own words. Use it from “Create agent” or by asking the boss. Nothing is created unless you accept it.",
+  interventor: "Watches the spending with fixed rules: it freezes the least important agents when spending gets close to the cap. No brain: it doesn't spend. It can propose red coins; you confirm them.",
+  jev: "Before an agent does something that costs money (searching the internet, retrying what failed or creating another agent), it decides: go ahead, reuse what's already there, stop or ask the boss. It uses the Jev model. It can propose red coins; you confirm them.",
+  memory: "Keeps the building's long-term memory and searches it by keywords when you say “remember…”. No brain: it doesn't spend.",
+  sabio: "Only speaks when the boss consults it on an important decision. It's expensive: it's capped at one consultation a day."
 };
-const PESTANAS_FICHA = [["identidad", "Identidad"], ["trabajo", "Trabajo"], ["cerebro", "Cerebro y gasto"], ["capacidades", "Capacidades"]];
+const PESTANAS_FICHA = [["identidad", "Identity"], ["trabajo", "Work"], ["cerebro", "Brain and spending"], ["capacidades", "Capabilities"]];
 const fecha = (ts, op) => new Date(ts).toLocaleString(LOCALE, op || { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" });
 const campo = (txt, el, ayuda) => h("label", { class: "campo" }, h("span", {}, txt), el, ayuda ? h("small", {}, ayuda) : null);
 function pintarFicha(forzar) {
@@ -816,20 +816,20 @@ function pintarFicha(forzar) {
   const pl = ed.e.plantas.find((x) => x.id === a.planta);
   // cabecera: figura, nombre, estado y lo esencial
   caja.append(h("div", { class: "ficha-cab" },
-    h("button", { class: "marco-ficha", type: "button", title: "Cambiar su foto y su nombre", onclick: () => abrirCajon("aspecto", { id: a.id }) }, h("img", { src: figura(a.aspecto), alt: "" })),
+    h("button", { class: "marco-ficha", type: "button", title: "Change their photo and name", onclick: () => abrirCajon("aspecto", { id: a.id }) }, h("img", { src: figura(a.aspecto), alt: "" })),
     h("div", { style: { flex: 1, minWidth: 0, display: "grid", gap: "4px" } }, h("h3", { class: "ficha-nombre" }, a.nombre),
       h("div", { class: "fila-c" }, h("span", { class: "estado-pill " + est }, tr(ESTADO_TXT[est]) + (a.motivoEstado ? " · " + a.motivoEstado : "")),
         h("span", { class: "nota" }, `${rolTxt(a)} · ${pl ? pl.nombre : ""}`)))));
   caja.append(h("div", { class: "fila-c", style: { marginTop: "12px" } },
-    conversa(a) ? h("button", { class: "btn primario mini", onclick: () => abrirChat(a.id) }, "Hablar con " + a.nombre) : null,
-    sinCerebro || a.rol === "jev" ? null : h("button", { class: "btn mini", onclick: () => { Motor.ejecutar({ tipo: "despertar", id: a.id }).then(pintar).catch(avisar); pintar(); } }, "Despertar ahora"),
-    h("button", { class: "btn mini", onclick: () => cambiar({ apagado: !a.apagado }) }, a.apagado ? "Encender" : "Apagar"),
-    pl ? h("button", { class: "btn mini", onclick: () => abrirPlanta(pl.id) }, "Ver su planta") : null,
-    a.rol === "jefe" ? null : h("button", { class: "btn mini peligro", onclick: (ev) => confirmar(ev.target, "¿Borrar? Pulsa otra vez", () => Motor.ejecutar({ tipo: "borrarAgente", id: a.id }).then(() => { seleccion = "jefe"; pintar(); verPestana("ficha"); }).catch(avisar)) }, "Borrar")));
+    conversa(a) ? h("button", { class: "btn primario mini", onclick: () => abrirChat(a.id) }, `Talk to ${a.nombre}`) : null,
+    sinCerebro || a.rol === "jev" ? null : h("button", { class: "btn mini", onclick: () => { Motor.ejecutar({ tipo: "despertar", id: a.id }).then(pintar).catch(avisar); pintar(); } }, "Wake up now"),
+    h("button", { class: "btn mini", onclick: () => cambiar({ apagado: !a.apagado }) }, a.apagado ? "Turn on" : "Turn off"),
+    pl ? h("button", { class: "btn mini", onclick: () => abrirPlanta(pl.id) }, "See their floor") : null,
+    a.rol === "jefe" ? null : h("button", { class: "btn mini peligro", onclick: (ev) => confirmar(ev.target, "Delete? Press again", () => Motor.ejecutar({ tipo: "borrarAgente", id: a.id }).then(() => { seleccion = "jefe"; pintar(); verPestana("ficha"); }).catch(avisar)) }, "Delete")));
   if (QUE_HACE[a.rol]) caja.append(h("p", { class: "que-hace" }, QUE_HACE[a.rol]));
-  if (a.falta) caja.append(h("div", { class: "aviso-falta" }, h("b", {}, "Dice que le falta algo y no avanza solo"), h("span", {}, entreComillas(a.falta.texto)),
-    h("small", { class: "nota" }, "Dale lo que pide (capacidades, skills, datos) o cámbiale el objetivo. Al cambiar su ficha se da por atendido."),
-    h("div", {}, h("button", { class: "btn mini", type: "button", onclick: () => Motor.ejecutar({ tipo: "bandeja.decidir", clase: "falta", id: a.id, si: true }).then(pintar).catch(avisar) }, "Ya lo tiene"))));
+  if (a.falta) caja.append(h("div", { class: "aviso-falta" }, h("b", {}, "Says it's missing something and won't move on alone"), h("span", {}, entreComillas(a.falta.texto)),
+    h("small", { class: "nota" }, "Give it what it asks for (capabilities, skills, data) or change its objective. Changing its profile marks it as handled."),
+    h("div", {}, h("button", { class: "btn mini", type: "button", onclick: () => Motor.ejecutar({ tipo: "bandeja.decidir", clase: "falta", id: a.id, si: true }).then(pintar).catch(avisar) }, "It has it now"))));
   caja.append(h("div", { class: "ficha-pestanas", role: "tablist" }, PESTANAS_FICHA.map(([k, t]) =>
     h("button", { role: "tab", type: "button", "aria-selected": String(fichaTab === k), onclick: () => { fichaTab = k; pintarFicha(true); $("ficha").scrollTop = 0; } }, t))));
   const pinta = { identidad: fichaIdentidad, trabajo: fichaTrabajo, cerebro: fichaCerebro, capacidades: fichaCapacidades }[fichaTab] || fichaIdentidad;
@@ -843,141 +843,141 @@ function fichaIdentidad(caja, a, cambiar, { pl }) {
   const selPlanta = h("select", { disabled: a.rol === "jefe" || a.rol === "sabio", onchange: (ev) => cambiar({ planta: ev.target.value, puesto: "" }) }, (a.rol === "jefe" || a.rol === "sabio" ? [pl] : plantasValidas).filter(Boolean).map((x) => h("option", { value: x.id }, x.nombre)));
   selPlanta.value = a.planta;
   const opPuesto = pl ? (PUESTOS_TXT[pl.tipo] || []) : [];
-  const selPuesto = h("select", { disabled: a.rol === "jefe", onchange: (ev) => cambiar({ planta: a.planta, puesto: ev.target.value }) }, (a.rol === "jefe" ? [["centro", "Centro de la cúpula"]] : opPuesto).map(([v, t]) => h("option", { value: v }, t)));
+  const selPuesto = h("select", { disabled: a.rol === "jefe", onchange: (ev) => cambiar({ planta: a.planta, puesto: ev.target.value }) }, (a.rol === "jefe" ? [["centro", "Centre of the dome"]] : opPuesto).map(([v, t]) => h("option", { value: v }, t)));
   selPuesto.value = a.puesto;
   // «Informa a»: cualquier agente del edificio (con buscador si hay muchos); el motor no deja hacer círculos
   const otros = ed.e.agentes.filter((x) => x.id !== a.id);
   const selInforma = h("select", { onchange: (ev) => cambiar({ reportaA: ev.target.value }) });
   const llenarInforma = (q) => {
     const t = sinAcentos(q || "");
-    selInforma.replaceChildren(h("option", { value: "" }, "Nadie"), ...otros.filter((x) => !t || x.id === a.reportaA || sinAcentos(`${x.nombre} ${rolTxt(x)}`).includes(t)).map((x) => h("option", { value: x.id }, `${x.nombre} · ${rolTxt(x)}`)));
+    selInforma.replaceChildren(h("option", { value: "" }, "Nobody"), ...otros.filter((x) => !t || x.id === a.reportaA || sinAcentos(`${x.nombre} ${rolTxt(x)}`).includes(t)).map((x) => h("option", { value: x.id }, `${x.nombre} · ${rolTxt(x)}`)));
     selInforma.value = a.reportaA || "";
   };
   llenarInforma("");
-  const selJefe = otros.length > 6 ? h("div", { class: "informa-a" }, h("input", { type: "search", placeholder: "Escribe su nombre para buscarlo", "aria-label": "Buscar a quién informa", oninput: (ev) => llenarInforma(ev.target.value) }), selInforma) : selInforma;
+  const selJefe = otros.length > 6 ? h("div", { class: "informa-a" }, h("input", { type: "search", placeholder: "Type their name to find them", "aria-label": "Search who they report to", oninput: (ev) => llenarInforma(ev.target.value) }), selInforma) : selInforma;
   const cambiable = ["jefe_seccion", "subagente"].includes(a.rol);
-  const selRol = h("select", { onchange: (ev) => cambiar({ rol: ev.target.value }) }, [["jefe_seccion", "Jefe de sección"], ["subagente", "Subagente"]].map(([k, v]) => h("option", { value: k }, v)));
+  const selRol = h("select", { onchange: (ev) => cambiar({ rol: ev.target.value }) }, [["jefe_seccion", "Section head"], ["subagente", "Sub-agent"]].map(([k, v]) => h("option", { value: k }, v)));
   selRol.value = a.rol;
   caja.append(h("div", { class: "bloque" },
-    campo("Nombre", nombre),
-    h("div", { class: "campo" }, h("span", {}, "Aspecto"), h("div", { class: "fila-c" }, h("img", { class: "mini-pj", src: figura(a.aspecto), alt: "" }), h("button", { class: "btn mini", onclick: () => abrirCajon("aspecto", { id: a.id }) }, "Cambiar su foto y su nombre"))),
-    h("div", { class: "dos" }, cambiable ? campo("Papel", selRol) : h("div", { class: "campo" }, h("span", {}, "Papel"), h("span", { class: "nota" }, rolTxt(a))),
-      a.rol === "jefe" ? null : campo("Informa a", selJefe)),
-    h("div", { class: "dos" }, campo("Planta", selPlanta), campo("Sitio", selPuesto))));
+    campo("Name", nombre),
+    h("div", { class: "campo" }, h("span", {}, "Appearance"), h("div", { class: "fila-c" }, h("img", { class: "mini-pj", src: figura(a.aspecto), alt: "" }), h("button", { class: "btn mini", onclick: () => abrirCajon("aspecto", { id: a.id }) }, "Change their photo and name"))),
+    h("div", { class: "dos" }, cambiable ? campo("Role", selRol) : h("div", { class: "campo" }, h("span", {}, "Role"), h("span", { class: "nota" }, rolTxt(a))),
+      a.rol === "jefe" ? null : campo("Reports to", selJefe)),
+    h("div", { class: "dos" }, campo("Floor", selPlanta), campo("Spot", selPuesto))));
   caja.append(bloqueMonedas(a));
 }
 // Monedas: doradas (buen trabajo) y rojas (alucinar, gastar en balde). Cada una, con su motivo en una línea.
 function bloqueMonedas(a) {
   const mias = (ed.e.monedas || []).filter((m) => m.agente === a.id);
   const oro = mias.filter((m) => m.tipo === "oro" && m.estado === "confirmada").length, rojas = mias.filter((m) => m.tipo === "roja" && m.estado === "confirmada").length;
-  const caja = h("div", { class: "bloque" }, h("h4", {}, "Monedas"),
-    h("div", { class: "fila-c" }, h("span", { class: "moneda oro" }), h("b", {}, oro), h("span", { class: "nota" }, oro === 1 ? "dorada" : "doradas"), h("span", { class: "moneda roja" }), h("b", {}, rojas), h("span", { class: "nota" }, rojas === 1 ? "roja" : "rojas")),
+  const caja = h("div", { class: "bloque" }, h("h4", {}, "Coins"),
+    h("div", { class: "fila-c" }, h("span", { class: "moneda oro" }), h("b", {}, oro), h("span", { class: "nota" }, oro === 1 ? "gold coin" : "gold coins"), h("span", { class: "moneda roja" }), h("b", {}, rojas), h("span", { class: "nota" }, rojas === 1 ? "red coin" : "red coins")),
     h("div", { class: "fila-c" }, botonMoneda(a, "oro"), botonMoneda(a, "roja")),
-    h("small", { class: "nota" }, `Un modelo barato convierte el motivo en una regla concreta; cuando la apruebas en la bandeja, la aprenden ${a.nombre} y todos los de su papel (${rolTxt(a)}).`));
+    h("small", { class: "nota" }, `A cheap model turns the reason into a concrete rule; when you approve it in the inbox, ${a.nombre} and everyone with the same role (${rolTxt(a)}) learn it.`));
   for (const m of mias.filter((x) => x.estado === "propuesta")) caja.append(filaMonedaPropuesta(m));
   const ultimas = mias.filter((m) => m.estado === "confirmada").slice(-5).reverse();
-  if (ultimas.length) caja.append(h("div", { class: "lista" }, ultimas.map((m) => h("div", { class: "item" }, h("div", { class: "cab" }, h("span", {}, h("span", { class: "moneda " + m.tipo }), " ", fecha(m.ts)), h("span", {}, m.propone === "tú" ? "de ti" : tr(`propuesta de ${quienPropone(m.propone)}, confirmada`))), h("div", { class: "txt" }, crudo(m.motivo))))));
+  if (ultimas.length) caja.append(h("div", { class: "lista" }, ultimas.map((m) => h("div", { class: "item" }, h("div", { class: "cab" }, h("span", {}, h("span", { class: "moneda " + m.tipo }), " ", fecha(m.ts)), h("span", {}, m.propone === "tú" ? "from you" : tr(`proposed by ${quienPropone(m.propone)}, confirmed`))), h("div", { class: "txt" }, crudo(m.motivo))))));
   return caja;
 }
 // Botón de moneda: al pulsarlo pide el motivo en una línea
 function botonMoneda(a, tipo, alDar) {
-  const b = h("button", { class: "moneda-btn", type: "button", title: tipo === "oro" ? "Moneda dorada: lo hizo bien" : "Moneda roja: alucinó o gastó en balde" }, h("span", { class: "moneda " + tipo }), tipo === "oro" ? "Moneda dorada" : "Moneda roja");
+  const b = h("button", { class: "moneda-btn", type: "button", title: tipo === "oro" ? "Gold coin: it did well" : "Red coin: it made things up or wasted money" }, h("span", { class: "moneda " + tipo }), tipo === "oro" ? "Gold coin" : "Red coin");
   b.onclick = () => {
-    const inp = h("input", { maxlength: "160", placeholder: tipo === "oro" ? "¿Qué hizo bien? (una línea)" : "¿Qué hizo mal? (una línea)" });
+    const inp = h("input", { maxlength: "160", placeholder: tipo === "oro" ? "What did it do well? (one line)" : "What did it do wrong? (one line)" });
     const dar = async () => {
       if (!inp.value.trim()) { inp.focus(); return; }
       try {
         inp.disabled = true;
         const r = await Motor.ejecutar({ tipo: "moneda.dar", id: a.id, tipoMoneda: tipo, motivo: inp.value.trim() });
-        const hecho = tr(`${tipo === "oro" ? "Moneda dorada" : "Moneda roja"} para ${a.nombre}.`) + (r.leccion ? " " + tr(`Lección propuesta: «${r.leccion.texto}». Apruébala o retócala en la bandeja.`) : "");
+        const hecho = tr(`${tipo === "oro" ? "Gold coin" : "Red coin"} for ${a.nombre}.`) + (r.leccion ? " " + tr(`Proposed lesson: “${r.leccion.texto}”. Approve it or tweak it in the inbox.`) : "");
         fila.replaceWith(h("span", { class: "nota" }, hecho)); avisoFlotante(hecho); if (alDar) alDar(); pintar();
       }
       catch (err) { inp.disabled = false; avisar(err); }
     };
     inp.onkeydown = (ev) => { if (ev.key === "Enter") { ev.preventDefault(); dar(); } if (ev.key === "Escape") fila.replaceWith(b); };
-    const fila = h("span", { class: "motivo-fila" }, h("span", { class: "moneda " + tipo }), inp, h("button", { class: "btn mini primario", type: "button", onclick: dar }, "Dar"), h("button", { class: "btn mini", type: "button", onclick: () => fila.replaceWith(b) }, "Cancelar"));
+    const fila = h("span", { class: "motivo-fila" }, h("span", { class: "moneda " + tipo }), inp, h("button", { class: "btn mini primario", type: "button", onclick: dar }, "Give"), h("button", { class: "btn mini", type: "button", onclick: () => fila.replaceWith(b) }, "Cancel"));
     b.replaceWith(fila); inp.focus();
   };
   return b;
 }
 function filaMonedaPropuesta(m) {
   return h("div", { class: "fila-moneda" }, h("span", { class: "moneda " + m.tipo }),
-    h("span", { class: "grow" }, h("b", {}, m.nombre), " · " + tr(`${quienPropone(m.propone)} propone:`) + " ", crudo(m.motivo)),
-    h("button", { class: "btn mini primario", onclick: () => Motor.ejecutar({ tipo: "moneda.confirmar", moneda: m.id }).then(pintar).catch(avisar) }, "Confirmar"),
-    h("button", { class: "btn mini", onclick: () => Motor.ejecutar({ tipo: "moneda.descartar", moneda: m.id }).then(pintar).catch(avisar) }, "Descartar"));
+    h("span", { class: "grow" }, h("b", {}, m.nombre), " · " + tr(`${quienPropone(m.propone)} proposes:`) + " ", crudo(m.motivo)),
+    h("button", { class: "btn mini primario", onclick: () => Motor.ejecutar({ tipo: "moneda.confirmar", moneda: m.id }).then(pintar).catch(avisar) }, "Confirm"),
+    h("button", { class: "btn mini", onclick: () => Motor.ejecutar({ tipo: "moneda.descartar", moneda: m.id }).then(pintar).catch(avisar) }, "Dismiss"));
 }
 // Trabajo: instrucciones, objetivo, lecciones, latido, tareas y memoria corta
 function fichaTrabajo(caja, a, cambiar, { sinCerebro }) {
   if (!sinCerebro) {
-    const per = h("textarea", { rows: "2", maxlength: String(MAX_PERSONALIDAD), placeholder: "Su tono, su humor y si va al grano. Por ejemplo: «Cercano y con humor, pero breve y al grano.»", onchange: (ev) => cambiar({ personalidad: ev.target.value.trim() }) }, a.personalidad || "");
+    const per = h("textarea", { rows: "2", maxlength: String(MAX_PERSONALIDAD), placeholder: "Its tone, its humour and whether it gets to the point. For example: “Friendly and funny, but brief and to the point.”", onchange: (ev) => cambiar({ personalidad: ev.target.value.trim() }) }, a.personalidad || "");
     const cuenta = h("span", { class: "contador" }, `${(a.personalidad || "").length}/${MAX_PERSONALIDAD}`);
     per.oninput = () => { cuenta.textContent = `${per.value.length}/${MAX_PERSONALIDAD}`; };
     caja.append(h("div", { class: "bloque" },
-      campo("Instrucciones (quién es y cómo trabaja)", h("textarea", { rows: "6", onchange: (ev) => cambiar({ cuerpo: ev.target.value }) }, a.cuerpo)),
-      a.rol === "jev" ? null : campo("Personalidad", per, "Va en cada llamada: así su carácter no depende del cerebro que le pongas."), a.rol === "jev" ? null : cuenta,
-      a.rol === "jev" ? null : campo("Objetivo", h("textarea", { rows: "2", onchange: (ev) => cambiar({ objetivo: ev.target.value }) }, a.objetivo))));
+      campo("Instructions (who it is and how it works)", h("textarea", { rows: "6", onchange: (ev) => cambiar({ cuerpo: ev.target.value }) }, a.cuerpo)),
+      a.rol === "jev" ? null : campo("Personality", per, "Sent with every call: that way its character doesn't depend on the brain you give it."), a.rol === "jev" ? null : cuenta,
+      a.rol === "jev" ? null : campo("Objective", h("textarea", { rows: "2", onchange: (ev) => cambiar({ objetivo: ev.target.value }) }, a.objetivo))));
   }
   // lecciones de su papel (salen de las monedas); las nuevas esperan tu sí en la bandeja
   const pendLecc = (ed.e.lecciones || []).filter((l) => l.papel === a.rol && l.estado === "propuesta");
   const lecc = ed.leccionesDe(a.rol).slice().sort((x, y) => (y.fija - x.fija) || (y.ts - x.ts));
   const max = ed.e.ajustes.leccionesPorPapel || 5;
-  caja.append(h("div", { class: "bloque" }, h("h4", {}, `Lecciones de su papel (${rolTxt(a)})`),
+  caja.append(h("div", { class: "bloque" }, h("h4", {}, `Lessons for its role (${rolTxt(a)})`),
     lecc.length ? h("div", { class: "lista" }, lecc.map((l) => h("div", { class: "item leccion" + (l.fija ? " fija" : "") }, h("span", { class: "moneda " + l.tipo }), h("span", { class: "txt" }, crudo(l.texto)),
-      h("button", { class: "btn mini", title: l.fija ? "Que pueda salir cuando entren lecciones nuevas" : "Que no salga nunca, aunque sea antigua", onclick: () => Motor.ejecutar({ tipo: "leccion.fijar", leccion: l.id, fija: !l.fija }).then(pintar).catch(avisar) }, l.fija ? "Soltar" : "Fijar"),
-      h("button", { class: "btn mini", onclick: () => Motor.ejecutar({ tipo: "leccion.borrar", leccion: l.id }).then(pintar).catch(avisar) }, "Quitar"))))
-      : h("p", { class: "nota", style: { margin: 0 } }, "Todavía ninguna. Salen de las monedas: un modelo barato convierte el motivo en una regla y tú la apruebas en la bandeja."),
-    pendLecc.length ? h("div", { class: "fila-c" }, h("span", { class: "nota" }, pendLecc.length === 1 ? "1 lección nueva espera tu sí." : `${pendLecc.length} lecciones nuevas esperan tu sí.`), h("button", { class: "btn mini", type: "button", onclick: () => abrirPantalla("bandeja") }, "Ir a la bandeja")) : null,
-    h("small", { class: "nota" }, `Las aprenden todos los de este papel. Se guardan ${max} por papel (cámbialo en Ajustes); al entrar una nueva sale la más antigua, salvo las fijadas.`)));
+      h("button", { class: "btn mini", title: l.fija ? "Let it go when new lessons come in" : "Never let it go, even when it's old", onclick: () => Motor.ejecutar({ tipo: "leccion.fijar", leccion: l.id, fija: !l.fija }).then(pintar).catch(avisar) }, l.fija ? "Unpin" : "Pin"),
+      h("button", { class: "btn mini", onclick: () => Motor.ejecutar({ tipo: "leccion.borrar", leccion: l.id }).then(pintar).catch(avisar) }, "Remove"))))
+      : h("p", { class: "nota", style: { margin: 0 } }, "None yet. They come from coins: a cheap model turns the reason into a rule and you approve it in the inbox."),
+    pendLecc.length ? h("div", { class: "fila-c" }, h("span", { class: "nota" }, pendLecc.length === 1 ? "1 new lesson is waiting for your yes." : `${pendLecc.length} new lessons are waiting for your yes.`), h("button", { class: "btn mini", type: "button", onclick: () => abrirPantalla("bandeja") }, "Go to the inbox")) : null,
+    h("small", { class: "nota" }, `Everyone with this role learns them. ${max} are kept per role (change it in Settings); when a new one comes in, the oldest goes, except pinned ones.`)));
   // latido
   const num = h("input", { type: "number", min: "1", step: "1", value: a.latido.cada, disabled: a.latido.unidad === "peticion" });
-  const uni = h("select", {}, [["min", "minutos"], ["h", "horas"], ["d", "días"], ["peticion", "solo a petición"]].map(([v, t]) => h("option", { value: v }, t)));
+  const uni = h("select", {}, [["min", "minutes"], ["h", "hours"], ["d", "days"], ["peticion", "on request only"]].map(([v, t]) => h("option", { value: v }, t)));
   uni.value = a.latido.unidad;
   const guardarLatido = () => cambiar({ latido: { cada: Math.max(1, parseInt(num.value, 10) || 1), unidad: uni.value } });
   num.onchange = guardarLatido; uni.onchange = guardarLatido;
-  const alD = h("select", { onchange: (ev) => cambiar({ alDespertar: ev.target.value }) }, h("option", { value: "tareas" }, "Hace sus tareas pendientes (si no hay, no gasta)"), h("option", { value: "objetivo" }, "Hace sus tareas y, si no hay, avanza en su objetivo (gasta)"));
+  const alD = h("select", { onchange: (ev) => cambiar({ alDespertar: ev.target.value }) }, h("option", { value: "tareas" }, "Does its pending tasks (if there are none, it doesn't spend)"), h("option", { value: "objetivo" }, "Does its tasks and, if there are none, works on its objective (spends)"));
   alD.value = a.alDespertar || "tareas";
   const prox = a.proximo && a.proximo < 9e14 ? fecha(a.proximo, { weekday: "short", hour: "2-digit", minute: "2-digit" }) : "—";
-  caja.append(h("div", { class: "bloque" }, h("h4", {}, "Latido"),
-    h("div", { class: "campo" }, h("span", {}, "En reposo, se despierta"), h("div", { class: "fila-c" }, h("span", {}, "cada"), num, uni)),
-    sinCerebro || a.rol === "sabio" || a.rol === "jev" ? null : campo("Al despertar", alD),
-    h("small", { class: "nota" }, a.latido.unidad === "peticion" ? "Solo trabaja cuando alguien le encarga algo." : `Próximo latido: ${prox}. Último: ${a.ultimo ? fecha(a.ultimo) : "nunca"}.`)));
+  caja.append(h("div", { class: "bloque" }, h("h4", {}, "Heartbeat"),
+    h("div", { class: "campo" }, h("span", {}, "Resting, it wakes up"), h("div", { class: "fila-c" }, h("span", {}, "every"), num, uni)),
+    sinCerebro || a.rol === "sabio" || a.rol === "jev" ? null : campo("When it wakes up", alD),
+    h("small", { class: "nota" }, a.latido.unidad === "peticion" ? "Only works when someone gives it a job." : `Next heartbeat: ${prox}. Last: ${a.ultimo ? fecha(a.ultimo) : "never"}.`)));
   // tareas
   if (!sinCerebro && a.rol !== "jev") {
-    const txt = h("input", { placeholder: "Encárgale algo…" }), ahora = h("input", { type: "checkbox" });
+    const txt = h("input", { placeholder: "Give it a job…" }), ahora = h("input", { type: "checkbox" });
     const lista = h("div", { class: "lista" });
     for (const t of a.tareas.slice().reverse().slice(0, 15)) {
-      lista.append(h("div", { class: "item" }, h("div", { class: "cab" }, h("span", {}, fecha(t.creada) + " · " + (t.de ? tr(`de ${(ed.agenteExacto(t.de) || {}).nombre || t.de}`) : tr("de ti"))), h("span", { class: "est " + t.estado }, t.estado)),
-        h("div", { class: "txt" }, crudo(t.texto)), t.resultado ? h("details", {}, h("summary", {}, "Resultado"), h("div", { class: "txt", html: markdown(t.resultado) })) : null));
+      lista.append(h("div", { class: "item" }, h("div", { class: "cab" }, h("span", {}, fecha(t.creada) + " · " + (t.de ? tr(`from ${(ed.agenteExacto(t.de) || {}).nombre || t.de}`) : tr("from you"))), h("span", { class: "est " + t.estado }, t.estado)),
+        h("div", { class: "txt" }, crudo(t.texto)), t.resultado ? h("details", {}, h("summary", {}, "Result"), h("div", { class: "txt", html: markdown(t.resultado) })) : null));
     }
-    caja.append(h("div", { class: "bloque" }, h("h4", {}, "Tareas"),
-      h("div", { class: "fila-c" }, txt, h("label", { class: "fila-c nota" }, ahora, "ahora"), h("button", { class: "btn mini", onclick: () => { if (!txt.value.trim()) return; Motor.ejecutar({ tipo: "asignarTarea", id: a.id, texto: txt.value.trim(), ahora: ahora.checked }).then(() => { txt.value = ""; pintar(); }).catch(avisar); } }, "Encargar")),
-      a.tareas.length ? lista : h("p", { class: "nota", style: { margin: 0 } }, "Sin tareas.")));
+    caja.append(h("div", { class: "bloque" }, h("h4", {}, "Tasks"),
+      h("div", { class: "fila-c" }, txt, h("label", { class: "fila-c nota" }, ahora, "now"), h("button", { class: "btn mini", onclick: () => { if (!txt.value.trim()) return; Motor.ejecutar({ tipo: "asignarTarea", id: a.id, texto: txt.value.trim(), ahora: ahora.checked }).then(() => { txt.value = ""; pintar(); }).catch(avisar); } }, "Assign")),
+      a.tareas.length ? lista : h("p", { class: "nota", style: { margin: 0 } }, "No tasks.")));
   }
   // memoria corta
   const mc = h("div", { class: "lista" });
   for (const m of a.memoriaCorta.slice().reverse().slice(0, 10)) mc.append(h("div", { class: "item" }, h("div", { class: "cab" }, h("span", {}, fecha(m.ts)), h("span", {}, m.tipo)), h("div", { class: "txt" }, crudo(m.texto))));
-  caja.append(h("div", { class: "bloque" }, h("h4", {}, "Memoria corta"), a.memoriaCorta.length ? mc : h("p", { class: "nota", style: { margin: 0 } }, "Todavía vacía.")));
+  caja.append(h("div", { class: "bloque" }, h("h4", {}, "Short memory"), a.memoriaCorta.length ? mc : h("p", { class: "nota", style: { margin: 0 } }, "Still empty.")));
   // Memory: la memoria larga del edificio
   if (a.rol === "memory") {
     const ml = h("div", { class: "lista" });
     for (const n of ed.e.memoriaLarga.slice().reverse()) ml.append(h("div", { class: "item" }, h("div", { class: "cab" }, h("span", {}, new Date(n.ts).toLocaleDateString(LOCALE) + (n.etiquetas && n.etiquetas.length ? " · " + n.etiquetas.join(", ") : "")),
-      h("button", { class: "btn mini", onclick: () => Motor.ejecutar({ tipo: "memoria.borrar", idNota: n.id }).then(pintar) }, "Borrar")), h("div", { class: "txt" }, crudo(n.texto))));
-    const nt = h("textarea", { rows: "2", placeholder: "Un dato que el edificio debe recordar…" }), et = h("input", { placeholder: "etiquetas, separadas por comas" });
-    caja.append(h("div", { class: "bloque" }, h("h4", {}, `Memoria larga del edificio (${ed.e.memoriaLarga.length})`),
-      h("p", { class: "nota", style: { margin: 0 } }, "Cuando dices «recuerdas…» al jefe, Memory busca aquí por palabras y se lo pasa. No usa cerebro: no gasta. Más adelante podrá vivir en Google Drive."),
-      nt, et, h("div", {}, h("button", { class: "btn mini", onclick: () => { if (!nt.value.trim()) return; Motor.ejecutar({ tipo: "memoria.guardar", texto: nt.value.trim(), etiquetas: et.value.split(",").map((x) => x.trim()).filter(Boolean) }).then(pintar).catch(avisar); } }, "Guardar recuerdo")), ml));
+      h("button", { class: "btn mini", onclick: () => Motor.ejecutar({ tipo: "memoria.borrar", idNota: n.id }).then(pintar) }, "Delete")), h("div", { class: "txt" }, crudo(n.texto))));
+    const nt = h("textarea", { rows: "2", placeholder: "Something the building should remember…" }), et = h("input", { placeholder: "tags, separated by commas" });
+    caja.append(h("div", { class: "bloque" }, h("h4", {}, `Building's long-term memory (${ed.e.memoriaLarga.length})`),
+      h("p", { class: "nota", style: { margin: 0 } }, "When you say “remember…” to the boss, Memory searches here by keywords and passes it on. It uses no brain: it doesn't spend. Later on it will be able to live in Google Drive."),
+      nt, et, h("div", {}, h("button", { class: "btn mini", onclick: () => { if (!nt.value.trim()) return; Motor.ejecutar({ tipo: "memoria.guardar", texto: nt.value.trim(), etiquetas: et.value.split(",").map((x) => x.trim()).filter(Boolean) }).then(pintar).catch(avisar); } }, "Save memory")), ml));
   }
 }
 // Cerebro y gasto: qué modelo piensa por él, su prioridad, su tope y lo que lleva gastado
 function fichaCerebro(caja, a, cambiar, { sinCerebro }) {
-  if (sinCerebro) caja.append(h("div", { class: "bloque" }, h("h4", {}, "Cerebro"), h("p", { class: "nota", style: { margin: 0 } }, "Trabaja con reglas fijas, sin cerebro: no gasta.")));
+  if (sinCerebro) caja.append(h("div", { class: "bloque" }, h("h4", {}, "Brain"), h("p", { class: "nota", style: { margin: 0 } }, "Works with fixed rules, no brain: it doesn't spend.")));
   else if (a.rol === "jev") {
-    const sel = selectorModelo("decisiones", a.cerebro, { extra: [[MODELO_JEV, "Jev Latest · siempre la última versión de Jev"]], alCambiar: (v) => cambiar({ cerebro: v }) });
-    caja.append(h("div", { class: "bloque" }, h("h4", {}, "Cerebro"), campo("Modelo de decisiones", sel, "JEV decide con la API de decisiones de OpenRouter. «Jev Latest» apunta siempre a la última versión, sin tener que cambiarlo a mano.")));
+    const sel = selectorModelo("decisiones", a.cerebro, { extra: [[MODELO_JEV, "Jev Latest · always the latest version of Jev"]], alCambiar: (v) => cambiar({ cerebro: v }) });
+    caja.append(h("div", { class: "bloque" }, h("h4", {}, "Brain"), campo("Decision model", sel, "JEV decides with OpenRouter's decisions API. “Jev Latest” always points to the latest version, without changing it by hand.")));
   } else {
     // Con qué piensa: OpenRouter (se paga por uso) o una de tus otras API (Ajustes → Otras API), la de una suscripción que ya pagas
     const prov = ed.cerebroDe(a).proveedor, conx = ed.conexiones();
-    const opciones = [["openrouter", "OpenRouter (se paga por uso)"], ...conx.map((c) => [c.id, `${c.nombre} · tu suscripción`])];
+    const opciones = [["openrouter", "OpenRouter (pay per use)"], ...conx.map((c) => [c.id, `${c.nombre} · your subscription`])];
     if (prov !== "openrouter" && !conx.some((c) => c.id === prov)) opciones.push([prov, (ed.proveedor(prov) || {}).nombre || prov]);
     const selProv = h("select", { onchange: (ev) => {
       const nuevo = ev.target.value;
@@ -985,52 +985,52 @@ function fichaCerebro(caja, a, cambiar, { sinCerebro }) {
       cambiar({ proveedor: nuevo, cerebro });
     } }, opciones.map(([k, t]) => h("option", { value: k }, t)));
     selProv.value = prov;
-    const bloque = h("div", { class: "bloque" }, h("h4", {}, "Cerebro"), campo("Con qué piensa", selProv));
-    if (!conx.length) bloque.append(h("small", { class: "nota" }, "¿Tienes una suscripción que incluye API (por ejemplo, créditos de Claude o de ChatGPT, Gemini o un modelo en tu ordenador)? Añádela en Ajustes → Otras API y podrás elegirla aquí. Lo que se paga aparte, mejor por OpenRouter."));
+    const bloque = h("div", { class: "bloque" }, h("h4", {}, "Brain"), campo("Thinks with", selProv));
+    if (!conx.length) bloque.append(h("small", { class: "nota" }, "Do you have a subscription that includes API access (for example, Claude or ChatGPT credits, Gemini or a model on your computer)? Add it in Settings → Other APIs and you'll be able to pick it here. Anything paid separately is better through OpenRouter."));
     if (prov === "openrouter") {
-      bloque.append(campo("Cerebro", selectorModelo("texto", a.cerebro, { alCambiar: (v) => cambiar({ cerebro: v }) }), "Arriba, los recomendados por nivel de precio (no de calidad); debajo, todos los modelos de texto de OpenRouter. O escribe el nombre con «Buscar entre todos». Precio en dólares por millón de tokens (entrada / salida). «ve» = puede mirar imágenes."),
+      bloque.append(campo("Brain", selectorModelo("texto", a.cerebro, { alCambiar: (v) => cambiar({ cerebro: v }) }), "At the top, the recommended ones by price level (not quality); below, all of OpenRouter's text models. Or type the name with “Search all”. Prices in dollars per million tokens (input / output). “sees” = can look at images."),
         propuestasDe("texto"));
     } else {
       const P = ed.proveedor(prov) || { corto: prov };
       bloque.append(selectorDirecto(prov, a.cerebro, (v) => cambiar({ cerebro: v })),
-        h("small", { class: "nota" }, tr(tieneClaveApi(prov) ? `Sale de tu suscripción de ${P.corto}: no cuenta para el tope de gasto (se apunta aparte, para que lo veas).` : `Falta la clave de ${P.corto}: ponla en Ajustes → Otras API.`) + " " +
-          tr("Buscar en internet solo funciona con OpenRouter.")));
-      const selAgota = h("select", { onchange: (ev) => cambiar({ siAgota: ev.target.value }) }, h("option", { value: "openrouter" }, "Que siga con OpenRouter"), h("option", { value: "parar" }, "Que se pare"));
+        h("small", { class: "nota" }, tr(tieneClaveApi(prov) ? `Comes out of your ${P.corto} subscription: it doesn't count towards the spending cap (it's tracked separately, so you can see it).` : `The ${P.corto} key is missing: add it in Settings → Other APIs.`) + " " +
+          tr("Internet search only works with OpenRouter.")));
+      const selAgota = h("select", { onchange: (ev) => cambiar({ siAgota: ev.target.value }) }, h("option", { value: "openrouter" }, "Carry on with OpenRouter"), h("option", { value: "parar" }, "Stop working"));
       selAgota.value = a.siAgota || "openrouter";
-      bloque.append(campo(`Si se acaba tu cupo de ${P.corto}`, selAgota, "Cuando la empresa dice que no quedan créditos (por ejemplo, a final de mes), tú eliges."));
+      bloque.append(campo(`If your ${P.corto} quota runs out`, selAgota, "When the company says there are no credits left (for example, at the end of the month), you choose."));
       if ((a.siAgota || "openrouter") === "openrouter") {
         const eq = ed.modeloEquivalente(prov, a.cerebro);
-        bloque.append(campo("Su cerebro en OpenRouter mientras tanto", selectorModelo("texto", a.cerebroReserva, { vacio: eq ? `El mismo modelo en OpenRouter (${eq.name || eq.id})` : "El que le tocaría por su papel", alCambiar: (v) => cambiar({ cerebroReserva: v }) })));
+        bloque.append(campo("Its brain on OpenRouter in the meantime", selectorModelo("texto", a.cerebroReserva, { vacio: eq ? `The same model on OpenRouter (${eq.name || eq.id})` : "The one its role would get", alCambiar: (v) => cambiar({ cerebroReserva: v }) })));
       }
       const sus = Object.entries(a.suscripcion || {}).sort().at(-1);
-      if (sus) bloque.append(h("small", { class: "nota" }, tr(`De tu suscripción, el ${sus[0]}: ${sus[1].tokens.toLocaleString(LOCALE)} tokens`) + (sus[1].usd ? " " + tr(`(en OpenRouter serían ≈${fmt(sus[1].usd)})`) : "") + "."));
+      if (sus) bloque.append(h("small", { class: "nota" }, tr(`From your subscription, on ${sus[0]}: ${sus[1].tokens.toLocaleString(LOCALE)} tokens`) + (sus[1].usd ? " " + tr(`(on OpenRouter it would be ≈${fmt(sus[1].usd)})`) : "") + "."));
     }
     const est = ed.estimarLatido(a);
     // cada trozo se traduce por separado (así cada idioma lo ordena a su manera)
-    bloque.append(h("small", { class: "nota" }, [tr(`Al despertar: ${est.como}`), est.gasta && est.porVez > 0 ? tr(`· ≈${fmt(est.porVez)} por latido`) + (est.porDia ? " " + tr(`(≈${fmt(est.porDia)} al día)`) : "") : est.gasta && est.porTarea ? tr(`· ≈${fmt(est.porTarea)} por tarea`) : "",
-      est.tokens ? tr(`· lee unos ${est.tokens.toLocaleString(LOCALE)} tokens cada vez`) : "", est.suscripcion ? tr(`· de tu suscripción de ${est.suscripcion}`) : est.sinPrecio ? tr("· sin tarifa conocida") : ""].filter(Boolean).join(" ")));
+    bloque.append(h("small", { class: "nota" }, [tr(`When it wakes up: ${est.como}`), est.gasta && est.porVez > 0 ? tr(`· ≈${fmt(est.porVez)} per heartbeat`) + (est.porDia ? " " + tr(`(≈${fmt(est.porDia)} a day)`) : "") : est.gasta && est.porTarea ? tr(`· ≈${fmt(est.porTarea)} per task`) : "",
+      est.tokens ? tr(`· reads about ${est.tokens.toLocaleString(LOCALE)} tokens each time`) : "", est.suscripcion ? tr(`· from your ${est.suscripcion} subscription`) : est.sinPrecio ? tr("· no known price") : ""].filter(Boolean).join(" ")));
     caja.append(bloque);
   }
-  caja.append(h("div", { class: "bloque" }, h("h4", {}, "Prioridad"),
+  caja.append(h("div", { class: "bloque" }, h("h4", {}, "Priority"),
     h("div", { class: "prioridad" }, [1, 2, 3, 4, 5].map((n) => h("button", { "aria-pressed": String(a.prioridad === n), onclick: () => cambiar({ prioridad: n }) }, n))),
-    h("small", { class: "nota" }, "Cuando el gasto se acerca al tope, se congelan primero los de prioridad baja: al 80 % los de 1 y 2; al 90 %, todos menos los de 5.")));
-  caja.append(h("div", { class: "bloque" }, h("h4", {}, "Gasto"),
-    h("div", { class: "gastos3" }, ["hoy", "semana", "mes"].map((p) => h("div", {}, h("b", {}, ed.gastoAgente(a, p) > 0 ? fmt(ed.gastoAgente(a, p)) : "—"), h("small", {}, { hoy: "hoy", semana: "7 días", mes: "este mes" }[p])))),
-    sinCerebro ? null : campo("Tope diario propio (USD)", h("input", { type: "number", min: "0", step: "0.05", value: a.topeDiario || "", placeholder: "sin tope propio", onchange: (ev) => cambiar({ topeDiario: Math.max(0, parseFloat(ev.target.value) || 0) }) }), "Si lo pasa, se congela hasta mañana. Además manda el tope del edificio (Gasto)."),
-    a.rol === "interventor" ? h("div", {}, h("button", { class: "btn mini", onclick: () => abrirCajon("gasto") }, "Topes del edificio")) : null));
+    h("small", { class: "nota" }, "When spending gets close to the cap, low-priority agents are frozen first: at 80 % those with 1 and 2; at 90 %, everyone except those with 5.")));
+  caja.append(h("div", { class: "bloque" }, h("h4", {}, "Spending"),
+    h("div", { class: "gastos3" }, ["hoy", "semana", "mes"].map((p) => h("div", {}, h("b", {}, ed.gastoAgente(a, p) > 0 ? fmt(ed.gastoAgente(a, p)) : "—"), h("small", {}, { hoy: "today", semana: "7 days", mes: "this month" }[p])))),
+    sinCerebro ? null : campo("Own daily cap (USD)", h("input", { type: "number", min: "0", step: "0.05", value: a.topeDiario || "", placeholder: "no own cap", onchange: (ev) => cambiar({ topeDiario: Math.max(0, parseFloat(ev.target.value) || 0) }) }), "If it goes over, it's frozen until tomorrow. The building's cap applies too (Spending)."),
+    a.rol === "interventor" ? h("div", {}, h("button", { class: "btn mini", onclick: () => abrirCajon("gasto") }, "Building caps")) : null));
 }
 // Capacidades: cada una, con su propio modelo cuando lo necesita
 function fichaCapacidades(caja, a, cambiar, { sinCerebro }) {
-  if (sinCerebro || a.rol === "jev") { caja.append(h("div", { class: "bloque" }, h("p", { class: "nota", style: { margin: 0 } }, a.rol === "jev" ? "JEV solo decide: no usa capacidades." : "Trabaja con reglas fijas: no usa capacidades."))); return; }
+  if (sinCerebro || a.rol === "jev") { caja.append(h("div", { class: "bloque" }, h("p", { class: "nota", style: { margin: 0 } }, a.rol === "jev" ? "JEV only decides: it doesn't use capabilities." : "Works with fixed rules: it doesn't use capabilities."))); return; }
   const aj = ed.e.ajustes, tiene = (id) => a.capacidades.includes(id);
   const marcar = (id, si) => Motor.ejecutar({ tipo: "editarAgente", id: a.id, cambios: { capacidades: si ? [...new Set([...a.capacidades, id])] : a.capacidades.filter((x) => x !== id) } }).then(() => { pintar(); pintarFicha(true); }).catch(avisar);
-  const delEdificio = (id) => (id ? `El del edificio (${nombreModelo(id)})` : "El del edificio (ninguno elegido en Ajustes)");
+  const delEdificio = (id) => (id ? `The building's model (${nombreModelo(id)})` : "The building's model (none chosen in Settings)");
   const extraDe = {
     crear_imagenes: () => [selectorModelo("imagen", a.modeloImagen, { vacio: delEdificio(aj.modeloImagen), alCambiar: (v) => cambiar({ modeloImagen: v }) }), propuestasDe("imagen")],
-    crear_musica: () => [selectorModelo("musica", a.modeloMusica, { vacio: delEdificio(aj.modeloMusica), alCambiar: (v) => cambiar({ modeloMusica: v }) }), h("small", { class: "nota" }, "Música y audio de OpenRouter (por ejemplo, Lyria). Se paga por canción."), propuestasDe("musica")],
+    crear_musica: () => [selectorModelo("musica", a.modeloMusica, { vacio: delEdificio(aj.modeloMusica), alCambiar: (v) => cambiar({ modeloMusica: v }) }), h("small", { class: "nota" }, "Music and audio from OpenRouter (for example, Lyria). Paid per song."), propuestasDe("musica")],
     hablar: () => selectorVoz(a, cambiar),
-    oir: () => [selectorModelo("oido", a.oido, { vacio: delEdificio(aj.modeloOido === BROWSER ? "" : aj.modeloOido).replace("ninguno elegido en Ajustes", "oído del navegador"), extra: [[BROWSER, "Oído del navegador · gratis (Chrome, Edge, Safari)"]], alCambiar: (v) => cambiar({ oido: v }) }), propuestasDe("oido")],
-    ver: () => h("small", { class: "nota" }, aj.modeloVista ? `Si su cerebro no ve, describe las imágenes ${nombreModelo(aj.modeloVista)} (Ajustes).` : "Si su cerebro no ve, hace falta un cerebro con vista en Ajustes."),
+    oir: () => [selectorModelo("oido", a.oido, { vacio: delEdificio(aj.modeloOido === BROWSER ? "" : aj.modeloOido).replace("none chosen in Settings", "browser hearing"), extra: [[BROWSER, "Browser hearing · free (Chrome, Edge, Safari)"]], alCambiar: (v) => cambiar({ oido: v }) }), propuestasDe("oido")],
+    ver: () => h("small", { class: "nota" }, aj.modeloVista ? `If its brain can't see, ${nombreModelo(aj.modeloVista)} describes the images (Settings).` : "If its brain can't see, you need a brain with vision in Settings."),
     skills: () => bloqueSkills(a, cambiar)
   };
   const caps = h("div", { class: "caps" });
@@ -1039,11 +1039,11 @@ function fichaCapacidades(caja, a, cambiar, { sinCerebro }) {
     caps.append(h("div", { class: "cap-bloque" + (marcada ? " on" : "") },
       h("label", { class: "cap" + (avz ? " avz" : "") },
         h("input", { type: "checkbox", checked: marcada || c.id === "escribir", disabled: avz || c.id === "escribir", onchange: (ev) => marcar(c.id, ev.target.checked) }),
-        h("span", {}, c.nombre, avz ? h("span", { class: "enchufe" }, "enchufe pendiente") : null, h("small", {}, avz ? `${tr(c.como)} ${tr("Hace falta:")} ${tr(c.requiere)}` : c.como))),
+        h("span", {}, c.nombre, avz ? h("span", { class: "enchufe" }, "plug pending") : null, h("small", {}, avz ? `${tr(c.como)} ${tr("Needs:")} ${tr(c.requiere)}` : c.como))),
       marcada && extraDe[c.id] ? h("div", { class: "cap-modelo" }, extraDe[c.id]()) : null));
   }
-  caja.append(h("div", { class: "bloque" }, h("h4", {}, "Capacidades"), caps,
-    h("small", { class: "nota" }, "Las avanzadas están descritas pero no conectadas: cada una necesita una pieza más y siempre tu autorización.")));
+  caja.append(h("div", { class: "bloque" }, h("h4", {}, "Capabilities"), caps,
+    h("small", { class: "nota" }, "The advanced ones are described but not connected: each needs one more piece and always your authorisation.")));
 }
 // ---------------- Otras API: la de una suscripción que ya pagas, con tu propia clave ----------------
 const modelosDirectos = {};   // la lista que da cada API con tu clave (se pide al pulsar «Cargar la lista»)
@@ -1065,16 +1065,16 @@ async function cargarModelosDirectos(prov) {
   if (modo === "casa") {
     const r = await fetch("./api/modelos/" + prov, { headers: { "X-Fer-Pin": pin } });
     const d = await r.json().catch(() => ({}));
-    if (!r.ok) throw Object.assign(new Error(d.error || "Fer Casa no pudo pedir la lista."), { mostrado: true });
+    if (!r.ok) throw Object.assign(new Error(d.error || "Fer Home couldn't get the list."), { mostrado: true });
     lista = d.modelos || [];
   } else {
     const clave = store.get(claveApi(prov));
-    if (!clave && !P.sinClave) throw Object.assign(new Error(`Falta tu clave de ${P.corto} (Ajustes → Otras API).`), { mostrado: true });
+    if (!clave && !P.sinClave) throw Object.assign(new Error(`Your ${P.corto} key is missing (Settings → Other APIs).`), { mostrado: true });
     const cab = P.formato === "anthropic" ? { "x-api-key": clave, "anthropic-version": "2023-06-01", "anthropic-dangerous-direct-browser-access": "true" } : clave ? { Authorization: "Bearer " + clave } : {};
     let r; try { r = await fetch(P.api + "/models" + (P.formato === "anthropic" ? "?limit=100" : ""), { headers: cab }); }
-    catch (err) { throw Object.assign(new Error(`No se pudo hablar con ${P.corto} desde el navegador (${err.message}). Algunas API no dejan llamar desde una web: entonces, desde Fer Casa sí.`), { mostrado: true }); }
+    catch (err) { throw Object.assign(new Error(`Couldn't talk to ${P.corto} from the browser (${err.message}). Some APIs don't allow calls from a website: then it works from Fer Home.`), { mostrado: true }); }
     const d = await r.json().catch(() => ({}));
-    if (!r.ok) throw Object.assign(new Error(r.status === 401 || r.status === 403 ? `La clave de ${P.corto} no es válida.` : `${P.corto} respondió ${r.status}: ${(d.error && d.error.message) || ""}`), { mostrado: true });
+    if (!r.ok) throw Object.assign(new Error(r.status === 401 || r.status === 403 ? `The ${P.corto} key isn't valid.` : `${P.corto} replied ${r.status}: ${(d.error && d.error.message) || ""}`), { mostrado: true });
     lista = filtrarModelosApi(prov, d);
   }
   modelosDirectos[prov] = lista;
@@ -1085,46 +1085,46 @@ function selectorDirecto(prov, actual, alCambiar) {
   const sel = h("select", { onchange: (ev) => { if (ev.target.value === "__otro") { otro.hidden = false; otro.focus(); return; } alCambiar(ev.target.value); } });
   const lista = sugerenciasDirectas(prov);
   const deLaEmpresa = !!(modelosDirectos[prov] && modelosDirectos[prov].length);
-  if (lista.length) sel.append(h("optgroup", { label: deLaEmpresa ? tr(`Modelos de ${P.corto} (de tu cuenta)`) : tr("Sugeridos (de la lista de OpenRouter; compruébalos con «Cargar la lista»)") },
+  if (lista.length) sel.append(h("optgroup", { label: deLaEmpresa ? tr(`${P.corto} models (from your account)`) : tr("Suggested (from OpenRouter's list; check them with “Load the list”)") },
     lista.map((id) => { const eq = ed.modeloEquivalente(prov, id); return h("option", { value: id }, id + (eq ? " · " + precioTxt(eq) : "")); })));
-  sel.append(h("option", { value: "__otro" }, "Otro: escribir el nombre exacto…"));
+  sel.append(h("option", { value: "__otro" }, "Other: type the exact name…"));
   if (actual && !lista.includes(actual)) sel.prepend(h("option", { value: actual }, actual));
   sel.value = actual || "";
-  const otro = h("input", { placeholder: "Nombre exacto del modelo (por ejemplo, claude-opus-5-5)", hidden: true, onchange: (ev) => { if (ev.target.value.trim()) alCambiar(ev.target.value.trim()); } });
+  const otro = h("input", { placeholder: "Exact model name (for example, claude-opus-5-5)", hidden: true, onchange: (ev) => { if (ev.target.value.trim()) alCambiar(ev.target.value.trim()); } });
   const msg = h("small", { class: "nota" });
-  const cargar = h("button", { class: "btn mini", type: "button", onclick: async () => { cargar.disabled = true; msg.textContent = tr("Pidiendo la lista…"); try { const l = await cargarModelosDirectos(prov); msg.textContent = tr(`${l.length} modelos de tu cuenta.`); pintarFicha(true); } catch (err) { msg.textContent = err.mostrado ? err.message : err.message; cargar.disabled = false; } } }, "Cargar la lista de " + P.corto);
-  return h("div", { class: "campo" }, h("span", {}, "Modelo"), sel, otro, h("div", { class: "fila-c" }, cargar, msg));
+  const cargar = h("button", { class: "btn mini", type: "button", onclick: async () => { cargar.disabled = true; msg.textContent = tr("Getting the list…"); try { const l = await cargarModelosDirectos(prov); msg.textContent = tr(`${l.length} models in your account.`); pintarFicha(true); } catch (err) { msg.textContent = err.mostrado ? err.message : err.message; cargar.disabled = false; } } }, `Load the list from ${P.corto}`);
+  return h("div", { class: "campo" }, h("span", {}, "Model"), sel, otro, h("div", { class: "fila-c" }, cargar, msg));
 }
 // ---------------- Manos: las skills de Fer Casa que puede usar este agente ----------------
 const catalogo = () => (modo === "casa" ? skillsCasa : ed.catalogoSkills());
 function bloqueSkills(a, cambiar) {
   const cat = catalogo();
-  if (!cat.length) return h("small", { class: "nota" }, modo === "casa" ? "Fer Casa no tiene skills todavía (carpeta «skills» junto a fer-casa.mjs)." :
-    "Las manos funcionan con Fer Casa encendido en tu ordenador: el Chrome de los agentes, su carpeta del Mac y las skills. En esta web, sin Fer Casa, no hacen nada. Cómo ponerlo: LEEME.txt del ZIP.");
+  if (!cat.length) return h("small", { class: "nota" }, modo === "casa" ? "Fer Home has no skills yet (“skills” folder next to fer-casa.mjs)." :
+    "Hands work with Fer Home running on your computer: the agents' Chrome, their folder on the Mac and the skills. On this website, without Fer Home, they do nothing. How to set it up: README in the ZIP.");
   const tiene = (n) => a.habilidades.includes(n);
   const lista = h("div", { class: "skills-lista" }, cat.map((k) => h("label", { class: "cap" },
     h("input", { type: "checkbox", checked: tiene(k.nombre), onchange: (ev) => cambiar({ habilidades: ev.target.checked ? [...new Set([...a.habilidades, k.nombre])] : a.habilidades.filter((x) => x !== k.nombre) }) }),
-    h("span", {}, k.titulo || k.nombre, k.efecto === "externo" ? h("span", { class: "enchufe" }, "pide tu permiso") : null, h("small", {}, k.descripcion)))));
+    h("span", {}, k.titulo || k.nombre, k.efecto === "externo" ? h("span", { class: "enchufe" }, "asks for your permission") : null, h("small", {}, k.descripcion)))));
   const fija = a.skillFija && a.skillFija.skill;
   const selFija = h("select", { onchange: (ev) => { const n = ev.target.value; const k = cat.find((x) => x.nombre === n); cambiar({ skillFija: n ? { skill: n, ajustes: valoresDefecto(k) } : null, habilidades: n ? [...new Set([...a.habilidades, n])] : a.habilidades }); } },
-    h("option", { value: "" }, "Ninguna: trabaja con su cerebro"), cat.filter((k) => k.fija !== false).map((k) => h("option", { value: k.nombre }, k.titulo || k.nombre)));
+    h("option", { value: "" }, "None: it works with its brain"), cat.filter((k) => k.fija !== false).map((k) => h("option", { value: k.nombre }, k.titulo || k.nombre)));
   selFija.value = fija || "";
-  const out = [lista, campo("En cada latido, sin cerebro (no gasta)", selFija, "Si eliges una, en cada latido hace esa skill y te deja lo que encuentre en su chat. Ejemplo: el Vigía de X cada 10 minutos.")];
+  const out = [lista, campo("On every heartbeat, without a brain (doesn't spend)", selFija, "If you pick one, on every heartbeat it runs that skill and leaves what it finds in its chat. Example: the X Watcher every 10 minutes.")];
   const k = fija && cat.find((x) => x.nombre === fija);
   if (k && (k.ajustes || []).length) out.push(editorAjustesSkill(a, k, cambiar));
-  if (fija && !k) out.push(h("small", { class: "nota" }, `Fer Casa no tiene ahora la skill «${fija}».`));
+  if (fija && !k) out.push(h("small", { class: "nota" }, `Fer Home doesn't have the “${fija}” skill right now.`));
   return out;
 }
 function valoresDefecto(k) { const o = {}; for (const x of (k && k.ajustes) || []) o[x.clave] = x.defecto; return o; }
 function editorAjustesSkill(a, k, cambiar) {
   const val = Object.assign(valoresDefecto(k), (a.skillFija && a.skillFija.ajustes) || {});
   const guardar = (clave, v) => { val[clave] = v; cambiar({ skillFija: { skill: k.nombre, ajustes: Object.assign({}, val) } }); };
-  const caja = h("div", { class: "ajustes-skill" }, h("b", {}, `Ajustes de ${k.titulo || k.nombre}`));
+  const caja = h("div", { class: "ajustes-skill" }, h("b", {}, `Settings for ${k.titulo || k.nombre}`));
   for (const x of k.ajustes) {
     if (x.tipo === "lista") {
       const ta = h("textarea", { rows: String(Math.min(12, Math.max(4, (val[x.clave] || []).length + 1))), onchange: (ev) => guardar(x.clave, ev.target.value.split("\n").map((l) => l.trim()).filter(Boolean)) });
       ta.value = (val[x.clave] || []).join("\n");
-      caja.append(campo(x.nombre, ta, x.ayuda || "Uno por línea."));
+      caja.append(campo(x.nombre, ta, x.ayuda || "One per line."));
     } else if (x.tipo === "numero") {
       caja.append(campo(x.nombre, h("input", { type: "number", min: String(x.min ?? 0), step: "1", value: val[x.clave] ?? "", onchange: (ev) => guardar(x.clave, Number(ev.target.value) || x.defecto) }), x.ayuda));
     } else if (x.tipo === "si_no") {
@@ -1133,24 +1133,24 @@ function editorAjustesSkill(a, k, cambiar) {
   }
   return caja;
 }
-const nombreModelo = (id) => (id === BROWSER ? "navegador" : ((modelos.find((m) => m.id === id) || {}).name || id));
+const nombreModelo = (id) => (id === BROWSER ? "browser" : ((modelos.find((m) => m.id === id) || {}).name || id));
 // Voz de un agente: modelo y voz concreta (si no eliges, cada agente tiene una distinta)
 function selectorVoz(a, cambiar) {
   const aj = ed.e.ajustes, propio = a.voz || { modelo: "", voz: "" };
-  const selM = selectorModelo("voz", propio.modelo, { vacio: `La del edificio (${nombreModelo(aj.modeloVoz || BROWSER)})`, extra: [[BROWSER, "Voz del navegador · gratis"]] });
+  const selM = selectorModelo("voz", propio.modelo, { vacio: `The building's voice (${nombreModelo(aj.modeloVoz || BROWSER)})`, extra: [[BROWSER, "Browser voice · free"]] });
   const selV = h("select", {});
   const llenar = () => {
     const modelo = selM.value || aj.modeloVoz || BROWSER;
     const lista = modelo === BROWSER ? vocesNavegador().map((v) => ({ id: v.voiceURI, name: `${v.name} · ${v.lang}` })) : ((voces.find((m) => m.id === modelo) || {}).voices || []);
-    selV.replaceChildren(h("option", { value: "" }, `Distinta para cada agente (ahora: ${nombreVoz(vozDe(Object.assign({}, a, { voz: { modelo: selM.value, voz: "" } })))})`), ...lista.map((v) => h("option", { value: v.id }, v.name)));
+    selV.replaceChildren(h("option", { value: "" }, `Different for each agent (now: ${nombreVoz(vozDe(Object.assign({}, a, { voz: { modelo: selM.value, voz: "" } })))})`), ...lista.map((v) => h("option", { value: v.id }, v.name)));
     selV.value = [...selV.options].some((o) => o.value === propio.voz) ? propio.voz : "";
   };
   llenar();
   selM.onchange = () => { propio.voz = ""; llenar(); cambiar({ voz: { modelo: selM.value, voz: "" } }); };
   selV.onchange = () => cambiar({ voz: { modelo: selM.value, voz: selV.value } });
   const meta = h("span", { class: "nota" });
-  return [campo("Modelo de voz", selM), campo("Su voz", selV), propuestasDe("voz"),
-    h("div", { class: "fila-c" }, h("button", { class: "btn mini", type: "button", onclick: () => { desbloquearAudio(); hablarTexto(tr(`Hola, soy ${a.nombre}. Así sueno.`), meta, a); } }, "Probar su voz"), meta)];
+  return [campo("Voice model", selM), campo("Its voice", selV), propuestasDe("voz"),
+    h("div", { class: "fila-c" }, h("button", { class: "btn mini", type: "button", onclick: () => { desbloquearAudio(); hablarTexto(tr(`Hi, I'm ${a.nombre}. This is how I sound.`), meta, a); } }, "Try its voice"), meta)];
 }
 function confirmar(boton, texto, accion) {
   if (boton.dataset.armado) { accion(); return; }
@@ -1159,25 +1159,25 @@ function confirmar(boton, texto, accion) {
 }
 
 // ---------------- Actividad: todo, y las consultas a JEV ----------------
-const NOMBRE_DEC = { seguir: "seguir", aprovechar: "aprovechar lo que ya hay", parar: "parar", preguntar_jefe: "preguntar al jefe" };
+const NOMBRE_DEC = { seguir: "go ahead", aprovechar: "reuse what's already there", parar: "stop", preguntar_jefe: "ask the boss" };
 function pintarRegistro() {
   $("actTodo").setAttribute("aria-selected", String(vistaAct === "todo")); $("actJev").setAttribute("aria-selected", String(vistaAct === "jev"));
   const r = $("registro"); r.innerHTML = "";
   if (vistaAct === "jev") {
     const filas = (ed.e.consultasJev || []).slice().reverse().slice(0, 150);
-    if (!filas.length) { r.append(h("p", { class: "nota" }, "Aquí aparece cada consulta a JEV: la hora, el agente, lo que iba a hacer, lo que dijo JEV, lo que hizo al final, lo que costó y si sirvió.")); return; }
+    if (!filas.length) { r.append(h("p", { class: "nota" }, "Every question to JEV shows up here: the time, the agent, what it was going to do, what JEV said, what it did in the end, what it cost and whether it helped.")); return; }
     for (const c of filas) {
       const prob = c.probabilidades ? Object.entries(c.probabilidades).sort((x, y) => y[1] - x[1]).map(([k, v]) => `${tr(NOMBRE_DEC[k] || k)} ${Math.round(v * 100)} %`).join(" · ") : "";
       const sirvio = (v, t) => h("button", { class: "btn mini", "aria-pressed": String(c.sirvio === v), onclick: () => Motor.ejecutar({ tipo: "jev.sirvio", consulta: c.id, sirvio: c.sirvio === v ? null : v }).then(pintarRegistro).catch(avisar) }, t);
       r.append(h("div", { class: "item jev-consulta" },
         h("div", { class: "jev-fila" }, h("span", { class: "hora" }, fecha(c.ts)), h("span", {}, h("b", {}, c.nombre), ": ", c.accion), h("span", { class: "coste" }, (c.costeJev || 0) + (c.coste || 0) > 0 ? fmt((c.costeJev || 0) + (c.coste || 0)) : "")),
-        h("div", { class: "jev-fila" }, h("span", {}, "JEV:"), h("span", {}, h("span", { class: "dec " + (c.decision || "") }, c.decision ? tr(NOMBRE_DEC[c.decision] || c.decision) : "sin respuesta"), prob ? h("small", { class: "nota" }, " · " + prob) : null, c.texto && !c.decision ? h("small", { class: "nota" }, " · " + c.texto) : null), h("span", {})),
-        h("div", { class: "jev-fila" }, h("span", {}, "Hizo:"), h("span", {}, c.hizo || tr(NOMBRE_DEC[c.final] || c.final || "—")), h("span", { class: "fila-c" }, h("small", { class: "nota" }, "¿Sirvió?"), sirvio(true, "Sí"), sirvio(false, "No")))));
+        h("div", { class: "jev-fila" }, h("span", {}, "JEV:"), h("span", {}, h("span", { class: "dec " + (c.decision || "") }, c.decision ? tr(NOMBRE_DEC[c.decision] || c.decision) : "no answer"), prob ? h("small", { class: "nota" }, " · " + prob) : null, c.texto && !c.decision ? h("small", { class: "nota" }, " · " + c.texto) : null), h("span", {})),
+        h("div", { class: "jev-fila" }, h("span", {}, "Did:"), h("span", {}, c.hizo || tr(NOMBRE_DEC[c.final] || c.final || "—")), h("span", { class: "fila-c" }, h("small", { class: "nota" }, "Did it help?"), sirvio(true, "Yes"), sirvio(false, "No")))));
     }
     return;
   }
   const filas = ed.e.registro.slice().reverse().slice(0, 150);
-  if (!filas.length) { r.append(h("p", { class: "nota" }, "Aquí aparecerá todo lo que hacen los agentes: latidos, tareas, consultas a JEV, monedas, reuniones, búsquedas de Memory y el gasto.")); return; }
+  if (!filas.length) { r.append(h("p", { class: "nota" }, "Everything the agents do will show up here: heartbeats, tasks, questions to JEV, coins, meetings, Memory searches and spending.")); return; }
   for (const x of filas) r.append(h("div", { class: "item" }, h("span", { class: "hora" }, fecha(x.ts)),
     h("span", {}, h("b", {}, x.nombre + " "), x.texto), h("span", { class: "coste" }, x.coste ? fmt(x.coste) : "")));
 }
@@ -1205,18 +1205,18 @@ function cerrarChat() {
 }
 // El primer mensaje es un saludo del agente (no se guarda ni se paga); si falta la clave, va después y con calma.
 function saludoDe(a) {
-  const pl = ed.e.plantas.find((p) => p.id === a.planta), edif = ed.e.nombre || "tu edificio";
+  const pl = ed.e.plantas.find((p) => p.id === a.planta), edif = ed.e.nombre || "your building";
   if (a.rol === "jefe") {
-    const quien = /^(jefe|boss)$/i.test(sinAcentos(a.nombre.trim())) ? tr(`el jefe de ${edif}`) : tr(`${a.nombre}, el jefe de ${edif}`);
-    if (ed.e.agentes.length === 1) return `Hola, soy ${quien}. Cuéntame qué necesitas. Ahora trabajo solo: si quieres un equipo, mira «Agentes de serie» o pídeme un agente nuevo.`;
-    return `Hola, soy ${quien}. Cuéntame qué necesitas y lo reparto entre el equipo. Si quieres un agente nuevo o reunir a varios en la sala de reuniones, pídemelo.`;
+    const quien = /^(jefe|boss)$/i.test(sinAcentos(a.nombre.trim())) ? tr(`the boss of ${edif}`) : tr(`${a.nombre}, the boss of ${edif}`);
+    if (ed.e.agentes.length === 1) return `Hi, I'm ${quien}. Tell me what you need. Right now I work alone: if you want a team, have a look at “Built-in agents” or ask me for a new agent.`;
+    return `Hi, I'm ${quien}. Tell me what you need and I'll share it out among the team. If you want a new agent or to bring several together in the meeting room, just ask.`;
   }
-  if (!conversa(a)) return a.rol === "jev" ? `Soy ${a.nombre}. Solo decido antes de gastar: seguir, aprovechar lo que ya hay, parar o preguntar al jefe. No converso; mis decisiones están en Actividad → Consultas a JEV.`
-    : `Soy ${a.nombre}. Trabajo con reglas fijas, sin cerebro, así que no converso. En mi ficha ves lo que hago.`;
-  const que = QUE_HACE[a.rol] ? tr(QUE_HACE[a.rol]) : a.objetivo ? tr("Mi objetivo:") + " " + a.objetivo : tr("Pregúntame por mi trabajo o encárgame algo.");
-  return tr(`Hola, soy ${a.nombre}, ${rolTxt(a).toLowerCase()} en ${pl ? pl.nombre : tr(edif)}.`) + " " + que;
+  if (!conversa(a)) return a.rol === "jev" ? `I'm ${a.nombre}. I only decide before spending: go ahead, reuse what's already there, stop or ask the boss. I don't chat; my decisions are in Activity → Questions to JEV.`
+    : `I'm ${a.nombre}. I work with fixed rules, without a brain, so I don't chat. My profile shows what I do.`;
+  const que = QUE_HACE[a.rol] ? tr(QUE_HACE[a.rol]) : a.objetivo ? tr("My objective:") + " " + a.objetivo : tr("Ask me about my work or give me a job.");
+  return tr(`Hi, I'm ${a.nombre}, ${rolTxt(a).toLowerCase()} (${pl ? pl.nombre : tr(edif)}).`) + " " + que;
 }
-const quienPropone = (x) => (x === "jev" ? "JEV" : x === "interventor" ? tr("el Interventor") : x === "jefe" ? tr("el jefe") : x);
+const quienPropone = (x) => (x === "jev" ? "JEV" : x === "interventor" ? tr("the Controller") : x === "jefe" ? tr("the boss") : x);
 function pintarChat(forzar) {
   if (!chatId) return;
   nombresAlDia();
@@ -1228,14 +1228,14 @@ function pintarChat(forzar) {
   const m = $("mensajes"); m.innerHTML = "";
   m.append(h("div", { class: "msg bot saludo" }, h("div", { class: "burbuja" }, saludoDe(a))));
   if (conversa(a) && !hayAcceso()) m.append(h("div", { class: "msg bot saludo" }, h("div", { class: "burbuja" },
-    h("p", {}, esApp() ? "Para que pueda contestarte, pega tu clave de OpenRouter en Ajustes. Se queda solo en este ordenador." : modo === "casa" ? "Para que pueda contestarte, escribe en Ajustes el PIN que pusiste al arrancar Fer Casa." : "Para que pueda contestarte, pega tu clave de OpenRouter en Ajustes. Se queda solo en este navegador."),
-    h("button", { class: "btn mini", onclick: () => abrirCajon("ajustes") }, "Abrir Ajustes"))));
+    h("p", {}, esApp() ? "So I can answer you, paste your OpenRouter key in Settings. It stays only on this computer." : modo === "casa" ? "So I can reply, enter in Settings the PIN you set when you started Fer Home." : "So I can reply, paste your OpenRouter key in Settings. It stays only in this browser."),
+    h("button", { class: "btn mini", onclick: () => abrirCajon("ajustes") }, "Open Settings"))));
   const habla = a.capacidades.includes("hablar");
   for (const x of conv) {
     if (x.role === "user") m.append(h("div", { class: "msg me" }, h("div", { class: "burbuja" }, crudo(x.content)), x.voz ? h("div", { class: "meta" }, x.voz) : null));
     else if (x.role === "assistant") {
-      const meta = h("div", { class: "meta" }, h("span", {}, x.proveedor ? tr(`${x.modelo || ""} · ${((ed.proveedor(x.proveedor) || {}).corto) || x.proveedor}: tu suscripción`) + (x.suscripcion ? ` (≈${fmt(x.suscripcion)})` : "") : `${x.modelo || ""} · ${fmt(x.coste || 0)}`),
-        habla ? h("button", { onclick: (ev) => { desbloquearAudio(); hablarTexto(x.content, ev.target.parentElement, a); } }, "▶ Escuchar") : null,
+      const meta = h("div", { class: "meta" }, h("span", {}, x.proveedor ? tr(`${x.modelo || ""} · ${((ed.proveedor(x.proveedor) || {}).corto) || x.proveedor}: your subscription`) + (x.suscripcion ? ` (≈${fmt(x.suscripcion)})` : "") : `${x.modelo || ""} · ${fmt(x.coste || 0)}`),
+        habla ? h("button", { onclick: (ev) => { desbloquearAudio(); hablarTexto(x.content, ev.target.parentElement, a); } }, "▶ Listen") : null,
         h("span", { class: "monedas-msg" }, botonMoneda(a, "oro"), botonMoneda(a, "roja")));
       m.append(h("div", { class: "msg bot" }, h("div", { class: "burbuja", html: markdown(x.content) }, medios(x)),
         (x.eventos || []).length ? h("div", { class: "chips" }, x.eventos.map((e) => h("span", { class: "chip" }, e))) : null,
@@ -1244,17 +1244,17 @@ function pintarChat(forzar) {
       const autor = ed.agenteExacto(x.agente);
       const pr = x.propuesta && (ed.e.propuestas || []).find((y) => y.id === x.propuesta);
       const botones = pr ? (pr.estado === "pendiente" ? h("div", { class: "fila-c propuesta" },
-        h("button", { class: "btn primario mini", onclick: () => Motor.ejecutar({ tipo: "aceptarPropuesta", propuesta: pr.id }).then((r) => { const n = ed.agenteExacto(r.id); if (n) { seleccion = n.id; fichaTab = "identidad"; } pintar(); pintarChat(true); }).catch(avisar) }, tr(`Crear a ${pr.ficha.nombre || tr("este agente")}`)),
-        h("button", { class: "btn mini", onclick: () => abrirCajon("agente", { ficha: Object.assign({}, pr.ficha, { planta: pr.ficha.planta || "nuevo", plantaNueva: pr.ficha.plantaNueva || { nombre: "", funcion: "" } }), propuesta: pr.id }) }, "Verla y retocarla"),
-        h("button", { class: "btn mini", onclick: () => Motor.ejecutar({ tipo: "descartarPropuesta", propuesta: pr.id }).then(() => pintarChat(true)).catch(avisar) }, "Descartar"))
-        : h("div", { class: "meta" }, pr.estado === "creada" ? "Creado." : "Descartado.")) : null;
-      m.append(h("div", { class: "msg informe" }, h("span", { class: "quien" }, tr(`Informe de ${x.nombre}`)), h("div", { class: "burbuja", html: markdown(x.content) }, medios(x)), botones,
-        x.reunion ? h("div", { class: "meta" }, h("button", { onclick: () => abrirSalas(x.reunion) }, "Ver la reunión")) : null,
+        h("button", { class: "btn primario mini", onclick: () => Motor.ejecutar({ tipo: "aceptarPropuesta", propuesta: pr.id }).then((r) => { const n = ed.agenteExacto(r.id); if (n) { seleccion = n.id; fichaTab = "identidad"; } pintar(); pintarChat(true); }).catch(avisar) }, tr(`Create ${pr.ficha.nombre || tr("this agent")}`)),
+        h("button", { class: "btn mini", onclick: () => abrirCajon("agente", { ficha: Object.assign({}, pr.ficha, { planta: pr.ficha.planta || "nuevo", plantaNueva: pr.ficha.plantaNueva || { nombre: "", funcion: "" } }), propuesta: pr.id }) }, "See it and tweak it"),
+        h("button", { class: "btn mini", onclick: () => Motor.ejecutar({ tipo: "descartarPropuesta", propuesta: pr.id }).then(() => pintarChat(true)).catch(avisar) }, "Dismiss"))
+        : h("div", { class: "meta" }, pr.estado === "creada" ? "Created." : "Dismissed.")) : null;
+      m.append(h("div", { class: "msg informe" }, h("span", { class: "quien" }, tr(`Report from ${x.nombre}`)), h("div", { class: "burbuja", html: markdown(x.content) }, medios(x)), botones,
+        x.reunion ? h("div", { class: "meta" }, h("button", { onclick: () => abrirSalas(x.reunion) }, "See the meeting")) : null,
         autor && autor.rol !== "jefe" && !x.reunion ? h("div", { class: "meta" }, h("span", { class: "monedas-msg" }, botonMoneda(autor, "oro"), botonMoneda(autor, "roja"))) : null));
     }
   }
   for (const e of pendientesError) m.append(h("div", { class: "msg error" }, h("div", { class: "burbuja" }, e)));
-  if (pensando) m.append(h("div", { class: "msg bot escribiendo" }, escribiendo ? h("div", { class: "burbuja", html: markdown(escribiendo) }) : h("div", { class: "burbuja" }, h("span", { class: "pensando", "aria-label": "Pensando" }, h("i"), h("i"), h("i")))));
+  if (pensando) m.append(h("div", { class: "msg bot escribiendo" }, escribiendo ? h("div", { class: "burbuja", html: markdown(escribiendo) }) : h("div", { class: "burbuja" }, h("span", { class: "pensando", "aria-label": "Thinking" }, h("i"), h("i"), h("i")))));
   $("chat").scrollTop = $("chat").scrollHeight;
 }
 // Imágenes y música: se guardan aparte (en este navegador, IndexedDB; en Fer Casa, su carpeta «datos/medios»), así no se pierden al recargar
@@ -1269,32 +1269,32 @@ async function urlMedio(m) {
 }
 function medios(x) {
   if ((x.medios || []).length) return x.medios.map((m) => {
-    const el = m.tipo === "audio" ? h("audio", { controls: true, preload: "none" }) : h("img", { alt: m.texto || "Imagen creada" });
+    const el = m.tipo === "audio" ? h("audio", { controls: true, preload: "none" }) : h("img", { alt: m.texto || "Image created" });
     const ya = mediosCache.get(m.id) || (m.tipo === "audio" ? audiosSesion : imgsSesion).get(m.texto);
     if (ya) el.src = ya;
-    else urlMedio(m).then((u) => { if (u) el.src = u; else if (el.isConnected) el.replaceWith(h("small", { class: "nota" }, m.tipo === "audio" ? "(la música no está en este aparato)" : "(la imagen no está en este aparato)")); });
+    else urlMedio(m).then((u) => { if (u) el.src = u; else if (el.isConnected) el.replaceWith(h("small", { class: "nota" }, m.tipo === "audio" ? "(the music isn't on this device)" : "(the image isn't on this device)")); });
     return el;
   });
   // de la versión 6: solo las de esta sesión
-  return [...(x.imagenes || []).map((t) => imgsSesion.get(t)).filter(Boolean).map((u) => h("img", { src: u, alt: "Imagen creada" })),
+  return [...(x.imagenes || []).map((t) => imgsSesion.get(t)).filter(Boolean).map((u) => h("img", { src: u, alt: "Image created" })),
     ...(x.audios || []).map((t) => audiosSesion.get(t)).filter(Boolean).map((u) => h("audio", { src: u, controls: true, preload: "none" }))];
 }
 // Una reunión que propone el jefe: no empieza hasta que confirmas las rondas
 function tarjetaReunion(id) {
   const r = (ed.e.reuniones || []).find((x) => x.id === id); if (!r) return null;
   const nombres = r.participantes.map((pid) => (ed.agenteExacto(pid) || {}).nombre).filter(Boolean).join(", ");
-  if (r.estado !== "propuesta") return h("div", { class: "tarjeta-reunion" }, h("b", {}, `Reunión «${r.titulo}»`), h("span", { class: "nota" }, `${ESTADO_REUNION[r.estado] || r.estado} · ${nombres}`), h("div", {}, h("button", { class: "btn mini", onclick: () => abrirSalas(r.id) }, "Ver en la sala")));
+  if (r.estado !== "propuesta") return h("div", { class: "tarjeta-reunion" }, h("b", {}, `Meeting “${r.titulo}”`), h("span", { class: "nota" }, `${ESTADO_REUNION[r.estado] || r.estado} · ${nombres}`), h("div", {}, h("button", { class: "btn mini", onclick: () => abrirSalas(r.id) }, "See it in the room")));
   const rondas = h("input", { type: "number", min: "1", step: "1", value: r.rondas });
   const est = h("span", { class: "nota" });
-  const calc = () => { const e = ed.estimarReunion(Object.assign({}, r, { rondas: Math.max(1, parseInt(rondas.value, 10) || 1) })); est.textContent = tr(`Coste estimado: ≈${fmt(e.coste)} (${e.llamadas} llamadas)`); };
+  const calc = () => { const e = ed.estimarReunion(Object.assign({}, r, { rondas: Math.max(1, parseInt(rondas.value, 10) || 1) })); est.textContent = tr(`Estimated cost: ≈${fmt(e.coste)} (${e.llamadas} calls)`); };
   rondas.oninput = calc; calc();
-  return h("div", { class: "tarjeta-reunion" }, h("b", {}, `El jefe propone la reunión «${r.titulo}»`), h("span", { class: "nota" }, `En la mesa: ${nombres}`),
+  return h("div", { class: "tarjeta-reunion" }, h("b", {}, `The boss proposes the meeting “${r.titulo}”`), h("span", { class: "nota" }, `At the table: ${nombres}`),
     h("div", { class: "orden" }, crudo(r.ordenDelDia)),
-    h("div", { class: "fila-c" }, h("span", {}, "Rondas"), rondas, est),
-    h("div", { class: "fila-c" }, h("button", { class: "btn primario mini", onclick: () => empezarReunion(r.id, parseInt(rondas.value, 10) || r.rondas) }, "Empezar la reunión"),
-      h("button", { class: "btn mini", onclick: () => Motor.ejecutar({ tipo: "reunion.cancelar", reunion: r.id }).then(() => { pintar(); pintarChat(true); }).catch(avisar) }, "No hacerla")));
+    h("div", { class: "fila-c" }, h("span", {}, "Rounds"), rondas, est),
+    h("div", { class: "fila-c" }, h("button", { class: "btn primario mini", onclick: () => empezarReunion(r.id, parseInt(rondas.value, 10) || r.rondas) }, "Start the meeting"),
+      h("button", { class: "btn mini", onclick: () => Motor.ejecutar({ tipo: "reunion.cancelar", reunion: r.id }).then(() => { pintar(); pintarChat(true); }).catch(avisar) }, "Don't hold it")));
 }
-const ESTADOS_CHAT = { idle: "Listo para hablar", loading: "Preparando el oído…", listening: "Te escucho. Habla cuando quieras", hearing: "Te estoy oyendo…", transcribing: "Entendiendo lo que has dicho…", thinking: "Pensando…", speaking: "Hablando. Pulsa «Parar» o habla tú para cortarle" };
+const ESTADOS_CHAT = { idle: "Ready to talk", loading: "Getting the hearing ready…", listening: "I'm listening. Speak whenever you like", hearing: "I can hear you…", transcribing: "Understanding what you said…", thinking: "Thinking…", speaking: "Talking. Press “Stop” or speak to cut it off" };
 let estadoJefe = "idle";
 function ponerEstadoJefe(s) { estadoJefe = s; pintarChatCab(); }
 function pintarChatCab() {
@@ -1304,7 +1304,7 @@ function pintarChatCab() {
   $("jefeNombre").textContent = a.nombre;
   $("jefeRol").textContent = `${rolTxt(a)}${pl ? " · " + pl.nombre : ""}`;
   $("jefeEstado").textContent = tr(est === "congelado" || est === "apagado" ? `${ESTADO_TXT[est]}${a.motivoEstado ? " · " + a.motivoEstado : ""}`
-    : estadoJefe === "thinking" && a.rol === "jefe" ? "Pensando y repartiendo…" : ESTADOS_CHAT[estadoJefe]);
+    : estadoJefe === "thinking" && a.rol === "jefe" ? "Thinking and sharing out the work…" : ESTADOS_CHAT[estadoJefe]);
   $("jefeCab").classList.toggle("hablando", estadoJefe === "speaking");
   $("pararVoz").hidden = estadoJefe !== "speaking";
   const av = $("avatar");
@@ -1313,11 +1313,11 @@ function pintarChatCab() {
   // qué se puede hacer en este chat
   const habla = conversa(a), oye = habla && a.capacidades.includes("oir"), dice = habla && a.capacidades.includes("hablar"), ve = habla && a.capacidades.includes("ver");
   $("texto").disabled = !habla; $("enviar").disabled = !habla;
-  $("texto").placeholder = tr(habla ? `Escribe a ${a.nombre}…` : `${a.nombre} no conversa`);
+  $("texto").placeholder = tr(habla ? `Write to ${a.nombre}…` : `${a.nombre} doesn't chat`);
   $("micro").disabled = !oye; $("clip").disabled = !ve; $("altavoz").disabled = !dice;
-  if (!oye) $("micro").title = tr(habla ? `${a.nombre} no tiene la capacidad «Oír». Actívala en su ficha.` : "No conversa");
-  if (!ve) $("clip").title = tr(habla ? `${a.nombre} no tiene la capacidad «Ver imágenes».` : "No conversa"); else $("clip").title = tr("Adjuntar una imagen para que la vea");
-  $("altavoz").title = tr(dice ? "Leer sus respuestas en voz alta" : `${a.nombre} no tiene la capacidad «Hablar».`);
+  if (!oye) $("micro").title = tr(habla ? `${a.nombre} doesn't have the “Hear” capability. Turn it on in its profile.` : "Doesn't chat");
+  if (!ve) $("clip").title = tr(habla ? `${a.nombre} doesn't have the “See images” capability.` : "Doesn't chat"); else $("clip").title = tr("Attach an image for it to see");
+  $("altavoz").title = tr(dice ? "Read the replies out loud" : `${a.nombre} doesn't have the “Speak” capability.`);
   $("verFichaChat").hidden = false;
 }
 async function enviar(textoVoz, voz) {
@@ -1343,7 +1343,7 @@ async function enviar(textoVoz, voz) {
     escribiendo = todo; pintarBorrador();
   };
   try {
-    const vozTxt = voz ? (voz.seconds ? `por voz · ${voz.seconds.toLocaleString(LOCALE, { maximumFractionDigits: 1 })} s · ${voz.model} · ${voz.estimated ? "≈" : ""}${fmt(voz.cost)}` : `por voz · ${voz.model} · gratis`) : "";
+    const vozTxt = voz ? (voz.seconds ? `by voice · ${voz.seconds.toLocaleString(LOCALE, { maximumFractionDigits: 1 })} s · ${voz.model} · ${voz.estimated ? "≈" : ""}${fmt(voz.cost)}` : `by voice · ${voz.model} · free`) : "";
     const r = await Motor.ejecutar({ tipo: "hablar", agente: a.id, texto, imagen, voz: vozTxt, enVoz: enVoz || !!voz, alTrozo });
     for (const im of r.imagenes || []) { imgsSesion.set(im.texto, im.url); if (im.id) mediosCache.set(im.id, im.url); }
     for (const au of r.audios || []) { audiosSesion.set(au.texto, au.url); if (au.id) mediosCache.set(au.id, au.url); }
@@ -1355,7 +1355,7 @@ async function enviar(textoVoz, voz) {
     } else if (finVoz) pararAudio();
   } catch (err) {
     pensando = false; escribiendo = ""; if (finVoz) pararAudio(); ponerEstadoJefe(conv.on ? "listening" : "idle");
-    pendientesError.push(err.mostrado ? err.message : "No hay conexión: " + err.message); pintarChat(true);
+    pendientesError.push(err.mostrado ? err.message : `No connection: ${err.message}`); pintarChat(true);
   }
   // el oído vuelve enseguida (aunque siga hablando): si hablas tú, se calla
   if (propio) { conv.procesando = false; await reanudarOido(); if (estadoJefe !== "speaking" && conv.on) ponerEstadoJefe("listening"); }
@@ -1402,7 +1402,7 @@ async function costeVoz(modelo, chars, secs, genId, metaEl, quien) {
   try { await Motor.ejecutar({ tipo: "gastoExterno", id: quien || "jefe", coste, estimado: real === null, concepto: "voz " + modelo }); } catch {}
   if (cola.meta === metaEl) { cola.chars += chars; cola.coste += coste; cola.estimado = cola.estimado || real === null; chars = cola.chars; }
   const total = cola.meta === metaEl ? cola.coste : coste, est = cola.meta === metaEl ? cola.estimado : real === null;
-  nota(metaEl, tr("voz:") + " " + modelo + " · " + tr(`${chars} caracteres`) + " · " + (est ? "≈" : "") + fmt(total) + (est ? " " + tr("(estimado)") : ""));
+  nota(metaEl, tr("voice:") + " " + modelo + " · " + tr(`${chars} characters`) + " · " + (est ? "≈" : "") + fmt(total) + (est ? " " + tr("(estimated)") : ""));
   pintar();
 }
 function vocesNavegador() { try { return window.speechSynthesis ? speechSynthesis.getVoices() : []; } catch { return []; } }
@@ -1422,7 +1422,7 @@ function vozDe(a) {
   return { modelo, voz: lista[i] };
 }
 function nombreVoz(v) {
-  if (!v.voz) return v.modelo === BROWSER ? "automática" : "la del modelo";
+  if (!v.voz) return v.modelo === BROWSER ? "automatic" : "the model's";
   if (v.modelo === BROWSER) { const x = vocesNavegador().find((y) => y.voiceURI === v.voz); return x ? x.name : v.voz; }
   const x = ((voces.find((m) => m.id === v.modelo) || {}).voices || []).find((y) => y.id === v.voz); return x ? x.name : v.voz;
 }
@@ -1454,7 +1454,7 @@ async function pedirVoz(limpio, modelo, voz) {   // OpenRouter: texto → audio 
   const pedir = (formato) => { const b = { model: modelo, input: limpio, response_format: formato }; if (voz) b.voice = voz; return fetch(apiBase() + "/audio/speech", { method: "POST", headers: Object.assign(apiCab(true), { "X-Title": "Fer Agent" }), body: JSON.stringify(b) }); };
   let formato = "mp3", r = await pedir(formato);
   if (r.status === 400) { const r2 = await pedir("pcm"); if (r2.ok) { r = r2; formato = "pcm"; } }
-  if (!r.ok) { let det = ""; try { det = ((await r.json()).error || {}).message || ""; } catch {} throw new Error(`La voz falló (${r.status}${det ? ": " + det : ""}). Prueba otra en su ficha → Capacidades.`); }
+  if (!r.ok) { let det = ""; try { det = ((await r.json()).error || {}).message || ""; } catch {} throw new Error(`The voice failed (${r.status}${det ? ": " + det : ""}). Try another one in its profile → Capabilities.`); }
   const genId = r.headers.get("X-Generation-Id"), buf = await r.arrayBuffer();
   return { url: URL.createObjectURL(formato === "pcm" ? pcmAWav(buf) : new Blob([buf], { type: "audio/mpeg" })), formato, genId, secs: formato === "pcm" ? buf.byteLength / 48000 : limpio.length / 15, chars: limpio.length };
 }
@@ -1462,23 +1462,23 @@ function siguienteFrase() {
   const turno = cola.turno;
   if (turno !== turnoVoz || cola.sonando) return;
   if (!cola.frases.length) { if (cola.cerrada) terminarVoz(); return; }
-  if (cola.modelo !== BROWSER && ed.usoPresupuesto() >= 1) { nota(cola.meta, "Tope de gasto alcanzado: no leo en voz alta."); cola.frases = []; terminarVoz(); return; }
+  if (cola.modelo !== BROWSER && ed.usoPresupuesto() >= 1) { nota(cola.meta, "Spending cap reached: I won't read out loud."); cola.frases = []; terminarVoz(); return; }
   const frase = cola.frases.shift(), limpio = paraVoz(frase);
   cola.sonando = true; cola.dicho += " " + limpio;
   const seguir = () => { if (turno !== turnoVoz) return; cola.sonando = false; siguienteFrase(); };
   if (cola.modelo === BROWSER) {
-    if (!window.speechSynthesis) { nota(cola.meta, "Este navegador no tiene voz."); cola.frases = []; terminarVoz(); return; }
+    if (!window.speechSynthesis) { nota(cola.meta, "This browser has no voice."); cola.frases = []; terminarVoz(); return; }
     const u = new SpeechSynthesisUtterance(limpio), v = vocesNavegador().find((x) => x.voiceURI === cola.voz);
     if (v) { u.voice = v; u.lang = v.lang; } else u.lang = idiomaVoz();
     u.onend = u.onerror = seguir;
-    ponerEstadoJefe("speaking"); speechSynthesis.speak(u); nota(cola.meta, "voz del navegador · gratis");
+    ponerEstadoJefe("speaking"); speechSynthesis.speak(u); nota(cola.meta, "browser voice · free");
     return;
   }
   (async () => {
     try {
       const prep = cola.prep && cola.prep.texto === frase ? cola.prep.p : pedirVoz(limpio, cola.modelo, cola.voz);
       cola.prep = null;
-      if (cola.chars === 0) nota(cola.meta, "preparando voz…");
+      if (cola.chars === 0) nota(cola.meta, "getting the voice ready…");
       const x = await prep;
       if (turno !== turnoVoz) return;
       if (cola.frases.length) { const sig = cola.frases[0]; cola.prep = { texto: sig, p: pedirVoz(paraVoz(sig), cola.modelo, cola.voz) }; cola.prep.p.catch(() => {}); }   // la siguiente, mientras suena esta
@@ -1490,7 +1490,7 @@ function siguienteFrase() {
       costeVoz(cola.modelo, x.chars, secs, x.genId, cola.meta, cola.a && cola.a.id);
       await new Promise((res) => { const fin = () => { reproductor.removeEventListener("ended", fin); reproductor.removeEventListener("error", fin); res(); }; reproductor.addEventListener("ended", fin); reproductor.addEventListener("error", fin); });
       seguir();
-    } catch (err) { if (turno !== turnoVoz) return; nota(cola.meta, err.message || "No se pudo reproducir la voz."); cola.frases = []; terminarVoz(); }
+    } catch (err) { if (turno !== turnoVoz) return; nota(cola.meta, err.message || "The voice couldn't be played."); cola.frases = []; terminarVoz(); }
   })();
 }
 // ¿Lo que ha oído el micro es su propia voz saliendo por el altavoz? (eco): entonces no se envía
@@ -1510,13 +1510,13 @@ function esEco(texto, inicio) {
 // =====================================================================
 const conv = { on: false, vad: null, rec: null, procesando: false };
 function cargarScript(src, sello) {
-  return new Promise((res, rej) => { const s = document.createElement("script"); s.src = src; s.async = true; if (sello) { s.integrity = sello; s.crossOrigin = "anonymous"; } s.onload = res; s.onerror = () => rej(new Error("no se pudo descargar " + src.split("/npm/")[1])); document.head.append(s); });
+  return new Promise((res, rej) => { const s = document.createElement("script"); s.src = src; s.async = true; if (sello) { s.integrity = sello; s.crossOrigin = "anonymous"; } s.onload = res; s.onerror = () => rej(new Error(`couldn't download ${src.split("/npm/")[1]}`)); document.head.append(s); });
 }
 async function asegurarVAD() {
   if (window.vad && window.vad.MicVAD) return;
   if (!window.ort) await cargarScript(ORT_BASE + "ort.wasm.min.js", SELLOS["ort.wasm.min.js"]);
   await cargarScript(VAD_BASE + "bundle.min.js", SELLOS["bundle.min.js"]);
-  if (!window.vad || !window.vad.MicVAD) throw new Error("el detector de voz no arrancó");
+  if (!window.vad || !window.vad.MicVAD) throw new Error("the voice detector didn't start");
 }
 function aWav(m, rate = 16000) {
   const buf = new ArrayBuffer(44 + m.length * 2), v = new DataView(buf);
@@ -1528,7 +1528,7 @@ function aWav(m, rate = 16000) {
 }
 const oidoDe = (a) => (a && a.oido) || ed.e.ajustes.modeloOido || BROWSER;
 async function transcribir(muestras) {
-  if (ed.usoPresupuesto() >= 1) throw Object.assign(new Error("Tope de gasto alcanzado: el oído de pago está parado. Sube el tope en Gasto o usa el oído del navegador."), { mostrado: true });
+  if (ed.usoPresupuesto() >= 1) throw Object.assign(new Error("Spending cap reached: the paid hearing is stopped. Raise the cap in Spending or use the browser's hearing."), { mostrado: true });
   const a = agenteChat(), modelo = oidoDe(a), secs = muestras.length / 16000;
   const fd = new FormData(); fd.append("model", modelo); fd.append("file", aWav(muestras), "voz.wav");
   const r = await fetch(apiBase() + "/audio/transcriptions", { method: "POST", headers: Object.assign(apiCab(), { "X-Title": "Fer Agent" }), body: fd });
@@ -1537,14 +1537,14 @@ async function transcribir(muestras) {
   const u = (d && d.usage) || {};
   let cost = typeof u.cost === "number" ? u.cost : null, estimated = false;
   if (cost === null) { const m = oidos.find((x) => x.id === modelo); cost = m ? precioOidoSegundo(m) * secs : 0; estimated = true; }
-  try { await Motor.ejecutar({ tipo: "gastoExterno", id: a.id, coste: cost, estimado: estimated, concepto: "oído " + modelo }); } catch {}
+  try { await Motor.ejecutar({ tipo: "gastoExterno", id: a.id, coste: cost, estimado: estimated, concepto: tr("hearing") + " " + modelo }); } catch {}
   return { text: ((d && d.text) || "").trim(), cost, estimated, seconds: u.seconds || secs, model: modelo };
 }
 function microUI() {
   const a = chatId ? agenteChat() : null;
   $("micro").setAttribute("aria-pressed", String(conv.on));
-  if (!$("micro").disabled) $("micro").title = tr(conv.on ? "Colgar (terminar la conversación por voz)" : `Hablar con ${a ? a.nombre : "el agente"} por el micro (modo conversación)`);
-  $("pista").textContent = conv.on ? tr("Conversación por voz: habla y calla; envío solo. Toca el micro para colgar.") : "";
+  if (!$("micro").disabled) $("micro").title = tr(conv.on ? "Hang up (end the voice conversation)" : `Talk to ${a ? a.nombre : "the agent"} through the mic (conversation mode)`);
+  $("pista").textContent = conv.on ? tr("Voice conversation: speak and pause; it sends on its own. Tap the mic to hang up.") : "";
 }
 async function pausarOido() { try { if (conv.vad) await conv.vad.pause(); } catch {} try { if (conv.rec) conv.rec.abort(); } catch {} }
 async function reanudarOido() { if (!conv.on) return; try { if (conv.vad) await conv.vad.start(); } catch {} try { if (conv.rec) conv.rec.start(); } catch {} if (estadoJefe !== "speaking") ponerEstadoJefe("listening"); }
@@ -1556,11 +1556,11 @@ async function oido(entrada, inicioDado) {
   conv.procesando = true;
   await pausarOido();
   try {
-    let texto = entrada, voz = { model: "oído del navegador", cost: 0, estimated: false, seconds: null };
+    let texto = entrada, voz = { model: "browser hearing", cost: 0, estimated: false, seconds: null };
     if (typeof entrada !== "string") { ponerEstadoJefe("transcribing"); voz = await transcribir(entrada); texto = voz.text; }
     if (texto && esEco(texto, inicio)) { texto = ""; }   // era su propia voz por el altavoz: no se envía
     if (texto && conv.on) await enviar(texto, voz);
-  } catch (err) { pendientesError.push(err.mostrado ? err.message : "No se pudo entender el audio: " + err.message); pintarChat(true); }
+  } catch (err) { pendientesError.push(err.mostrado ? err.message : `Couldn't understand the audio: ${err.message}`); pintarChat(true); }
   finally {
     conv.procesando = false; await reanudarOido();
     if (conv.siguiente && conv.on) { const s = conv.siguiente; conv.siguiente = null; oido(s.entrada, s.inicio); }
@@ -1568,15 +1568,15 @@ async function oido(entrada, inicioDado) {
 }
 function errorMicro(err) {
   const n = (err && err.name) || "", raw = String((err && (err.message || err.error)) || err || "");
-  const det = " (" + tr("detalle técnico:") + " " + [n, raw].filter(Boolean).join(": ") + ")";
+  const det = " (" + tr("technical detail:") + " " + [n, raw].filter(Boolean).join(": ") + ")";
   let dentro = false; try { dentro = window.top !== window.self; } catch { dentro = true; }
-  if (dentro) return tr("Estás usando Fer Agent dentro de otra ventana (una vista previa). Ahí el navegador no deja usar el micrófono. Ábrela en una pestaña normal.") + det;
-  if (!window.isSecureContext || !navigator.mediaDevices) return tr("El micrófono solo funciona con una dirección segura (https://… o localhost). Si entras a Fer Casa desde otro aparato por la red de casa, el micro no está permitido: usa el teclado.") + det;
-  if (n === "NotAllowedError" && /system/i.test(raw)) return tr("Tu ordenador no deja al navegador usar el micrófono. En un Mac: Ajustes del Sistema → Privacidad y seguridad → Micrófono → activa tu navegador y vuelve a abrirlo.") + det;
-  if (n === "NotAllowedError" || n === "SecurityError" || /not-allowed|permission|denied/i.test(raw)) return tr("El micrófono está bloqueado para esta web. Pulsa el icono a la izquierda de la dirección → Micrófono → Permitir, y recarga.") + det;
-  if (n === "NotFoundError") return tr("No encuentro ningún micrófono en este aparato.") + det;
-  if (n === "NotReadableError") return tr("Otro programa está usando el micrófono (Zoom, Meet…). Ciérralo y vuelve a probar.") + det;
-  return tr("No se pudo encender el oído.") + det;
+  if (dentro) return tr("You're using Fer Agent inside another window (a preview). There the browser doesn't allow the microphone. Open it in a normal tab.") + det;
+  if (!window.isSecureContext || !navigator.mediaDevices) return tr("The microphone only works with a secure address (https://… or localhost). If you open Fer Home from another device on your home network, the mic isn't allowed: use the keyboard.") + det;
+  if (n === "NotAllowedError" && /system/i.test(raw)) return tr("Your computer doesn't let the browser use the microphone. On a Mac: System Settings → Privacy & Security → Microphone → turn on your browser and open it again.") + det;
+  if (n === "NotAllowedError" || n === "SecurityError" || /not-allowed|permission|denied/i.test(raw)) return tr("The microphone is blocked for this website. Press the icon to the left of the address → Microphone → Allow, and reload.") + det;
+  if (n === "NotFoundError") return tr("I can't find any microphone on this device.") + det;
+  if (n === "NotReadableError") return tr("Another program is using the microphone (Zoom, Meet…). Close it and try again.") + det;
+  return tr("The hearing couldn't be turned on.") + det;
 }
 async function empezarConversacion() {
   const e = oidoDe(agenteChat());
@@ -1585,7 +1585,7 @@ async function empezarConversacion() {
   try {
     if (e === BROWSER) {
       const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
-      if (!SR) throw new Error("este navegador no tiene oído propio. Elige Whisper en su ficha → Capacidades → Oír");
+      if (!SR) throw new Error("this browser has no hearing of its own. Choose Whisper in its profile → Capabilities → Hear");
       const rec = new SR(); rec.lang = idiomaVoz(); rec.interimResults = false; rec.continuous = false;
       rec.onspeechstart = () => { if (estadoJefe === "speaking" && ed.e.ajustes.cortarAlHablar !== false) pararAudio(); if (conv.on && !conv.procesando) ponerEstadoJefe("hearing"); };
       rec.onresult = (ev) => { const t = ev.results[0][0].transcript; if (t && t.trim()) oido(t.trim()); };
@@ -1619,7 +1619,7 @@ async function colgar() {
 // =====================================================================
 // Bandeja de autorizaciones: todo lo que espera tu sí (quién, qué y cuánto cuesta)
 // =====================================================================
-const CLASE_TXT = { accion: "Acción fuera de la web", agente: "Agente nuevo", reunion: "Reunión", moneda: "Moneda", leccion: "Lección nueva", modelo: "Modelo recomendado", falta: "Le falta algo" };
+const CLASE_TXT = { accion: "Action outside the website", agente: "New agent", reunion: "Meeting", moneda: "Coin", leccion: "New lesson", modelo: "Recommended model", falta: "Missing something" };
 let firmaBandeja = "";
 function pintarBandeja(forzar) {
   const v = $("vistaBandeja");
@@ -1630,53 +1630,53 @@ function pintarBandeja(forzar) {
   if (!forzar && firma === firmaBandeja) return;
   firmaBandeja = firma;
   const sc = v.scrollTop;
-  v.replaceChildren(cabPantalla("Lo que espera tu sí"), h("div", { class: "bandeja" },
-    h("h1", {}, "Bandeja de autorizaciones"),
-    h("p", { class: "nota-osc" }, "Aquí llega todo lo que espera tu sí: quién lo pide, qué es y cuánto cuesta. Nada de esto se hace sin ti."),
-    h("p", { class: "nota-osc" }, modo === "casa" ? (casaInfo.telegram ? "Con Fer Casa y Telegram, también te llega al móvil con botones para aprobar o rechazar." : "Desde el móvil: abre la dirección de Fer Casa en tu red de casa, o conecta Telegram (LEEME) para aprobar desde cualquier sitio.")
-      : "Desde el móvil: con la carpeta del cerebro en Google Drive conectada en los dos aparatos, el móvil ve la misma bandeja."),
-    items.length ? items.map(tarjetaPeticion) : h("p", { class: "bandeja-vacia" }, "Nada pendiente. Cuando un agente quiera hacer algo con dinero o fuera de la web, o haya algo que aprobar, aparecerá aquí.")));
+  v.replaceChildren(cabPantalla("What's waiting for your yes"), h("div", { class: "bandeja" },
+    h("h1", {}, "Approval inbox"),
+    h("p", { class: "nota-osc" }, "Everything waiting for your yes arrives here: who asks for it, what it is and what it costs. None of this happens without you."),
+    h("p", { class: "nota-osc" }, modo === "casa" ? (casaInfo.telegram ? "With Fer Home and Telegram, it also reaches your phone with buttons to approve or reject." : "From your phone: open the Fer Home address on your home network, or connect Telegram (README) to approve from anywhere.")
+      : "From your phone: with the brain folder in Google Drive connected on both devices, the phone sees the same inbox."),
+    items.length ? items.map(tarjetaPeticion) : h("p", { class: "bandeja-vacia" }, "Nothing pending. When an agent wants to do something involving money or outside the website, or there's something to approve, it will show up here.")));
   v.scrollTop = sc;
 }
 function tarjetaPeticion(x) {
   const decidir = (si, extra, boton) => {
     if (boton) boton.disabled = true;
     return Motor.ejecutar(Object.assign({ tipo: "bandeja.decidir", clase: x.clase, id: x.id, si }, extra || {}))
-      .then((r) => { if (r && r.estado) avisoFlotante(r.estado === "hecha" ? "Hecho: " + String(r.resultado || "").slice(0, 160) : "No se pudo: " + String(r.resultado || "").slice(0, 160)); pintar(); pintarBandeja(true); })
+      .then((r) => { if (r && r.estado) avisoFlotante(r.estado === "hecha" ? `Done: ${String(r.resultado || "").slice(0, 160)}` : `It couldn't be done: ${String(r.resultado || "").slice(0, 160)}`); pintar(); pintarBandeja(true); })
       .catch((err) => { if (boton) boton.disabled = false; avisar(err); });
   };
   const b = (txt, f, primario) => { const el = h("button", { class: "btn mini" + (primario ? " primario" : ""), type: "button" }, txt); el.onclick = () => f(el); return el; };
   const sinCoste = ["falta", "moneda", "leccion", "modelo"].includes(x.clase);
-  const coste = sinCoste ? "" : x.coste > 0 ? (x.porDia ? `≈${fmt(x.coste)} al día` : `≈${fmt(x.coste)}`) : x.clase === "accion" ? "sin coste" : "≈0 $";
+  const coste = sinCoste ? "" : x.coste > 0 ? (x.porDia ? `≈${fmt(x.coste)} a day` : `≈${fmt(x.coste)}`) : x.clase === "accion" ? "no cost" : "≈0 $";
   const partes = [h("div", { class: "p-cab" }, h("span", { class: "clase-pet" }, CLASE_TXT[x.clase] || x.clase), h("span", { class: "p-quien" }, x.quien), h("span", { class: "nota-osc" }, fecha(x.ts)), coste ? h("span", { class: "p-coste" }, coste) : null),
     h("div", { class: "p-que" }, x.que)];
   let acc = [];
   if (x.clase === "leccion") {
-    const ta = h("textarea", { rows: "2", maxlength: "300", "aria-label": "Texto de la lección" }); ta.value = x.detalle;
-    partes.push(h("p", { class: "p-det" }, tr(`Motivo de la moneda: «${x.motivo}».`) + " " + tr(x.redactada ? "Un modelo barato la ha convertido en regla; retócala si quieres." : "No se pudo redactar con el modelo barato: retócala tú.")), ta);
-    acc = [b("Aprobar", (el) => decidir(true, { texto: ta.value }, el), true),
-      b("Redactar otra vez", (el) => { el.disabled = true; Motor.ejecutar({ tipo: "leccion.redactar", leccion: x.id }).then(() => pintarBandeja(true)).catch(avisar); }),
-      b("Descartar", (el) => decidir(false, null, el))];
+    const ta = h("textarea", { rows: "2", maxlength: "300", "aria-label": "Lesson text" }); ta.value = x.detalle;
+    partes.push(h("p", { class: "p-det" }, tr(`Reason for the coin: “${x.motivo}”.`) + " " + tr(x.redactada ? "A cheap model has turned it into a rule; tweak it if you like." : "The cheap model couldn't write it: tweak it yourself.")), ta);
+    acc = [b("Approve", (el) => decidir(true, { texto: ta.value }, el), true),
+      b("Write it again", (el) => { el.disabled = true; Motor.ejecutar({ tipo: "leccion.redactar", leccion: x.id }).then(() => pintarBandeja(true)).catch(avisar); }),
+      b("Dismiss", (el) => decidir(false, null, el))];
   } else if (x.clase === "reunion") {
-    const rondas = h("input", { type: "number", min: "1", step: "1", value: x.rondas, "aria-label": "Rondas" });
+    const rondas = h("input", { type: "number", min: "1", step: "1", value: x.rondas, "aria-label": "Rounds" });
     const est = h("span", { class: "nota-osc" });
-    const calc = () => { const r = ed.e.reuniones.find((y) => y.id === x.id); if (!r) return; const e = ed.estimarReunion(Object.assign({}, r, { rondas: Math.max(1, parseInt(rondas.value, 10) || 1) })); est.textContent = tr(`≈${fmt(e.coste)} (${e.llamadas} llamadas)`); };
+    const calc = () => { const r = ed.e.reuniones.find((y) => y.id === x.id); if (!r) return; const e = ed.estimarReunion(Object.assign({}, r, { rondas: Math.max(1, parseInt(rondas.value, 10) || 1) })); est.textContent = tr(`≈${fmt(e.coste)} (${e.llamadas} calls)`); };
     rondas.oninput = calc; calc();
-    partes.push(h("p", { class: "p-det" }, x.detalle), h("div", { class: "p-acc" }, h("span", {}, "Rondas"), rondas, est));
-    acc = [b("Empezar la reunión", (el) => decidir(true, { rondas: parseInt(rondas.value, 10) || x.rondas }, el).then(() => abrirSalas(x.id)), true), b("No hacerla", (el) => decidir(false, null, el)), b("Ver en la sala", () => abrirSalas(x.id))];
+    partes.push(h("p", { class: "p-det" }, x.detalle), h("div", { class: "p-acc" }, h("span", {}, "Rounds"), rondas, est));
+    acc = [b("Start the meeting", (el) => decidir(true, { rondas: parseInt(rondas.value, 10) || x.rondas }, el).then(() => abrirSalas(x.id)), true), b("Don't hold it", (el) => decidir(false, null, el)), b("See it in the room", () => abrirSalas(x.id))];
   } else if (x.clase === "agente") {
     partes.push(h("p", { class: "p-det" }, x.detalle));
     const pr = (ed.e.propuestas || []).find((y) => y.id === x.id);
-    acc = [b("Crear", (el) => decidir(true, null, el), true),
-      pr ? b("Verla y retocarla", () => abrirCajon("agente", { ficha: Object.assign({}, pr.ficha, { planta: pr.ficha.planta || "nuevo", plantaNueva: pr.ficha.plantaNueva || { nombre: "", funcion: "" } }), propuesta: pr.id })) : null,
-      b("Descartar", (el) => decidir(false, null, el))];
+    acc = [b("Create", (el) => decidir(true, null, el), true),
+      pr ? b("See it and tweak it", () => abrirCajon("agente", { ficha: Object.assign({}, pr.ficha, { planta: pr.ficha.planta || "nuevo", plantaNueva: pr.ficha.plantaNueva || { nombre: "", funcion: "" } }), propuesta: pr.id })) : null,
+      b("Dismiss", (el) => decidir(false, null, el))];
   } else if (x.clase === "falta") {
-    partes.push(h("p", { class: "p-det" }, entreComillas(x.detalle)), h("p", { class: "nota-osc", style: { margin: 0 } }, "Mientras tanto no avanza solo en su objetivo (no gasta). Dale lo que pide en su ficha, o cámbiale el objetivo."));
+    partes.push(h("p", { class: "p-det" }, entreComillas(x.detalle)), h("p", { class: "nota-osc", style: { margin: 0 } }, "Meanwhile it won't move on alone towards its objective (it doesn't spend). Give it what it asks for in its profile, or change its objective."));
     const a = ed.agenteExacto(x.id);
-    acc = [b("Ya lo tiene", (el) => decidir(true, null, el), true), a ? b("Ver su ficha", () => { cerrarPantalla(); fichaTab = "capacidades"; elegir(a); }) : null];
+    acc = [b("It has it now", (el) => decidir(true, null, el), true), a ? b("See their profile", () => { cerrarPantalla(); fichaTab = "capacidades"; elegir(a); }) : null];
   } else {
     if (x.detalle) partes.push(h("p", { class: "p-det" }, x.detalle));
-    acc = [b(x.clase === "accion" ? "Aprobar y hacerlo" : x.clase === "moneda" ? "Confirmar" : "Aceptar", (el) => decidir(true, null, el), true), b(x.clase === "accion" ? "Rechazar" : "Descartar", (el) => decidir(false, null, el))];
+    acc = [b(x.clase === "accion" ? "Approve and do it" : x.clase === "moneda" ? "Confirm" : "Accept", (el) => decidir(true, null, el), true), b(x.clase === "accion" ? "Reject" : "Dismiss", (el) => decidir(false, null, el))];
   }
   partes.push(h("div", { class: "p-acc" }, acc.filter(Boolean)));
   return h("article", { class: "peticion" + (x.externo ? " externo" : "") }, partes);
@@ -1694,24 +1694,24 @@ function pintarSerie(forzar) {
   if (!forzar && firma === firmaSerie) return;
   firmaSerie = firma;
   const sc = v.scrollTop;
-  const hecho = (r) => { const n = (r.vueltos || []).length, sin = r.sinSitio || []; avisoFlotante((n ? tr(n === 1 ? `Instalado: ${r.vueltos.join(", ")}.` : `Instalados: ${r.vueltos.join(", ")}.`) : tr("No faltaba ninguno.")) + (sin.length ? " " + tr(`No caben: ${sin.join("; ")}.`) : "")); pintar(); pintarSerie(true); };
+  const hecho = (r) => { const n = (r.vueltos || []).length, sin = r.sinSitio || []; avisoFlotante((n ? tr(n === 1 ? `Installed ${r.vueltos.join(", ")}.` : `Installed: ${r.vueltos.join(", ")}.`) : tr("None was missing.")) + (sin.length ? " " + tr(`No room for: ${sin.join("; ")}.`) : "")); pintar(); pintarSerie(true); };
   const tarjeta = (x) => h("article", { class: "serie-ag" + (x.instalado ? " instalado" : "") },
     (() => { const im = h("img", { src: figura(x.aspecto), alt: "", class: "serie-pj" }); asegurarFigura(x.aspecto).then((u) => { im.src = u; }); return im; })(),
     h("div", { class: "serie-txt" },
       h("div", { class: "p-cab" }, h("b", { class: "serie-nombre" }, x.instalado && x.nombreAhora ? x.nombreAhora : x.nombre), h("span", { class: "clase-pet" }, x.papel),
-        x.instalado ? h("span", { class: "serie-estado" }, x.id === "jefe" ? "Siempre está" : "En tu edificio") : null),
+        x.instalado ? h("span", { class: "serie-estado" }, x.id === "jefe" ? "Always there" : "In your building") : null),
       h("p", { class: "p-det" }, x.descripcion),
       h("div", { class: "p-acc" },
         x.instalado
-          ? (x.id === "jefe" ? null : [h("button", { class: "btn mini", type: "button", onclick: () => { cerrarPantalla(); const a = ed.agenteExacto(x.id); if (a) elegir(a); } }, "Ver su ficha"),
-              h("button", { class: "btn mini peligro", type: "button", onclick: (ev) => confirmar(ev.target, "¿Quitarlo? Se borra con su memoria corta. Pulsa otra vez", () => Motor.ejecutar({ tipo: "borrarAgente", id: x.id }).then(() => { pintar(); pintarSerie(true); }).catch(avisar)) }, "Quitar del edificio")])
-          : h("button", { class: "btn mini primario", type: "button", onclick: (ev) => { ev.target.disabled = true; Motor.ejecutar({ tipo: "instalarSerie", id: x.id }).then(hecho).catch((err) => { ev.target.disabled = false; avisar(err); }); } }, "Instalar"))));
-  v.replaceChildren(cabPantalla("Agentes de serie"), h("div", { class: "bandeja catalogo-serie" },
-    h("h1", {}, "Agentes de serie"),
-    h("p", { class: "nota-osc" }, "Los agentes que trae Fer Agent. Un edificio nuevo empieza solo con el jefe: si quieres un solo agente, ya lo tienes. Instala los que quieras, cuando quieras; si quitas uno, aquí vuelve a estar."),
+          ? (x.id === "jefe" ? null : [h("button", { class: "btn mini", type: "button", onclick: () => { cerrarPantalla(); const a = ed.agenteExacto(x.id); if (a) elegir(a); } }, "See their profile"),
+              h("button", { class: "btn mini peligro", type: "button", onclick: (ev) => confirmar(ev.target, "Remove it? It's deleted along with its short memory. Press again", () => Motor.ejecutar({ tipo: "borrarAgente", id: x.id }).then(() => { pintar(); pintarSerie(true); }).catch(avisar)) }, "Remove from the building")])
+          : h("button", { class: "btn mini primario", type: "button", onclick: (ev) => { ev.target.disabled = true; Motor.ejecutar({ tipo: "instalarSerie", id: x.id }).then(hecho).catch((err) => { ev.target.disabled = false; avisar(err); }); } }, "Install"))));
+  v.replaceChildren(cabPantalla("Built-in agents"), h("div", { class: "bandeja catalogo-serie" },
+    h("h1", {}, "Built-in agents"),
+    h("p", { class: "nota-osc" }, "The agents that come with Fer Agent. A new building starts with just the boss: if you only want one agent, you already have it. Install the ones you want, whenever you want; if you remove one, it's back here."),
     faltan.length ? h("div", { class: "fila-c" }, h("button", { class: "btn primario", type: "button", onclick: (ev) => { ev.target.disabled = true; Motor.ejecutar({ tipo: "instalarSerie" }).then(hecho).catch((err) => { ev.target.disabled = false; avisar(err); }); } },
-      tr(`Instalar el equipo recomendado (${faltan.length === 1 ? tr("falta 1") : tr(`faltan ${faltan.length}`)})`)),
-      h("span", { class: "nota-osc" }, "Cúpula: el jefe y los dos sabios. Planta técnica: Tecno, Arturito, el Creador, JEV y el Interventor. Vestíbulo: Memory.")) : h("p", { class: "nota-osc" }, "Tienes instalado todo el equipo recomendado."),
+      tr(`Install the recommended team (${faltan.length === 1 ? tr("1 missing") : tr(`${faltan.length} missing`)})`)),
+      h("span", { class: "nota-osc" }, "Dome: the boss and the two sages. Tech floor: Techie, Artie, the Creator, JEV and the Controller. Lobby: Memory.")) : h("p", { class: "nota-osc" }, "You have the whole recommended team installed."),
     h("div", { class: "serie-lista" }, lista.map(tarjeta))));
   v.scrollTop = sc;
 }
@@ -1730,7 +1730,7 @@ function abrirPantalla(cual) {
   marcarNav();
 }
 function cerrarPantalla() { pantalla = ""; for (const id of Object.values(VISTAS)) $(id).hidden = true; document.body.classList.remove("con-pantalla"); pintar(); reemplazarNav(); }
-const cabPantalla = (titulo) => h("header", { class: "pantalla-cab" }, h("button", { class: "volver-btn", type: "button", onclick: volverAtras }, "← Volver al edificio"), h("span", { class: "grow" }), titulo ? h("span", { class: "nota-osc" }, titulo) : null);
+const cabPantalla = (titulo) => h("header", { class: "pantalla-cab" }, h("button", { class: "volver-btn", type: "button", onclick: volverAtras }, "← Back to the building"), h("span", { class: "grow" }), titulo ? h("span", { class: "nota-osc" }, titulo) : null);
 const enUso = (el) => el.contains(document.activeElement) && /^(INPUT|TEXTAREA|SELECT)$/.test(document.activeElement.tagName);
 function pintarMes(forzar) {
   const v = $("vistaMes");
@@ -1744,35 +1744,35 @@ function pintarMes(forzar) {
   }).sort((x, y) => y.saldo - x.saldo || y.oro - x.oro || x.gasto - y.gasto || x.a.nombre.localeCompare(y.a.nombre));
   const mes = new Date().toLocaleDateString(LOCALE, { month: "long", year: "numeric" });
   const podio = filas.filter((f) => f.oro > 0 && f.saldo > 0).slice(0, 3);
-  const caja = h("div", { class: "mes" }, h("h1", {}, "Agente del mes"), h("p", { class: "nota-osc" }, `${mes[0].toUpperCase() + mes.slice(1)}. Ordenados por monedas (doradas menos rojas); a igualdad, gana el que menos ha gastado.`));
+  const caja = h("div", { class: "mes" }, h("h1", {}, "Agent of the month"), h("p", { class: "nota-osc" }, `${mes[0].toUpperCase() + mes.slice(1)}. Sorted by coins (gold minus red); on a tie, whoever has spent least wins.`));
   if (podio.length) {
     const orden = podio.length === 3 ? [podio[1], podio[0], podio[2]] : podio.length === 2 ? [podio[1], podio[0]] : [podio[0]];
     caja.append(h("div", { class: "podio", style: podio.length < 3 ? { gridTemplateColumns: `repeat(${podio.length}, minmax(0, 260px))`, justifyContent: "center" } : {} }, orden.map((f) => {
       const im = h("img", { alt: "", src: figura(f.a.aspecto) }); asegurarFiguraGrande(f.a.aspecto).then((u) => { im.src = u; });
       const puesto = podio.indexOf(f) + 1;
-      return h("div", { class: puesto === 1 ? "primero" : "" }, h("span", { class: "puesto" }, puesto === 1 ? "Agente del mes" : `${puesto}.º`), im, h("b", {}, f.a.nombre),
-        h("small", {}, `${f.oro} ${tr(f.oro === 1 ? "dorada" : "doradas")} · ${f.rojas} ${tr(f.rojas === 1 ? "roja" : "rojas")}${f.gasto > 0 ? " · " + fmt(f.gasto) : ""}`));
+      return h("div", { class: puesto === 1 ? "primero" : "" }, h("span", { class: "puesto" }, puesto === 1 ? "Agent of the month" : crudo(tr("#{1}").replace("{1}", puesto))), im, h("b", {}, f.a.nombre),
+        h("small", {}, `${f.oro} ${tr(f.oro === 1 ? "gold coin" : "gold coins")} · ${f.rojas} ${tr(f.rojas === 1 ? "red coin" : "red coins")}${f.gasto > 0 ? " · " + fmt(f.gasto) : ""}`));
     })));
-  } else caja.append(h("p", { class: "nota-osc" }, "Todavía no hay monedas este mes. Dalas desde el chat de cada agente (debajo de cada respuesta) o desde su ficha."));
+  } else caja.append(h("p", { class: "nota-osc" }, "No coins yet this month. Give them from each agent's chat (below each reply) or from their profile."));
   const pend = (ed.e.monedas || []).filter((m) => m.estado === "propuesta");
-  if (pend.length) caja.append(h("div", { class: "seccion-osc" }, h("h2", {}, "Propuestas que esperan tu decisión"),
-    h("p", { class: "nota-osc", style: { margin: 0 } }, "JEV y el Interventor proponen monedas rojas cuando ven que alguien falla o gasta de más. Solo cuentan si las confirmas."), pend.map(filaMonedaPropuesta)));
-  caja.append(h("div", { class: "seccion-osc" }, h("h2", {}, "Clasificación"),
-    h("table", { class: "ranking" }, h("thead", {}, h("tr", {}, h("th", {}, "#"), h("th", {}, "Agente"), h("th", {}, "Doradas"), h("th", {}, "Rojas"), h("th", {}, "Saldo"), h("th", {}, "Gasto del mes"), h("th", {}, "Dar moneda"))),
+  if (pend.length) caja.append(h("div", { class: "seccion-osc" }, h("h2", {}, "Proposals waiting for your decision"),
+    h("p", { class: "nota-osc", style: { margin: 0 } }, "JEV and the Controller propose red coins when they see someone failing or overspending. They only count if you confirm them."), pend.map(filaMonedaPropuesta)));
+  caja.append(h("div", { class: "seccion-osc" }, h("h2", {}, "Ranking"),
+    h("table", { class: "ranking" }, h("thead", {}, h("tr", {}, h("th", {}, "#"), h("th", {}, "Agent"), h("th", {}, "Gold"), h("th", {}, "Red"), h("th", {}, "Balance"), h("th", {}, "Spending this month"), h("th", {}, "Give a coin"))),
       h("tbody", {}, filas.map((f, i) => h("tr", {}, h("td", {}, i + 1), h("td", {}, h("img", { src: figura(f.a.aspecto), alt: "" }), h("b", {}, f.a.nombre), " ", h("small", { class: "nota-osc" }, rolTxt(f.a))),
         h("td", {}, f.oro || "—"), h("td", {}, f.rojas || "—"), h("td", {}, f.saldo > 0 ? "+" + f.saldo : f.saldo || "—"), h("td", {}, f.gasto > 0 ? fmt(f.gasto) : "—"),
         h("td", { class: "dar" }, botonMoneda(f.a, "oro"), botonMoneda(f.a, "roja"))))))));
   const recientes = (ed.e.monedas || []).filter((m) => m.estado === "confirmada").slice(-12).reverse();
-  if (recientes.length) caja.append(h("div", { class: "seccion-osc" }, h("h2", {}, "Últimas monedas"),
-    recientes.map((m) => h("div", { class: "fila-moneda" }, h("span", { class: "moneda " + m.tipo }), h("span", { class: "grow" }, h("b", {}, m.nombre), " · ", crudo(m.motivo)), h("small", { class: "nota-osc" }, `${fecha(m.ts)} · ${m.propone === "tú" ? tr("de ti") : tr(`propuesta de ${quienPropone(m.propone)}`)}`)))));
-  v.replaceChildren(cabPantalla("Monedas doradas: buen trabajo · rojas: alucinar o gastar en balde"), caja);
+  if (recientes.length) caja.append(h("div", { class: "seccion-osc" }, h("h2", {}, "Latest coins"),
+    recientes.map((m) => h("div", { class: "fila-moneda" }, h("span", { class: "moneda " + m.tipo }), h("span", { class: "grow" }, h("b", {}, m.nombre), " · ", crudo(m.motivo)), h("small", { class: "nota-osc" }, `${fecha(m.ts)} · ${m.propone === "tú" ? tr("from you") : tr(`proposed by ${quienPropone(m.propone)}`)}`)))));
+  v.replaceChildren(cabPantalla("Gold coins: good work · red: making things up or wasting money"), caja);
   v.scrollTop = sc;
 }
 
 // =====================================================================
 // Salas de reuniones: hasta 10 en la mesa, con orden del día; modera el jefe y al final, el acta
 // =====================================================================
-const ESTADO_REUNION = { propuesta: "propuesta por el jefe: falta tu sí", lista: "convocada: lista para empezar", "en curso": "en curso", terminada: "terminada", interrumpida: "interrumpida", cancelada: "cancelada" };
+const ESTADO_REUNION = { propuesta: "proposed by the boss: waiting for your yes", lista: "called: ready to start", "en curso": "in progress", terminada: "finished", interrumpida: "interrupted", cancelada: "cancelled" };
 let salaSel = "", borradorSala = null;
 function abrirSalas(id) { salaSel = id || salaSel; abrirPantalla("salas"); }
 function empezarReunion(id, rondas) {
@@ -1784,12 +1784,12 @@ function pintarSalas(forzar) {
   const sc = v.scrollTop;
   const reus = (ed.e.reuniones || []).slice().sort((x, y) => y.creada - x.creada);
   if (salaSel !== "nueva" && !reus.some((r) => r.id === salaSel)) salaSel = reus.length ? reus[0].id : "nueva";
-  const lista = h("div", { class: "salas-lista" }, h("h1", {}, "Salas de reuniones"),
-    h("button", { class: "btn primario", onclick: () => { salaSel = "nueva"; pintarSalas(true); } }, "Nueva reunión"),
+  const lista = h("div", { class: "salas-lista" }, h("h1", {}, "Meeting rooms"),
+    h("button", { class: "btn primario", onclick: () => { salaSel = "nueva"; pintarSalas(true); } }, "New meeting"),
     reus.map((r) => h("button", { class: "item-sala" + (r.id === salaSel ? " sel" : ""), type: "button", onclick: () => { salaSel = r.id; pintarSalas(true); } },
-      h("b", {}, crudo(r.titulo)), h("small", {}, `${tr(ESTADO_REUNION[r.estado] || r.estado)} · ${fecha(r.creada)} · ${r.participantes.length} en la mesa`))));
+      h("b", {}, crudo(r.titulo)), h("small", {}, `${tr(ESTADO_REUNION[r.estado] || r.estado)} · ${fecha(r.creada)} · ${r.participantes.length} at the table`))));
   const r = reus.find((x) => x.id === salaSel);
-  v.replaceChildren(cabPantalla("Convoca tú o el jefe · modera el jefe · al final, el acta"), h("div", { class: "salas" }, lista, r ? vistaReunion(r) : formularioReunion()));
+  v.replaceChildren(cabPantalla("Called by you or the boss · the boss chairs · at the end, the minutes"), h("div", { class: "salas" }, lista, r ? vistaReunion(r) : formularioReunion()));
   v.scrollTop = sc;
 }
 // La mesa: el jefe en el centro del fondo y los demás alrededor; brilla quien está hablando
@@ -1805,7 +1805,7 @@ function mesa(r) {
     const x = 50 + 41 * Math.cos(t), y = 63 + 25 * Math.sin(t) + 13;
     const im = h("img", { alt: "", src: figura(a.aspecto) });
     cont.append(h("div", { class: "asiento" + (habla.has(a.id) ? " habla" : ""), style: { left: x + "%", top: y + "%" }, title: a.nombre }, im));
-    cont.append(h("span", { class: "etq-asiento" + (a.rol === "jefe" ? " modera" : ""), style: { left: x + "%", top: (y + 1.5) + "%" } }, a.nombre));
+    cont.append(h("span", { class: "etq-asiento" + (a.rol === "jefe" ? " chairs" : ""), style: { left: x + "%", top: (y + 1.5) + "%" } }, a.nombre));
   });
   const svg = new DOMParser().parseFromString(`<svg class="tablero" viewBox="0 0 160 100" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
     <ellipse cx="80" cy="86" rx="66" ry="10" fill="rgba(0,0,0,.28)"/>
@@ -1818,47 +1818,47 @@ function mesa(r) {
 }
 function vistaReunion(r) {
   const caja = h("div", { class: "sala" }, h("h2", {}, crudo(r.titulo)),
-    h("p", { class: "nota-osc", style: { margin: 0 } }, `${tr(ESTADO_REUNION[r.estado] || r.estado)} · ${tr(r.convoca === "tú" ? "convocas tú" : "convoca el jefe")} · ${fecha(r.creada)}${r.coste > 0 ? " · " + tr(`costó ${fmt(r.coste)}`) : ""}${r.estado === "en curso" && r.rondaActual ? " · " + tr(`ronda ${r.rondaActual} de ${r.rondas}`) : ""}`),
-    mesa(r), h("div", { class: "orden" }, h("b", {}, "Orden del día"), "\n", crudo(String(r.ordenDelDia || "").replace(/^\s*\**\s*(orden del d[ií]a|agenda)\s*\**\s*[:.\-–]?\s*/i, ""))));   // si el jefe ya lo escribió con su título, no se repite
+    h("p", { class: "nota-osc", style: { margin: 0 } }, `${tr(ESTADO_REUNION[r.estado] || r.estado)} · ${tr(r.convoca === "tú" ? "called by you" : "called by the boss")} · ${fecha(r.creada)}${r.coste > 0 ? " · " + tr(`cost ${fmt(r.coste)}`) : ""}${r.estado === "en curso" && r.rondaActual ? " · " + tr(`round ${r.rondaActual} of ${r.rondas}`) : ""}`),
+    mesa(r), h("div", { class: "orden" }, h("b", {}, "Agenda"), "\n", crudo(String(r.ordenDelDia || "").replace(/^\s*\**\s*(orden del d[ií]a|agenda)\s*\**\s*[:.\-–]?\s*/i, ""))));   // si el jefe ya lo escribió con su título, no se repite
   if (r.estado === "propuesta" || r.estado === "lista") {
     const rondas = h("input", { type: "number", min: "1", step: "1", value: r.rondas, style: { width: "70px" } });
     const est = h("span", { class: "nota-osc" });
-    const calc = () => { const e = ed.estimarReunion(Object.assign({}, r, { rondas: Math.max(1, parseInt(rondas.value, 10) || 1) })); est.textContent = tr(`Coste estimado: ≈${fmt(e.coste)} (${e.llamadas} llamadas, unos 1.500 tokens de entrada y 250 de salida cada una)`); };
+    const calc = () => { const e = ed.estimarReunion(Object.assign({}, r, { rondas: Math.max(1, parseInt(rondas.value, 10) || 1) })); est.textContent = tr(`Estimated cost: ≈${fmt(e.coste)} (${e.llamadas} calls, about 1,500 input tokens and 250 output tokens each)`); };
     rondas.oninput = calc; calc();
     caja.append(h("div", { class: "form-osc" },
-      h("div", { class: "fila-c" }, h("span", {}, "Rondas"), rondas, est),
-      h("div", { class: "fila-c" }, h("button", { class: "btn primario", disabled: !hayAcceso(), onclick: () => empezarReunion(r.id, parseInt(rondas.value, 10) || r.rondas) }, r.estado === "propuesta" ? "Sí, empezar la reunión" : "Empezar la reunión"),
-        h("button", { class: "btn", onclick: () => Motor.ejecutar({ tipo: "reunion.cancelar", reunion: r.id }).then(() => pintarSalas(true)).catch(avisar) }, "No hacerla")),
-      hayAcceso() ? null : h("small", { class: "nota-osc" }, "Falta tu clave de OpenRouter (Ajustes).")));
+      h("div", { class: "fila-c" }, h("span", {}, "Rounds"), rondas, est),
+      h("div", { class: "fila-c" }, h("button", { class: "btn primario", disabled: !hayAcceso(), onclick: () => empezarReunion(r.id, parseInt(rondas.value, 10) || r.rondas) }, r.estado === "propuesta" ? "Yes, start the meeting" : "Start the meeting"),
+        h("button", { class: "btn", onclick: () => Motor.ejecutar({ tipo: "reunion.cancelar", reunion: r.id }).then(() => pintarSalas(true)).catch(avisar) }, "Don't hold it")),
+      hayAcceso() ? null : h("small", { class: "nota-osc" }, "Your OpenRouter key is missing (Settings).")));
   }
-  if (r.intervenciones.length) caja.append(h("div", { class: "transcripcion" }, h("h3", {}, "Lo que se dijo"), r.intervenciones.map((x) => h("div", { class: "intervencion" + (x.modera ? " modera" : "") },
-    h("div", {}, h("b", {}, x.nombre), h("small", {}, " · " + tr(`ronda ${x.ronda || "—"}`) + (x.modera ? " · " + tr("modera") : "") + (x.coste > 0 ? " · " + fmt(x.coste) : ""))), h("div", { html: markdown(x.texto) })))));
-  if (r.estado === "en curso") caja.append(h("p", { class: "nota-osc" }, "La reunión sigue: cada intervención aparece aquí cuando termina."));
-  if (r.acta) caja.append(h("div", { class: "acta" }, h("h2", {}, "Acta"), h("div", { html: markdown(r.acta) })));
-  if (r.motivo && r.estado === "interrumpida") caja.append(h("p", { class: "nota-osc" }, tr("Se interrumpió:") + " ", crudo(r.motivo)));
-  if (r.estado !== "en curso") caja.append(h("div", {}, h("button", { class: "btn mini", onclick: (ev) => confirmar(ev.target, "¿Borrarla? Pulsa otra vez", () => Motor.ejecutar({ tipo: "reunion.borrar", reunion: r.id }).then(() => { salaSel = ""; pintarSalas(true); }).catch(avisar)) }, "Borrar la reunión")));
+  if (r.intervenciones.length) caja.append(h("div", { class: "transcripcion" }, h("h3", {}, "What was said"), r.intervenciones.map((x) => h("div", { class: "intervencion" + (x.modera ? " chairs" : "") },
+    h("div", {}, h("b", {}, x.nombre), h("small", {}, " · " + tr(`round ${x.ronda || "—"}`) + (x.modera ? " · " + tr("chairs") : "") + (x.coste > 0 ? " · " + fmt(x.coste) : ""))), h("div", { html: markdown(x.texto) })))));
+  if (r.estado === "en curso") caja.append(h("p", { class: "nota-osc" }, "The meeting is going on: each contribution appears here when it's finished."));
+  if (r.acta) caja.append(h("div", { class: "acta" }, h("h2", {}, "Minutes"), h("div", { html: markdown(r.acta) })));
+  if (r.motivo && r.estado === "interrumpida") caja.append(h("p", { class: "nota-osc" }, tr("It was interrupted:") + " ", crudo(r.motivo)));
+  if (r.estado !== "en curso") caja.append(h("div", {}, h("button", { class: "btn mini", onclick: (ev) => confirmar(ev.target, "Delete it? Press again", () => Motor.ejecutar({ tipo: "reunion.borrar", reunion: r.id }).then(() => { salaSel = ""; pintarSalas(true); }).catch(avisar)) }, "Delete the meeting")));
   return caja;
 }
 function formularioReunion() {
   const j = ed.jefe();
   if (!borradorSala) borradorSala = { titulo: "", orden: "", participantes: new Set(j ? [j.id] : []), rondas: 2 };
   const b = borradorSala;
-  const titulo = h("input", { value: b.titulo, maxlength: "80", placeholder: "Por ejemplo: Plan de la semana", oninput: (ev) => { b.titulo = ev.target.value; } });
-  const orden = h("textarea", { rows: "4", placeholder: "Qué hay que tratar y qué hay que decidir", oninput: (ev) => { b.orden = ev.target.value; } }); orden.value = b.orden;
+  const titulo = h("input", { value: b.titulo, maxlength: "80", placeholder: "For example: Plan for the week", oninput: (ev) => { b.titulo = ev.target.value; } });
+  const orden = h("textarea", { rows: "4", placeholder: "What needs discussing and what needs deciding", oninput: (ev) => { b.orden = ev.target.value; } }); orden.value = b.orden;
   const rondas = h("input", { type: "number", min: "1", step: "1", value: b.rondas, style: { width: "70px" } });
   const est = h("span", { class: "nota-osc" }), cuenta = h("span", { class: "nota-osc" });
   const calc = () => {
     b.rondas = Math.max(1, parseInt(rondas.value, 10) || 1);
-    cuenta.textContent = tr(`${b.participantes.size} de ${MAX_REUNION} en la mesa, contando al jefe`);
+    cuenta.textContent = tr(`${b.participantes.size} of ${MAX_REUNION} at the table, counting the boss`);
     const e = ed.estimarReunion({ participantes: [...b.participantes], rondas: b.rondas });
-    est.textContent = b.participantes.size > 1 ? tr(`Coste estimado: ≈${fmt(e.coste)} (${e.llamadas} llamadas)`) : "";
+    est.textContent = b.participantes.size > 1 ? tr(`Estimated cost: ≈${fmt(e.coste)} (${e.llamadas} calls)`) : "";
   };
   rondas.oninput = calc;
   const posibles = ed.e.agentes.filter((a) => conversa(a));
   const elegir = h("div", { class: "elegir-asistentes" }, posibles.map((a) => {
     const chk = h("input", { type: "checkbox", checked: b.participantes.has(a.id), disabled: a.rol === "jefe" });
     chk.onchange = () => {
-      if (chk.checked && b.participantes.size >= MAX_REUNION) { chk.checked = false; avisoFlotante(`En la mesa caben ${MAX_REUNION}, contando al jefe.`); return; }
+      if (chk.checked && b.participantes.size >= MAX_REUNION) { chk.checked = false; avisoFlotante(`The table seats ${MAX_REUNION}, counting the boss.`); return; }
       if (chk.checked) b.participantes.add(a.id); else b.participantes.delete(a.id); calc();
     };
     return h("label", {}, chk, h("img", { src: figura(a.aspecto), alt: "" }), a.nombre);
@@ -1872,19 +1872,19 @@ function formularioReunion() {
       borradorSala = null; salaSel = r.id; pintarSalas(true);
     } catch (err) { avisar(err); }
   };
-  return h("div", { class: "sala" }, h("h2", {}, "Nueva reunión"),
+  return h("div", { class: "sala" }, h("h2", {}, "New meeting"),
     h("div", { class: "form-osc" },
-      h("label", {}, "Título", titulo), h("label", {}, "Orden del día", orden),
-      h("div", { class: "campo-osc" }, h("b", {}, "Quién se sienta a la mesa"), cuenta, elegir, h("small", { class: "nota-osc" }, "El jefe modera y siempre está. Los que no conversan (Interventor, Memory, JEV) no se pueden sentar.")),
-      h("div", { class: "fila-c" }, h("span", {}, "Rondas"), rondas, est),
-      h("div", { class: "fila-c" }, h("button", { class: "btn primario", onclick: convocar }, "Convocar"), h("small", { class: "nota-osc" }, "No empieza todavía: antes verás la mesa y el coste estimado."))));
+      h("label", {}, "Title", titulo), h("label", {}, "Agenda", orden),
+      h("div", { class: "campo-osc" }, h("b", {}, "Who sits at the table"), cuenta, elegir, h("small", { class: "nota-osc" }, "The boss chairs and is always there. Those who don't chat (Controller, Memory, JEV) can't sit down.")),
+      h("div", { class: "fila-c" }, h("span", {}, "Rounds"), rondas, est),
+      h("div", { class: "fila-c" }, h("button", { class: "btn primario", onclick: convocar }, "Call"), h("small", { class: "nota-osc" }, "It doesn't start yet: first you'll see the table and the estimated cost."))));
 }
 
 // =====================================================================
 // Cajón: Ajustes, Gasto, Vestir
 // =====================================================================
 let cajonTipo = "", cajonDatos = {}, focoAntes = null;
-const TITULOS = { ajustes: "Ajustes", gasto: "Gasto", aspecto: "Aspecto", agente: "Crear agente", piso: "Crear piso" };
+const TITULOS = { ajustes: "Settings", gasto: "Spending", aspecto: "Appearance", agente: "Create agent", piso: "Create floor" };
 function abrirCajon(tipo, datos) {
   if ($("cajon").hidden) focoAntes = document.activeElement;
   cajonTipo = tipo; cajonDatos = datos || {};
@@ -1979,17 +1979,17 @@ window.addEventListener("popstate", (ev) => {
 // ---------------- Crear piso ----------------
 function pintarCrearPiso() {
   const c = $("cajonCuerpo"); c.innerHTML = "";
-  const nom = h("input", { placeholder: "Por ejemplo: Ventas, Casa, Estudios…", maxlength: "40" });
-  const fun = h("textarea", { rows: "3", placeholder: "Por ejemplo: buscar clientes y preparar presupuestos", maxlength: "300" });
+  const nom = h("input", { placeholder: "For example: Sales, Home, Studies…", maxlength: "40" });
+  const fun = h("textarea", { rows: "3", placeholder: "For example: find customers and prepare quotes", maxlength: "300" });
   const crear = async () => {
     if (!nom.value.trim()) { nom.focus(); return; }
     try { const r = await Motor.ejecutar({ tipo: "crearPlanta", nombre: nom.value.trim(), funcion: fun.value.trim() }); cerrarCajon(); abrirPlanta(r.id); verPestana(window.innerWidth <= 900 ? "edificio" : pestana); }
     catch (err) { avisar(err); }
   };
-  c.append(h("p", { class: "nota", style: { margin: 0 } }, "Cada piso es un equipo con una función. A la izquierda, el despacho de su jefe de sección; a la derecha, las oficinas de sus subagentes; y si son muchos y sencillos, el pool. El piso nuevo se construye arriba, bajo la cúpula."),
-    h("label", { class: "campo" }, h("span", {}, "Nombre del piso"), nom),
-    h("label", { class: "campo" }, h("span", {}, "Su función"), fun),
-    h("div", { class: "fila-c" }, h("button", { class: "btn primario", onclick: crear }, "Crear piso"), h("button", { class: "btn", onclick: cerrarCajon }, "Cancelar")));
+  c.append(h("p", { class: "nota", style: { margin: 0 } }, "Each floor is a team with a job. On the left, its section head's office; on the right, its sub-agents' offices; and if there are many simple ones, the pool. The new floor is built at the top, under the dome."),
+    h("label", { class: "campo" }, h("span", {}, "Floor name"), nom),
+    h("label", { class: "campo" }, h("span", {}, "What it does"), fun),
+    h("div", { class: "fila-c" }, h("button", { class: "btn primario", onclick: crear }, "Create floor"), h("button", { class: "btn", onclick: cerrarCajon }, "Cancel")));
   setTimeout(() => nom.focus(), 50);
 }
 
@@ -2009,72 +2009,72 @@ function pintarCrearAgente(nuevo) {
   c.innerHTML = "";
   // 1. el Creador
   const creador = ed.e.agentes.find((x) => x.rol === "creador");
-  const pedido = h("textarea", { rows: "3", placeholder: "Por ejemplo: quiero uno que cada lunes me prepare el menú de la semana y la lista de la compra", value: b.pedido });
+  const pedido = h("textarea", { rows: "3", placeholder: "For example: I want one that every Monday prepares the week's menu and the shopping list for me", value: b.pedido });
   pedido.value = b.pedido || "";
   pedido.oninput = () => { b.pedido = pedido.value; };
-  const quien = creador ? (creador.nombre === "Creador de agentes" || !creador.nombre.trim() ? "el Creador" : creador.nombre) : "";
-  const perPedida = h("input", { maxlength: String(MAX_PERSONALIDAD), placeholder: "Por ejemplo: cercano, con humor y al grano", value: b.personalidadPedida || "" });
+  const quien = creador ? (["Agent Creator", "Creador de agentes"].includes(creador.nombre) || !creador.nombre.trim() ? "the Creator" : creador.nombre) : "";
+  const perPedida = h("input", { maxlength: String(MAX_PERSONALIDAD), placeholder: "For example: friendly, funny and to the point", value: b.personalidadPedida || "" });
   perPedida.oninput = () => { b.personalidadPedida = perPedida.value; };
-  const boton = h("button", { class: "btn primario mini" }, "Que lo diseñe " + quien);
+  const boton = h("button", { class: "btn primario mini" }, `Let ${quien} design it`);
   boton.onclick = async () => {
     if (!pedido.value.trim()) { pedido.focus(); return; }
     if (!hayAcceso()) { abrirCajon("ajustes"); return; }
-    boton.disabled = true; boton.textContent = tr("Diseñando…");
+    boton.disabled = true; boton.textContent = tr("Designing…");
     try {
       const r = await Motor.ejecutar({ tipo: "proponerAgente", texto: pedido.value.trim(), personalidad: perPedida.value.trim() });
       const f = r.propuesta.ficha;
       borrador = Object.assign(borradorNuevo({}), f, { planta: f.planta || "nuevo", plantaNueva: f.plantaNueva || { nombre: "", funcion: "" }, propuesta: r.propuesta.id, porque: f.porque, pedido: pedido.value, personalidadPedida: perPedida.value, coste: r.coste });
       pintarCrearAgente(false);
-    } catch (err) { boton.disabled = false; boton.textContent = tr("Probar otra vez"); c.querySelector(".error-creador")?.remove(); boton.after(h("p", { class: "error-creador" }, err.mostrado ? err.message : "No se pudo: " + err.message)); }
+    } catch (err) { boton.disabled = false; boton.textContent = tr("Try again"); c.querySelector(".error-creador")?.remove(); boton.after(h("p", { class: "error-creador" }, err.mostrado ? err.message : `It couldn't be done: ${err.message}`)); }
   };
-  c.append(h("div", { class: "bloque creador" }, h("h4", {}, "Cuéntaselo con tus palabras"),
-    creador ? h("p", { class: "nota", style: { margin: 0 } }, `${quien[0].toUpperCase() + quien.slice(1)} rellena la ficha por ti. Después la revisas y la cambias si quieres. Cuesta una llamada a su cerebro (unos céntimos).`)
-      : h("p", { class: "nota", style: { margin: 0 } }, "No tienes Creador de agentes. Rellena la ficha a mano o instálalo desde «Agentes de serie»."),
+  c.append(h("div", { class: "bloque creador" }, h("h4", {}, "Tell it in your own words"),
+    creador ? h("p", { class: "nota", style: { margin: 0 } }, `${quien[0].toUpperCase() + quien.slice(1)} fills in the profile for you. Then you review it and change it if you like. It costs one call to its brain (a few cents).`)
+      : h("p", { class: "nota", style: { margin: 0 } }, "You don't have an Agent Creator. Fill in the profile by hand or install it from “Built-in agents”."),
     creador ? pedido : null,
-    creador ? h("label", { class: "campo" }, h("span", {}, "¿Qué personalidad quieres que tenga? (su tono, su humor y si va al grano)"), perPedida, h("small", {}, "Si la dejas en blanco, el Creador te propone una y la puedes cambiar abajo.")) : null,
+    creador ? h("label", { class: "campo" }, h("span", {}, "What personality do you want it to have? (its tone, its humour and whether it gets to the point)"), perPedida, h("small", {}, "If you leave it blank, the Creator proposes one and you can change it below.")) : null,
     creador ? h("div", {}, boton) : null,
-    b.propuesta ? h("p", { class: "porque" }, tr(b.porque || "Ficha rellenada por el Creador.") + (b.coste ? " " + tr(`Diseñarla costó ${fmt(b.coste)}.`) : "")) : null));
+    b.propuesta ? h("p", { class: "porque" }, tr(b.porque || "Profile filled in by the Creator.") + (b.coste ? " " + tr(`Designing it cost ${fmt(b.coste)}.`) : "")) : null));
   // 2. la ficha
-  const nombre = h("input", { value: b.nombre, placeholder: "Cómo se llama", maxlength: "40", oninput: (ev) => { b.nombre = ev.target.value; } });
+  const nombre = h("input", { value: b.nombre, placeholder: "What it's called", maxlength: "40", oninput: (ev) => { b.nombre = ev.target.value; } });
   const selRol = h("select", { onchange: (ev) => { b.rol = ev.target.value; if (b.rol === "sabio") { b.planta = ed.e.plantas[0].id; b.puesto = "izquierda"; b.latido = { cada: 1, unidad: "peticion" }; if (!["abuelo", "abuela"].includes(b.aspecto.p)) b.aspecto = { p: "abuelo" }; } else { if (b.planta === ed.e.plantas[0].id) b.planta = (ed.e.plantas.find((x) => x.tipo === "piso") || { id: "nuevo" }).id; b.puesto = b.rol === "jefe_seccion" ? "despacho" : "oficina"; } pintarCrearAgente(false); } },
-    [["jefe_seccion", "Jefe de sección"], ["subagente", "Subagente"], ["sabio", "Sabio"]].map(([v, t]) => h("option", { value: v }, t)));
+    [["jefe_seccion", "Section head"], ["subagente", "Sub-agent"], ["sabio", "Sage"]].map(([v, t]) => h("option", { value: v }, t)));
   selRol.value = b.rol;
   const plantasOk = b.rol === "sabio" ? ed.e.plantas.filter((x) => x.tipo === "cupula") : ed.e.plantas.filter((x) => x.tipo !== "cupula");
   const selPlanta = h("select", { disabled: b.rol === "sabio", onchange: (ev) => { b.planta = ev.target.value; const t = (ed.e.plantas.find((x) => x.id === b.planta) || { tipo: "piso" }).tipo; b.puesto = t === "vestibulo" ? "izquierda" : (b.rol === "jefe_seccion" ? "despacho" : "oficina"); pintarCrearAgente(false); } },
-    plantasOk.map((x) => h("option", { value: x.id }, x.nombre)), b.rol === "sabio" ? null : h("option", { value: "nuevo" }, "Un piso nuevo…"));
+    plantasOk.map((x) => h("option", { value: x.id }, x.nombre)), b.rol === "sabio" ? null : h("option", { value: "nuevo" }, "A new floor…"));
   selPlanta.value = b.planta;
   const tipoPl = b.planta === "nuevo" ? "piso" : (ed.e.plantas.find((x) => x.id === b.planta) || { tipo: "piso" }).tipo;
   const selPuesto = h("select", { onchange: (ev) => { b.puesto = ev.target.value; } }, (PUESTOS_TXT[tipoPl] || []).map(([v, t]) => h("option", { value: v }, t)));
   selPuesto.value = b.puesto;
-  const pNombre = h("input", { value: b.plantaNueva.nombre, placeholder: "Nombre del piso nuevo", oninput: (ev) => { b.plantaNueva.nombre = ev.target.value; } });
-  const pFuncion = h("input", { value: b.plantaNueva.funcion, placeholder: "Su función", oninput: (ev) => { b.plantaNueva.funcion = ev.target.value; } });
-  const cuerpo = h("textarea", { rows: "5", placeholder: "Quién es y cómo trabaja. Por ejemplo: «Eres el encargado de…; cada vez que despiertes, …; entrega…»", oninput: (ev) => { b.cuerpo = ev.target.value; } }); cuerpo.value = b.cuerpo;
-  const objetivo = h("textarea", { rows: "2", placeholder: "Lo que debe conseguir (opcional)", oninput: (ev) => { b.objetivo = ev.target.value; } }); objetivo.value = b.objetivo;
-  const personalidad = h("textarea", { rows: "2", maxlength: String(MAX_PERSONALIDAD), placeholder: "Su tono, su humor y si va al grano", oninput: (ev) => { b.personalidad = ev.target.value; } }); personalidad.value = b.personalidad || "";
-  const selCerebro = selectorModelo("texto", b.cerebro, { vacio: "El más barato que sirva (lo elige el edificio)", alCambiar: (v) => { b.cerebro = v; } });
+  const pNombre = h("input", { value: b.plantaNueva.nombre, placeholder: "Name of the new floor", oninput: (ev) => { b.plantaNueva.nombre = ev.target.value; } });
+  const pFuncion = h("input", { value: b.plantaNueva.funcion, placeholder: "What it does", oninput: (ev) => { b.plantaNueva.funcion = ev.target.value; } });
+  const cuerpo = h("textarea", { rows: "5", placeholder: "Who it is and how it works. For example: “You're in charge of…; every time you wake up, …; deliver…”", oninput: (ev) => { b.cuerpo = ev.target.value; } }); cuerpo.value = b.cuerpo;
+  const objetivo = h("textarea", { rows: "2", placeholder: "What it should achieve (optional)", oninput: (ev) => { b.objetivo = ev.target.value; } }); objetivo.value = b.objetivo;
+  const personalidad = h("textarea", { rows: "2", maxlength: String(MAX_PERSONALIDAD), placeholder: "Its tone, its humour and whether it gets to the point", oninput: (ev) => { b.personalidad = ev.target.value; } }); personalidad.value = b.personalidad || "";
+  const selCerebro = selectorModelo("texto", b.cerebro, { vacio: "The cheapest that will do (the building picks it)", alCambiar: (v) => { b.cerebro = v; } });
   const num = h("input", { type: "number", min: "1", step: "1", value: b.latido.cada, disabled: b.latido.unidad === "peticion", onchange: (ev) => { b.latido.cada = Math.max(1, parseInt(ev.target.value, 10) || 1); } });
-  const uni = h("select", { onchange: (ev) => { b.latido.unidad = ev.target.value; num.disabled = b.latido.unidad === "peticion"; } }, [["min", "minutos"], ["h", "horas"], ["d", "días"], ["peticion", "solo a petición"]].map(([v, t]) => h("option", { value: v }, t)));
+  const uni = h("select", { onchange: (ev) => { b.latido.unidad = ev.target.value; num.disabled = b.latido.unidad === "peticion"; } }, [["min", "minutes"], ["h", "hours"], ["d", "days"], ["peticion", "on request only"]].map(([v, t]) => h("option", { value: v }, t)));
   uni.value = b.latido.unidad;
-  const alD = h("select", { onchange: (ev) => { b.alDespertar = ev.target.value; } }, h("option", { value: "tareas" }, "Hace sus tareas pendientes (si no hay, no gasta)"), h("option", { value: "objetivo" }, "Hace sus tareas y, si no hay, avanza en su objetivo (gasta)"));
+  const alD = h("select", { onchange: (ev) => { b.alDespertar = ev.target.value; } }, h("option", { value: "tareas" }, "Does its pending tasks (if there are none, it doesn't spend)"), h("option", { value: "objetivo" }, "Does its tasks and, if there are none, works on its objective (spends)"));
   alD.value = b.alDespertar;
   const caps = h("div", { class: "caps" }, CAPACIDADES.filter((x) => x.tipo === "basica").map((x) => h("label", { class: "cap" },
     h("input", { type: "checkbox", checked: b.capacidades.includes(x.id), disabled: x.id === "escribir", onchange: (ev) => { b.capacidades = ev.target.checked ? [...new Set([...b.capacidades, x.id])] : b.capacidades.filter((y) => y !== x.id); } }),
     h("span", {}, x.nombre, h("small", {}, x.como)))));
-  c.append(h("div", { class: "bloque" }, h("h4", {}, "Su ficha"),
-    campo("Nombre", nombre),
-    h("div", { class: "dos" }, campo("Papel", selRol), campo("Planta", selPlanta)),
-    h("small", { class: "nota", style: { marginTop: "-6px" } }, { jefe_seccion: "El jefe de sección dirige un piso desde el despacho de la izquierda y reparte el trabajo a sus subagentes.", subagente: "El subagente hace el trabajo, en una oficina o, si es sencillo y barato, en el pool.", sabio: "El sabio está en la cúpula y solo aconseja al jefe en decisiones importantes. Es caro." }[b.rol]),
+  c.append(h("div", { class: "bloque" }, h("h4", {}, "Its profile"),
+    campo("Name", nombre),
+    h("div", { class: "dos" }, campo("Role", selRol), campo("Floor", selPlanta)),
+    h("small", { class: "nota", style: { marginTop: "-6px" } }, { jefe_seccion: "The section head runs a floor from the office on the left and shares out the work among its sub-agents.", subagente: "The sub-agent does the work, in an office or, if it's simple and cheap, in the pool.", sabio: "The sage sits in the dome and only advises the boss on important decisions. It's expensive." }[b.rol]),
     b.planta === "nuevo" ? h("div", { class: "dos" }, pNombre, pFuncion) : null,
-    campo("Sitio", selPuesto),
-    campo("Instrucciones", cuerpo), campo("Personalidad", personalidad, "Va en cada llamada: su carácter no depende del cerebro."), campo("Objetivo", objetivo),
-    campo("Cerebro", selCerebro, "Arriba, los recomendados por nivel; debajo, todos. Precio en dólares por millón de tokens (entrada / salida), según OpenRouter."),
-    h("div", { class: "campo" }, h("span", {}, "En reposo, se despierta"), h("div", { class: "fila-c" }, h("span", {}, "cada"), num, uni)),
-    b.rol === "sabio" ? null : campo("Al despertar", alD),
-    h("div", { class: "campo" }, h("span", {}, "Capacidades"), caps)));
+    campo("Spot", selPuesto),
+    campo("Instructions", cuerpo), campo("Personality", personalidad, "Sent with every call: its character doesn't depend on the brain."), campo("Objective", objetivo),
+    campo("Brain", selCerebro, "At the top, the recommended ones by level; below, all of them. Prices in dollars per million tokens (input / output), according to OpenRouter."),
+    h("div", { class: "campo" }, h("span", {}, "Resting, it wakes up"), h("div", { class: "fila-c" }, h("span", {}, "every"), num, uni)),
+    b.rol === "sabio" ? null : campo("When it wakes up", alD),
+    h("div", { class: "campo" }, h("span", {}, "Capabilities"), caps)));
   // 3. su aspecto
-  c.append(h("div", { class: "bloque" }, h("h4", {}, "Su aspecto"), selectorAspecto(b.aspecto, (A) => { b.aspecto = A; })));
+  c.append(h("div", { class: "bloque" }, h("h4", {}, "Its appearance"), selectorAspecto(b.aspecto, (A) => { b.aspecto = A; })));
   // 4. crear
-  const crear = h("button", { class: "btn primario" }, "Crear agente");
+  const crear = h("button", { class: "btn primario" }, "Create agent");
   crear.onclick = async () => {
     if (b.planta === "nuevo" && !b.plantaNueva.nombre.trim()) { pNombre.focus(); return; }
     const ficha = Object.assign({}, b, { planta: b.planta === "nuevo" ? "" : b.planta, plantaNueva: b.planta === "nuevo" ? b.plantaNueva : null, nivel: b.cerebro ? "" : (b.nivel || "economico") });
@@ -2084,9 +2084,9 @@ function pintarCrearAgente(nuevo) {
       borrador = null; cerrarCajon();
       const nuevo = ed.agente(r.id);
       if (nuevo) { abrirPlanta(nuevo.planta); elegir(nuevo); }
-    } catch (err) { crear.disabled = false; c.querySelector(".error-creador.final")?.remove(); crear.parentElement.after(h("p", { class: "error-creador final" }, err.mostrado ? err.message : "No se pudo: " + err.message)); }
+    } catch (err) { crear.disabled = false; c.querySelector(".error-creador.final")?.remove(); crear.parentElement.after(h("p", { class: "error-creador final" }, err.mostrado ? err.message : `It couldn't be done: ${err.message}`)); }
   };
-  c.append(h("div", { class: "fila-c pie-crear" }, crear, h("button", { class: "btn", onclick: () => { borrador = null; cerrarCajon(); } }, "Cancelar")));
+  c.append(h("div", { class: "fila-c pie-crear" }, crear, h("button", { class: "btn", onclick: () => { borrador = null; cerrarCajon(); } }, "Cancel")));
   c.scrollTop = nuevo ? 0 : sc;
 }
 
@@ -2095,17 +2095,17 @@ function pintarAspecto() {
   const c = $("cajonCuerpo"); c.innerHTML = "";
   const a = ed.agente(cajonDatos.id) || ed.jefe();
   if (!a) return;
-  $("cajonTitulo").textContent = tr("Foto y nombre de ") + a.nombre;
+  $("cajonTitulo").textContent = tr("Photo and name of ") + a.nombre;
   // el nombre, aquí mismo, junto a la foto
-  const nom = h("input", { value: a.nombre, maxlength: "40", "aria-label": "Nombre" });
-  nom.onchange = () => { const v = nom.value.trim(); if (!v || v === a.nombre) { nom.value = a.nombre; return; } Motor.ejecutar({ tipo: "editarAgente", id: a.id, cambios: { nombre: v } }).then(() => { $("cajonTitulo").textContent = tr("Foto y nombre de ") + v; pintar(); }).catch(avisar); };
-  c.append(h("div", { class: "bloque" }, campo("Nombre", nom, "Ponle el nombre que quieras.")));
+  const nom = h("input", { value: a.nombre, maxlength: "40", "aria-label": "Name" });
+  nom.onchange = () => { const v = nom.value.trim(); if (!v || v === a.nombre) { nom.value = a.nombre; return; } Motor.ejecutar({ tipo: "editarAgente", id: a.id, cambios: { nombre: v } }).then(() => { $("cajonTitulo").textContent = tr("Photo and name of ") + v; pintar(); }).catch(avisar); };
+  c.append(h("div", { class: "bloque" }, campo("Name", nom, "Give it any name you like.")));
   let espera = null;
   c.append(selectorAspecto(a.aspecto, (A) => {
     clearTimeout(espera);
     espera = setTimeout(() => Motor.ejecutar({ tipo: "editarAgente", id: a.id, cambios: { aspecto: A } }).then(() => { asegurarFigura(A).then(() => pintar()); }).catch(avisar), 120);
   }));
-  c.append(h("p", { class: "nota" }, a.rol === "jefe" ? "El color de la web sigue al de la ropa del jefe (y en cada chat, al del agente con quien hablas)." : "Se guarda con el edificio. En su chat, el color de la web sigue al de su ropa."));
+  c.append(h("p", { class: "nota" }, a.rol === "jefe" ? "The website's colour follows the boss's clothes (and in each chat, the clothes of the agent you're talking to)." : "It's saved with the building. In its chat, the website's colour follows its clothes."));
 }
 
 function pintarGastoCajon(soloDatos) {
@@ -2114,49 +2114,49 @@ function pintarGastoCajon(soloDatos) {
   c.innerHTML = "";
   const aj = ed.e.ajustes, uso = ed.usoPresupuesto();
   const guardarAj = (cambios) => Motor.ejecutar({ tipo: "ajustes", cambios }).then(() => { pintar(); pintarGastoCajon(); }).catch(avisar);
-  c.append(h("div", { class: "bloque" }, h("h4", {}, "Todo el edificio"),
-    h("div", { class: "gastos3" }, ["hoy", "semana", "mes"].map((p) => h("div", {}, h("b", {}, fmt(ed.gastoEdificio(p))), h("small", {}, { hoy: "hoy", semana: "7 días", mes: "este mes" }[p])))),
+  c.append(h("div", { class: "bloque" }, h("h4", {}, "The whole building"),
+    h("div", { class: "gastos3" }, ["hoy", "semana", "mes"].map((p) => h("div", {}, h("b", {}, fmt(ed.gastoEdificio(p))), h("small", {}, { hoy: "today", semana: "7 days", mes: "this month" }[p])))),
     h("div", { class: "barra" }, h("i", { class: faseClase(), style: { width: Math.min(100, uso * 100) + "%" } })),
-    h("p", { class: "nota", style: { margin: 0 } }, tr(`Uso del tope: ${Math.round(uso * 100)} %.`) + " " + tr({ normal: "Todos trabajan.", congelacion1: "Congelados los de prioridad 1 y 2.", congelacion2: "Solo trabajan los de prioridad 5.", tope: "Tope alcanzado: todo congelado hasta mañana o hasta que subas el tope." }[ed.e.fase || "normal"]))));
+    h("p", { class: "nota", style: { margin: 0 } }, tr(`Cap used: ${Math.round(uso * 100)} %.`) + " " + tr({ normal: "Everyone works.", congelacion1: "Priority 1 and 2 are frozen.", congelacion2: "Only priority 5 works.", tope: "Cap reached: everything frozen until tomorrow or until you raise the cap." }[ed.e.fase || "normal"]))));
   // el interruptor general y quién gasta al despertar
   const pausa = aj.pausa !== false;
   const lista = ed.quienesGastan().filter((x) => !["memory"].includes(x.a.rol));
   const conLatido = lista.filter((x) => x.auto && !x.a.apagado);
   const totalDia = conLatido.reduce((s, x) => s + (x.est.porDia || 0), 0);
   const ponerPeticion = (a) => Motor.ejecutar({ tipo: "editarAgente", id: a.id, cambios: { latido: { cada: 1, unidad: "peticion" } } }).then(() => { pintar(); pintarGastoCajon(); }).catch(avisar);
-  c.append(h("div", { class: "bloque" }, h("h4", {}, "Lo automático"),
+  c.append(h("div", { class: "bloque" }, h("h4", {}, "Automatic work"),
     h("div", { class: "fila-c" }, h("button", { class: "pausa-btn", type: "button", "aria-pressed": String(pausa), onclick: () => Motor.ejecutar({ tipo: "pausa", pausa: !pausa }).then(() => { pintar(); pintarGastoCajon(); }).catch(avisar) },
-      h("span", { class: "pausa-ico", "aria-hidden": "true" }), h("span", { class: "pausa-txt" }, h("b", {}, pausa ? "En pausa" : "Automático en marcha"), h("small", {}, pausa ? "pulsa para ponerlo en marcha" : "pulsa para parar todo lo automático")))),
-    h("p", { class: "nota", style: { margin: 0 } }, pausa ? "Pausa general: ningún agente que gaste se despierta solo, y las tareas que reparte el jefe esperan. Tú sí puedes hablar con ellos y despertarlos a mano. Lo que no gasta nada (el Interventor y las skills sin cerebro, como el Vigía de X) sigue funcionando."
-      : `En marcha. Si nadie tuviera tareas, lo automático costaría unos ${fmt(totalDia)} al día (estimado).`),
-    h("h4", { style: { marginTop: "6px" } }, "Quién gasta al despertar"),
+      h("span", { class: "pausa-ico", "aria-hidden": "true" }), h("span", { class: "pausa-txt" }, h("b", {}, pausa ? "Paused" : "Automatic work running"), h("small", {}, pausa ? "press to start it" : "press to stop everything automatic")))),
+    h("p", { class: "nota", style: { margin: 0 } }, pausa ? "General pause: no agent that spends wakes up on its own, and the tasks the boss shares out wait. You can still talk to them and wake them up by hand. Whatever costs nothing (the Controller and the skills without a brain, like the X Watcher) keeps working."
+      : `Running. If nobody had tasks, the automatic work would cost about ${fmt(totalDia)} a day (estimated).`),
+    h("h4", { style: { marginTop: "6px" } }, "Who spends when they wake up"),
     h("div", { class: "quien-gasta" }, lista.map(({ a, auto, est }) => h("div", { class: "fila-qg" + (est.gasta && auto && est.porVez > 0 ? " gasta" : "") },
       h("img", { src: figura(a.aspecto), alt: "" }),
-      h("span", { class: "qg-txt" }, h("b", {}, a.nombre), h("small", {}, `${a.apagado ? "apagado" : auto ? textoLatido(a.latido) : "solo a petición"} · ${est.como}`)),
-      h("span", { class: "qg-der" }, est.gasta && est.porVez > 0 ? h("b", {}, `≈${fmt(est.porVez)} por latido`) : h("small", {}, est.suscripcion ? `de tu suscripción de ${est.suscripcion}` : est.gasta ? (est.porTarea ? `≈${fmt(est.porTarea)} por tarea` : "—") : "no gasta"),
-        est.gasta && auto && est.porDia > 0 ? h("small", {}, `≈${fmt(est.porDia)} al día`) : null,
-        est.gasta && auto && !a.apagado && a.rol !== "jefe" ? h("button", { class: "btn mini", type: "button", onclick: () => ponerPeticion(a) }, "Solo a petición") : null)))),
-    h("small", { class: "nota" }, "Estimado (SUPUESTO): lo que lee al despertar, unas 3,5 letras por token, más unos 400 tokens de respuesta, con la tarifa de su cerebro. Buscar en internet suma unos 0,006 $. El gasto real lo ves arriba.")));
+      h("span", { class: "qg-txt" }, h("b", {}, a.nombre), h("small", {}, `${a.apagado ? "off" : auto ? textoLatido(a.latido) : "on request only"} · ${est.como}`)),
+      h("span", { class: "qg-der" }, est.gasta && est.porVez > 0 ? h("b", {}, `≈${fmt(est.porVez)} per heartbeat`) : h("small", {}, est.suscripcion ? `from your ${est.suscripcion} subscription` : est.gasta ? (est.porTarea ? `≈${fmt(est.porTarea)} per task` : "—") : "doesn't spend"),
+        est.gasta && auto && est.porDia > 0 ? h("small", {}, `≈${fmt(est.porDia)} a day`) : null,
+        est.gasta && auto && !a.apagado && a.rol !== "jefe" ? h("button", { class: "btn mini", type: "button", onclick: () => ponerPeticion(a) }, "On request only") : null)))),
+    h("small", { class: "nota" }, "Estimate (ASSUMPTION): what it reads when it wakes up, about 3.5 letters per token, plus about 400 tokens of reply, at its brain's price. Internet search adds about $0.006. You can see the real spending above.")));
   const td = h("input", { type: "number", min: "0", step: "0.5", value: aj.topeDiario }), tm = h("input", { type: "number", min: "0", step: "1", value: aj.topeMensual }), cd = h("input", { type: "number", min: "10", max: "99", step: "5", value: Math.round((aj.congelarDesde || 0.8) * 100) });
   td.onchange = () => guardarAj({ topeDiario: Math.max(0, parseFloat(td.value) || 0) });
   tm.onchange = () => guardarAj({ topeMensual: Math.max(0, parseFloat(tm.value) || 0) });
   cd.onchange = () => guardarAj({ congelarDesde: Math.min(0.99, Math.max(0.1, (parseFloat(cd.value) || 80) / 100)) });
   const medio = Math.round(((aj.congelarDesde || 0.8) + 1) / 2 * 100);
-  c.append(h("div", { class: "bloque" }, h("h4", {}, "Topes"),
-    h("div", { class: "dos" }, h("label", { class: "campo" }, h("span", {}, "Tope diario (USD)"), td), h("label", { class: "campo" }, h("span", {}, "Tope mensual (USD)"), tm)),
-    h("label", { class: "campo" }, h("span", {}, "Empezar a congelar al (%)"), cd),
+  c.append(h("div", { class: "bloque" }, h("h4", {}, "Caps"),
+    h("div", { class: "dos" }, h("label", { class: "campo" }, h("span", {}, "Daily cap (USD)"), td), h("label", { class: "campo" }, h("span", {}, "Monthly cap (USD)"), tm)),
+    h("label", { class: "campo" }, h("span", {}, "Start freezing at (%)"), cd),
     h("div", { class: "tramos" },
-      h("div", {}, h("b", {}, `< ${Math.round((aj.congelarDesde || 0.8) * 100)} %`), h("span", {}, "todos trabajan")),
-      h("div", {}, h("b", {}, `≥ ${Math.round((aj.congelarDesde || 0.8) * 100)} %`), h("span", {}, "se congelan los de prioridad 1 y 2")),
-      h("div", {}, h("b", {}, `≥ ${medio} %`), h("span", {}, "solo trabajan los de prioridad 5 (el jefe y el control)")),
-      h("div", {}, h("b", {}, "100 %"), h("span", {}, "todo congelado, también el jefe; vuelve al día siguiente o al subir el tope"))),
-    h("small", { class: "nota" }, "Pon también un límite a la clave en la web de OpenRouter: es la red de seguridad si algo falla aquí.")));
+      h("div", {}, h("b", {}, `< ${Math.round((aj.congelarDesde || 0.8) * 100)} %`), h("span", {}, "everyone works")),
+      h("div", {}, h("b", {}, `≥ ${Math.round((aj.congelarDesde || 0.8) * 100)} %`), h("span", {}, "priority 1 and 2 are frozen")),
+      h("div", {}, h("b", {}, `≥ ${medio} %`), h("span", {}, "only priority 5 works (the boss and the controls)")),
+      h("div", {}, h("b", {}, "100 %"), h("span", {}, "everything frozen, the boss too; it comes back the next day or when you raise the cap"))),
+    h("small", { class: "nota" }, "Also put a limit on the key on the OpenRouter website: it's the safety net if something goes wrong here.")));
   const filas = ed.e.agentes.map((a) => ({ a, hoy: ed.gastoAgente(a, "hoy"), sem: ed.gastoAgente(a, "semana"), mes: ed.gastoAgente(a, "mes") })).sort((x, y) => y.mes - x.mes || y.hoy - x.hoy);
-  c.append(h("div", { class: "bloque" }, h("h4", {}, "Por agente"),
-    h("table", { class: "gasto" }, h("thead", {}, h("tr", {}, h("th", {}, "Agente"), h("th", {}, "Prior."), h("th", {}, "Hoy"), h("th", {}, "7 días"), h("th", {}, "Mes"))),
+  c.append(h("div", { class: "bloque" }, h("h4", {}, "Per agent"),
+    h("table", { class: "gasto" }, h("thead", {}, h("tr", {}, h("th", {}, "Agent"), h("th", {}, "Prio."), h("th", {}, "Today"), h("th", {}, "7 days"), h("th", {}, "Month"))),
       h("tbody", {}, filas.map((f) => h("tr", {}, h("td", {}, f.a.nombre, " ", h("small", { class: "nota" }, ESTADO_TXT[estadoVisible(f.a)])), h("td", {}, f.a.prioridad), h("td", {}, f.hoy > 0 ? (f.a.gastoEstimado ? "≈" : "") + fmt(f.hoy) : "—"), h("td", {}, f.sem > 0 ? fmt(f.sem) : "—"), h("td", {}, f.mes > 0 ? fmt(f.mes) : "—")))),
       h("tfoot", {}, h("tr", {}, h("td", {}, "Total"), h("td", {}, ""), h("td", {}, fmt(ed.gastoEdificio("hoy"))), h("td", {}, fmt(ed.gastoEdificio("semana"))), h("td", {}, fmt(ed.gastoEdificio("mes")))))),
-    h("small", { class: "nota" }, "En dólares. Cerebros, imágenes y micro: lo que cobra OpenRouter en cada llamada. Voz: lo cobrado si OpenRouter lo informa; si no, estimado con la tarifa del modelo («≈»).")));
+    h("small", { class: "nota" }, "In dollars. Brains, images and mic: what OpenRouter charges for each call. Voice: what was charged if OpenRouter reports it; if not, estimated at the model's price (“≈”).")));
 }
 
 // ---------------- Ajustes → Otras API (las de tus suscripciones) ----------------
@@ -2164,28 +2164,28 @@ function bloqueOtrasApi() {
   const conx = ed.conexiones();
   const guardarLista = (lista) => Motor.ejecutar({ tipo: "conexiones", conexiones: lista }).then(() => { pintar(); pintarAjustes(); }).catch(avisar);
   const listaActual = () => (ed.e.ajustes.conexiones || []).map((x) => Object.assign({}, x));
-  const b = h("div", { class: "bloque" }, h("h4", {}, "Otras API (tus suscripciones)"),
-    h("p", { class: "nota", style: { margin: 0 } }, "Cada agente piensa con OpenRouter (se paga por uso) o con la API de una suscripción que ya pagas. Añade aquí las tuyas y, en la ficha de cada agente → Cerebro, eliges con cuál piensa. Lo que sale de tu suscripción no cuenta para el tope de gasto: se apunta aparte, para que lo veas."),
-    h("small", { class: "nota" }, "Algunas suscripciones incluyen API o créditos de API (por ejemplo, algunos planes de Claude y de ChatGPT, o los créditos de Google Cloud de Google AI Pro y Ultra). Otras solo dejan usar su cupo en sus propias aplicaciones: no las uses aquí. Lo que se paga aparte, mejor por OpenRouter."));
+  const b = h("div", { class: "bloque" }, h("h4", {}, "Other APIs (your subscriptions)"),
+    h("p", { class: "nota", style: { margin: 0 } }, "Each agent thinks with OpenRouter (pay per use) or with the API of a subscription you already pay for. Add yours here and, in each agent's profile → Brain, choose which one it thinks with. What comes out of your subscription doesn't count towards the spending cap: it's tracked separately, so you can see it."),
+    h("small", { class: "nota" }, "Some subscriptions include API access or API credits (for example, some Claude and ChatGPT plans, or the Google Cloud credits in Google AI Pro and Ultra). Others only let you use your allowance in their own apps: don't use those here. Anything paid separately is better through OpenRouter."));
   for (const P of conx) {
     const msg = h("small", { class: "nota" });
-    const probar = h("button", { class: "btn mini", type: "button", onclick: async () => { probar.disabled = true; msg.textContent = tr("Probando…"); try { const l = await cargarModelosDirectos(P.id); msg.textContent = tr(`Funciona: ${l.length} modelos. El primero: ${l[0] || "—"}.`); } catch (err) { msg.textContent = err.message; } probar.disabled = false; } }, "Probar");
-    const fuera = h("button", { class: "btn mini peligro", type: "button", onclick: (ev) => confirmar(ev.target, "¿Quitar esta API? Sus agentes vuelven a OpenRouter. Pulsa otra vez", () => { try { localStorage.removeItem(claveApi(P.id)); } catch {} guardarLista(listaActual().filter((x) => x.id !== P.id)); }) }, "Quitar esta API");
-    const fila = h("div", { class: "campo api-fila" }, h("span", {}, P.nombre + (tieneClaveApi(P.id) && !P.sinClave ? " · " + tr("clave puesta") : "")), h("small", { class: "nota" }, P.api + (P.formato === "anthropic" ? " · idioma de Claude" : "")));
-    if (P.sinClave) fila.append(h("small", { class: "nota" }, "Un modelo en tu propio ordenador: no lleva clave. Tiene que estar encendido (y, para usarlo desde esta web, permitir llamadas desde el navegador)."));
+    const probar = h("button", { class: "btn mini", type: "button", onclick: async () => { probar.disabled = true; msg.textContent = tr("Testing…"); try { const l = await cargarModelosDirectos(P.id); msg.textContent = tr(`It works: ${l.length} models. The first one: ${l[0] || "—"}.`); } catch (err) { msg.textContent = err.message; } probar.disabled = false; } }, "Test");
+    const fuera = h("button", { class: "btn mini peligro", type: "button", onclick: (ev) => confirmar(ev.target, "Remove this API? Its agents go back to OpenRouter. Press again", () => { try { localStorage.removeItem(claveApi(P.id)); } catch {} guardarLista(listaActual().filter((x) => x.id !== P.id)); }) }, "Remove this API");
+    const fila = h("div", { class: "campo api-fila" }, h("span", {}, P.nombre + (tieneClaveApi(P.id) && !P.sinClave ? " · " + tr("key set") : "")), h("small", { class: "nota" }, P.api + (P.formato === "anthropic" ? " · Claude's format" : "")));
+    if (P.sinClave) fila.append(h("small", { class: "nota" }, "A model on your own computer: no key needed. It has to be running (and, to use it from this website, allow calls from the browser)."));
     else if (esApp()) {
-      const kk = h("input", { type: "password", autocomplete: "off", placeholder: tieneClaveApi(P.id) ? "••••••••••" : P.web ? `Tu clave (de ${P.web})` : "Tu clave" });
+      const kk = h("input", { type: "password", autocomplete: "off", placeholder: tieneClaveApi(P.id) ? "••••••••••" : P.web ? `Your key (from ${P.web})` : "Your key" });
       fila.append(h("div", { class: "clave-fila" }, kk,
-        h("button", { class: "btn mini primario", type: "button", onclick: async () => { try { await llamarApp("/api/conf/clave", { prov: P.id, clave: kk.value.trim() }); await refrescarCasa(); pintarAjustes(); avisoFlotante(kk.value.trim() ? "Clave guardada en este ordenador." : "Clave quitada."); } catch (e) { avisar(e); } } }, "Guardar")),
-        h("small", { class: "nota" }, "Se guarda solo en este ordenador y solo viaja a la dirección de esta API. Para quitarla, déjala vacía y pulsa «Guardar»."));
+        h("button", { class: "btn mini primario", type: "button", onclick: async () => { try { await llamarApp("/api/conf/clave", { prov: P.id, clave: kk.value.trim() }); await refrescarCasa(); pintarAjustes(); avisoFlotante(kk.value.trim() ? "Key saved on this computer." : "Key removed."); } catch (e) { avisar(e); } } }, "Save")),
+        h("small", { class: "nota" }, "It's stored only on this computer and only travels to this API's address. To remove it, leave it empty and press “Save”."));
     }
-    else if (modo === "casa") fila.append(h("small", { class: "nota" }, tieneClaveApi(P.id) ? "Clave puesta en Fer Casa." : "Sin clave en Fer Casa. En el ordenador de Fer Casa: node fer-casa.mjs claves"));
+    else if (modo === "casa") fila.append(h("small", { class: "nota" }, tieneClaveApi(P.id) ? "Key set in Fer Home." : "No key in Fer Home. On the Fer Home computer: node fer-casa.mjs claves"));
     else {
       const tiene = !!store.get(claveApi(P.id));
-      const inp = h("input", { type: "password", autocomplete: "off", placeholder: P.web ? `Tu clave (de ${P.web})` : "Tu clave", value: tiene ? "••••••••••" : "" });
+      const inp = h("input", { type: "password", autocomplete: "off", placeholder: P.web ? `Your key (from ${P.web})` : "Your key", value: tiene ? "••••••••••" : "" });
       inp.onfocus = () => { if (inp.value.startsWith("•")) inp.value = ""; };
-      const guardar = h("button", { class: "btn mini primario", type: "button", onclick: () => { const v = inp.value.trim(); if (v && !v.startsWith("•")) store.set(claveApi(P.id), v); pintar(); pintarAjustes(); } }, "Guardar");
-      const quitarClave = tiene ? h("button", { class: "btn mini", type: "button", onclick: (ev) => confirmar(ev.target, "¿Quitar la clave? Pulsa otra vez", () => { try { localStorage.removeItem(claveApi(P.id)); } catch {} pintarAjustes(); }) }, "Quitar la clave") : null;
+      const guardar = h("button", { class: "btn mini primario", type: "button", onclick: () => { const v = inp.value.trim(); if (v && !v.startsWith("•")) store.set(claveApi(P.id), v); pintar(); pintarAjustes(); } }, "Save");
+      const quitarClave = tiene ? h("button", { class: "btn mini", type: "button", onclick: (ev) => confirmar(ev.target, "Remove the key? Press again", () => { try { localStorage.removeItem(claveApi(P.id)); } catch {} pintarAjustes(); }) }, "Remove the key") : null;
       fila.append(h("div", { class: "clave-fila" }, inp, guardar, quitarClave));
     }
     fila.append(h("div", { class: "fila-c" }, probar, fuera, msg));
@@ -2193,19 +2193,19 @@ function bloqueOtrasApi() {
   }
   // añadir: las conocidas (solo rellenan la dirección) u otra cualquiera
   const conocidas = Object.entries(PROVEEDORES).filter(([k]) => k !== "openrouter" && !conx.some((c) => c.id === k));
-  if (conocidas.length) b.append(h("div", { class: "campo" }, h("span", {}, "Añadir una conocida"), h("div", { class: "fila-c" }, conocidas.map(([k, P]) => h("button", { class: "btn mini", type: "button", onclick: () => guardarLista([...listaActual(), { id: k }]) }, "+ " + P.nombre)))));
-  const nom = h("input", { placeholder: "Nombre (por ejemplo, Mi API)" }), dir = h("input", { placeholder: "Dirección (por ejemplo, https://api.empresa.com/v1)" });
-  const fmtSel = h("select", {}, h("option", { value: "openai" }, "Habla como OpenAI (la mayoría)"), h("option", { value: "anthropic" }, "Habla como Claude"));
+  if (conocidas.length) b.append(h("div", { class: "campo" }, h("span", {}, "Add a known one"), h("div", { class: "fila-c" }, conocidas.map(([k, P]) => h("button", { class: "btn mini", type: "button", onclick: () => guardarLista([...listaActual(), { id: k }]) }, "+ " + P.nombre)))));
+  const nom = h("input", { placeholder: "Name (for example, My API)" }), dir = h("input", { placeholder: "Address (for example, https://api.company.com/v1)" });
+  const fmtSel = h("select", {}, h("option", { value: "openai" }, "Speaks like OpenAI (most of them)"), h("option", { value: "anthropic" }, "Speaks like Claude"));
   const err = h("small", { class: "nota" });
-  b.append(h("div", { class: "campo" }, h("span", {}, "O cualquier otra"), nom, dir, fmtSel,
+  b.append(h("div", { class: "campo" }, h("span", {}, "Or any other"), nom, dir, fmtSel,
     h("div", { class: "fila-c" }, h("button", { class: "btn mini", type: "button", onclick: () => {
       const nombre = nom.value.trim(), api = dir.value.trim();
-      if (!/^https?:\/\/\S+$/i.test(api)) { err.textContent = tr("La dirección tiene que empezar por https:// (o http:// si es de tu ordenador)."); return; }
+      if (!/^https?:\/\/\S+$/i.test(api)) { err.textContent = tr("The address has to start with https:// (or http:// if it's on your computer)."); return; }
       let id = "api-" + (sinAcentos(nombre || api.replace(/^https?:\/\//, "")).replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "").slice(0, 22) || "nueva");
       while (conx.some((c) => c.id === id) || PROVEEDORES[id]) id += "-2";
       guardarLista([...listaActual(), { id, nombre: nombre || api.replace(/^https?:\/\//, "").split("/")[0], api, formato: fmtSel.value }]);
-    } }, "Añadir"), err)));
-  b.append(h("small", { class: "nota" }, modo === "local" ? "Las claves se quedan solo en este navegador y solo viajan a la dirección de su API. Nunca van en las copias ni en la mudanza." : "Con Fer Casa, las claves viven en su ordenador (datos/config.json): node fer-casa.mjs claves."));
+    } }, "Add"), err)));
+  b.append(h("small", { class: "nota" }, modo === "local" ? "The keys stay only in this browser and only travel to their API's address. They never go into backups or moves." : "With Fer Home, the keys live on its computer (datos/config.json): node fer-casa.mjs claves."));
   return b;
 }
 function pintarAjustes() {
@@ -2213,96 +2213,96 @@ function pintarAjustes() {
   const aj = ed.e.ajustes;
   const guardarAj = (cambios, extra) => Motor.ejecutar(Object.assign({ tipo: "ajustes", cambios }, extra || {})).then(pintar).catch(avisar);
   // dónde vive
-  c.append(h("div", { class: "bloque" }, h("h4", {}, "Dónde vive tu edificio"),
+  c.append(h("div", { class: "bloque" }, h("h4", {}, "Where your building lives"),
     h("div", { class: "donde" },
-      esApp() ? h("div", { class: "aqui" }, h("b", {}, "En esta aplicación"), h("br"), h("span", { class: "nota" }, "En tu ordenador, sin Terminal. Los agentes trabajan mientras la aplicación esté abierta, con manos: su Chrome, su carpeta y sus skills."), casaInfo.datos ? h("br") : null, casaInfo.datos ? h("small", { class: "nota" }, tr("Tus datos:") + " ", crudo(casaInfo.datos)) : null) : null,
-      h("div", { class: modo === "local" ? "aqui" : "" }, h("b", {}, "En este navegador"), h("br"), h("span", { class: "nota" }, "Funciona ya, sin instalar nada. Los agentes trabajan mientras esta web esté abierta en algún aparato.")),
-      h("div", { class: modo === "casa" && !esApp() ? "aqui" : "" }, h("b", {}, "Fer Casa: ordenador o teléfono encendido"), h("br"), h("span", { class: "nota" }, "El programa fer-casa.mjs mueve este mismo edificio las 24 horas y da manos a los agentes (su Chrome, su carpeta, sus skills). Abres la web desde la dirección que te da.")),
-      h("div", {}, h("b", {}, "Fer Casa en la nube"), h("br"), h("span", { class: "nota" }, "El mismo programa en un servidor alquilado. Trabaja aunque en casa esté todo apagado."))),
-    h("small", { class: "nota" }, "Cómo instalar Fer Casa: archivo LEEME.txt del ZIP y documento «Fer Agent · El Edificio».")));
+      esApp() ? h("div", { class: "aqui" }, h("b", {}, "In this app"), h("br"), h("span", { class: "nota" }, "On your computer, with no Terminal. The agents work while the app is open, with hands: their Chrome, their folder and their skills."), casaInfo.datos ? h("br") : null, casaInfo.datos ? h("small", { class: "nota" }, tr("Your data:") + " ", crudo(casaInfo.datos)) : null) : null,
+      h("div", { class: modo === "local" ? "aqui" : "" }, h("b", {}, "In this browser"), h("br"), h("span", { class: "nota" }, "Works right away, nothing to install. The agents work while this website is open on some device.")),
+      h("div", { class: modo === "casa" && !esApp() ? "aqui" : "" }, h("b", {}, "Fer Home: a computer or phone that stays on"), h("br"), h("span", { class: "nota" }, "The fer-casa.mjs program runs this same building around the clock and gives the agents hands (their Chrome, their folder, their skills). You open the website from the address it gives you.")),
+      h("div", {}, h("b", {}, "Fer Home in the cloud"), h("br"), h("span", { class: "nota" }, "The same program on a rented server. It works even when everything at home is off."))),
+    h("small", { class: "nota" }, "How to install Fer Home: the README in the ZIP and the “Fer Agent · The Building” document.")));
   // acceso: tu clave y tu dinero
   if (modo === "local") {
     const k = h("input", { type: "password", autocomplete: "off", placeholder: "sk-or-...", value: store.get(K.clave) ? "••••••••••" : "" });
     k.onfocus = () => { if (k.value.startsWith("•")) k.value = ""; };
-    c.append(h("div", { class: "bloque" }, h("h4", {}, "Tu clave de OpenRouter"),
-      h("div", { class: "fila-c" }, k, h("button", { class: "btn primario mini", onclick: () => { if (!k.value.startsWith("•")) store.set(K.clave, k.value.trim()); k.value = store.get(K.clave) ? "••••••••••" : ""; pintar(); pintarChat(true); cerrarCajon(); } }, "Guardar")),
-      h("p", { class: "nota", style: { margin: 0 } }, "Dónde está y a dónde va: se guarda solo en este navegador, en este aparato. No pasa por ningún servidor de Fer Agent: cuando un agente piensa, habla u oye, este navegador la manda directamente a OpenRouter, y a nadie más. Quien use este mismo navegador sí podría usarla."),
-      h("small", { class: "nota" }, "Red de seguridad: ponle un límite de gasto a la clave en la web de OpenRouter."),
+    c.append(h("div", { class: "bloque" }, h("h4", {}, "Your OpenRouter key"),
+      h("div", { class: "fila-c" }, k, h("button", { class: "btn primario mini", onclick: () => { if (!k.value.startsWith("•")) store.set(K.clave, k.value.trim()); k.value = store.get(K.clave) ? "••••••••••" : ""; pintar(); pintarChat(true); cerrarCajon(); } }, "Save")),
+      h("p", { class: "nota", style: { margin: 0 } }, "Where it is and where it goes: it's stored only in this browser, on this device. It doesn't go through any Fer Agent server: when an agent thinks, speaks or listens, this browser sends it straight to OpenRouter, and to nobody else. Anyone using this same browser could use it."),
+      h("small", { class: "nota" }, "Safety net: put a spending limit on the key on the OpenRouter website."),
       comoSacarClave()));
   } else if (esApp()) {
     // en la aplicación: la clave se pega aquí y se guarda en este ordenador; y se entra una vez en tus webs con el Chrome de los agentes
     const k = h("input", { type: "password", autocomplete: "off", placeholder: "sk-or-...", value: casaInfo.clave ? "••••••••••" : "" });
     k.onfocus = () => { if (k.value.startsWith("•")) k.value = ""; };
-    c.append(h("div", { class: "bloque" }, h("h4", {}, "Tu clave de OpenRouter"),
+    c.append(h("div", { class: "bloque" }, h("h4", {}, "Your OpenRouter key"),
       h("div", { class: "fila-c" }, k, h("button", { class: "btn primario mini", onclick: async () => {
         if (!k.value.trim() || k.value.startsWith("•")) return;
-        try { await llamarApp("/api/conf/clave", { prov: "openrouter", clave: k.value.trim() }); await refrescarCasa(); avisoFlotante("Clave guardada en este ordenador."); pintar(); pintarChat(true); cerrarCajon(); } catch (e) { avisar(e); }
-      } }, "Guardar")),
-      h("p", { class: "nota", style: { margin: 0 } }, "Dónde está y a dónde va: se guarda solo en este ordenador, en la carpeta de datos de la aplicación. Solo viaja a OpenRouter cuando un agente piensa, habla u oye."),
-      h("small", { class: "nota" }, "Red de seguridad: ponle un límite de gasto a la clave en la web de OpenRouter."),
+        try { await llamarApp("/api/conf/clave", { prov: "openrouter", clave: k.value.trim() }); await refrescarCasa(); avisoFlotante("Key saved on this computer."); pintar(); pintarChat(true); cerrarCajon(); } catch (e) { avisar(e); }
+      } }, "Save")),
+      h("p", { class: "nota", style: { margin: 0 } }, "Where it is and where it goes: it's stored only on this computer, in the app's data folder. It only travels to OpenRouter when an agent thinks, speaks or listens."),
+      h("small", { class: "nota" }, "Safety net: put a spending limit on the key on the OpenRouter website."),
       comoSacarClave()));
     const u = h("input", { type: "url", placeholder: "https://mail.google.com" });
-    c.append(h("div", { class: "bloque" }, h("h4", {}, "Tus webs, en el Chrome de los agentes"),
-      h("p", { class: "nota", style: { margin: 0 } }, "Para que un agente use una web con tu cuenta (tu correo, una red social…), entra tú una vez: se abre el Chrome de los agentes, inicias sesión y cierras esa ventana. La sesión se queda en este ordenador."),
+    c.append(h("div", { class: "bloque" }, h("h4", {}, "Your websites, in the agents' Chrome"),
+      h("p", { class: "nota", style: { margin: 0 } }, "For an agent to use a website with your account (your email, a social network…), sign in once yourself: the agents' Chrome opens, you sign in and close that window. The session stays on this computer."),
       h("div", { class: "fila-c" }, u, h("button", { class: "btn mini", onclick: async () => {
-        try { await llamarApp("/api/conf/entrar", { url: u.value.trim() }); avisoFlotante("Se ha abierto el Chrome de los agentes. Entra con tu cuenta y, cuando acabes, cierra esa ventana."); } catch (e) { avisar(e); }
-      } }, "Abrir")),
-      h("small", { class: "nota" }, "Necesita Google Chrome instalado en este ordenador.")));
+        try { await llamarApp("/api/conf/entrar", { url: u.value.trim() }); avisoFlotante("The agents' Chrome is open. Sign in with your account and, when you're done, close that window."); } catch (e) { avisar(e); }
+      } }, "Open")),
+      h("small", { class: "nota" }, "It needs Google Chrome installed on this computer.")));
   } else {
-    const p = h("input", { type: "password", placeholder: "PIN de Fer Casa", value: pin });
-    c.append(h("div", { class: "bloque" }, h("h4", {}, "PIN de Fer Casa"),
-      h("div", { class: "fila-c" }, p, h("button", { class: "btn primario mini", onclick: async () => { pin = p.value.trim(); pinRechazado = false; store.set(K.pin, pin); await refrescarCasa(); pintarChat(true); if (!pinRechazado) cerrarCajon(); else pintarAjustes(); } }, "Entrar")),
-      pinRechazado ? h("small", { class: "nota", style: { color: "var(--peligro)" } }, "Ese PIN no es correcto (o hubo demasiados intentos: espera un minuto).") : null,
-      h("small", { class: "nota" }, "Las claves viven en Fer Casa (datos/config.json), no en este aparato. El PIN evita que otro en tu red use tu crédito.")));
+    const p = h("input", { type: "password", placeholder: "Fer Home PIN", value: pin });
+    c.append(h("div", { class: "bloque" }, h("h4", {}, "Fer Home PIN"),
+      h("div", { class: "fila-c" }, p, h("button", { class: "btn primario mini", onclick: async () => { pin = p.value.trim(); pinRechazado = false; store.set(K.pin, pin); await refrescarCasa(); pintarChat(true); if (!pinRechazado) cerrarCajon(); else pintarAjustes(); } }, "Enter")),
+      pinRechazado ? h("small", { class: "nota", style: { color: "var(--peligro)" } }, "That PIN isn't right (or there were too many attempts: wait a minute).") : null,
+      h("small", { class: "nota" }, "The keys live in Fer Home (datos/config.json), not on this device. The PIN stops anyone else on your network using your credit.")));
   }
   c.append(bloqueOtrasApi());
   // nombre y objetivos del edificio
   const nom = h("input", { value: ed.e.nombre || "" });
-  nom.onchange = () => guardarAj({}, { nombre: nom.value.trim() || "Mi edificio" });
-  const obj = h("textarea", { rows: "5", placeholder: "Por ejemplo:\nQue mi tienda venda más por internet\nAhorrarme dos horas al día de correos y papeleo\n…" }); obj.value = ed.e.objetivos || "";
+  nom.onchange = () => guardarAj({}, { nombre: nom.value.trim() || "My building" });
+  const obj = h("textarea", { rows: "5", placeholder: "For example:\nHelp my shop sell more online\nSave me two hours a day of email and paperwork\n…" }); obj.value = ed.e.objetivos || "";
   const cuenta = h("span", { class: "contador" });
   const contar = () => {
     const lineas = obj.value.split("\n").filter((l) => l.trim()).length, letras = obj.value.trim().length;
-    cuenta.textContent = tr(`${lineas}/${MAX_LINEAS_OBJETIVOS} líneas · ${letras} letras · unos ${Math.ceil(letras / 3.5)} tokens en cada latido de cada agente`);
+    cuenta.textContent = tr(`${lineas}/${MAX_LINEAS_OBJETIVOS} lines · ${letras} letters · about ${Math.ceil(letras / 3.5)} tokens in every heartbeat of every agent`);
     cuenta.classList.toggle("mal", lineas > MAX_LINEAS_OBJETIVOS);
   };
   obj.oninput = contar; contar();
   obj.onchange = () => Motor.ejecutar({ tipo: "objetivos", texto: obj.value }).then((r) => { obj.value = r.objetivos; contar(); pintar(); }).catch(avisar);
-  c.append(h("div", { class: "bloque" }, campo("Nombre del edificio", nom),
-    campo("Objetivos del edificio (tuyos o de tu empresa)", obj, "Cinco líneas como máximo. Cada agente los lee al despertar, junto a los suyos y a las lecciones de su papel. Corto: cada letra se paga en cada latido."), cuenta));
+  c.append(h("div", { class: "bloque" }, campo("Building name", nom),
+    campo("Building objectives (yours or your company's)", obj, "Five lines at most. Every agent reads them when it wakes up, together with its own and its role's lessons. Keep it short: every letter is paid for in every heartbeat."), cuenta));
   // el cerebro: biblioteca y memoria larga en una carpeta
   c.append(bloqueCerebro());
   // modelos por defecto del edificio (cada agente puede elegir el suyo en su ficha → Capacidades)
-  const selVista = selectorModelo("texto", aj.modeloVista, { vacio: "Ninguno", filtro: (m) => datosModelo(m).ve, alCambiar: (v) => guardarAj({ modeloVista: v }) });
-  const selImg = selectorModelo("imagen", aj.modeloImagen, { vacio: "Ninguno", alCambiar: (v) => guardarAj({ modeloImagen: v }) });
-  const selMus = selectorModelo("musica", aj.modeloMusica, { vacio: "Ninguno", alCambiar: (v) => guardarAj({ modeloMusica: v }) });
+  const selVista = selectorModelo("texto", aj.modeloVista, { vacio: "None", filtro: (m) => datosModelo(m).ve, alCambiar: (v) => guardarAj({ modeloVista: v }) });
+  const selImg = selectorModelo("imagen", aj.modeloImagen, { vacio: "None", alCambiar: (v) => guardarAj({ modeloImagen: v }) });
+  const selMus = selectorModelo("musica", aj.modeloMusica, { vacio: "None", alCambiar: (v) => guardarAj({ modeloMusica: v }) });
   const conMusica = ed.e.agentes.filter((a) => a.capacidades.includes("crear_musica")).map((a) => a.nombre);
-  const selVoz = selectorModelo("voz", aj.modeloVoz || BROWSER, { extra: [[BROWSER, "Voz del navegador · gratis"]] });
+  const selVoz = selectorModelo("voz", aj.modeloVoz || BROWSER, { extra: [[BROWSER, "Browser voice · free"]] });
   const selVc = h("select", { onchange: (ev) => guardarAj({ vozConcreta: ev.target.value }) });
   const llenarVc = () => {
     selVc.innerHTML = "";
-    const lista = selVoz.value === BROWSER ? [{ id: "", name: "Automática (idioma de la web)" }, ...vocesNavegador().map((v) => ({ id: v.voiceURI, name: `${v.name} · ${v.lang}` }))]
+    const lista = selVoz.value === BROWSER ? [{ id: "", name: "Automatic (the website's language)" }, ...vocesNavegador().map((v) => ({ id: v.voiceURI, name: `${v.name} · ${v.lang}` }))]
       : ((voces.find((m) => m.id === selVoz.value) || {}).voices || []);
-    for (const v of (lista.length ? lista : [{ id: "", name: "La del modelo por defecto" }])) selVc.append(h("option", { value: v.id }, v.name));
+    for (const v of (lista.length ? lista : [{ id: "", name: "The default model's" }])) selVc.append(h("option", { value: v.id }, v.name));
     selVc.value = [...selVc.options].some((o) => o.value === aj.vozConcreta) ? aj.vozConcreta : selVc.options[0].value;
   };
   llenarVc();
   selVoz.onchange = () => { llenarVc(); guardarAj({ modeloVoz: selVoz.value, vozConcreta: selVc.value }); };
-  const selOido = selectorModelo("oido", aj.modeloOido || BROWSER, { extra: [[BROWSER, "Oído del navegador · gratis (Chrome, Edge, Safari)"]], alCambiar: (v) => guardarAj({ modeloOido: v }) });
+  const selOido = selectorModelo("oido", aj.modeloOido || BROWSER, { extra: [[BROWSER, "Browser hearing · free (Chrome, Edge, Safari)"]], alCambiar: (v) => guardarAj({ modeloOido: v }) });
   const chk = h("input", { type: "checkbox", checked: aj.responderEnVozSiMicro !== false, onchange: (ev) => guardarAj({ responderEnVozSiMicro: ev.target.checked }) });
   const chkCorta = h("input", { type: "checkbox", checked: aj.vozCorta !== false, onchange: (ev) => guardarAj({ vozCorta: ev.target.checked }) });
   const chkCortar = h("input", { type: "checkbox", checked: aj.cortarAlHablar !== false, onchange: (ev) => guardarAj({ cortarAlHablar: ev.target.checked }) });
-  const selLec = selectorModelo("texto", aj.modeloLecciones, { vacio: `El más barato que sirva (${nombreModelo(elegirModelo("economico", ed.modelos)) || "ninguno"})`, alCambiar: (v) => guardarAj({ modeloLecciones: v }) });
-  c.append(h("div", { class: "bloque" }, h("h4", {}, "Modelos por defecto del edificio"),
-    h("p", { class: "nota", style: { margin: 0 } }, "Los usa cada agente que no tenga uno propio. Cada uno elige el suyo en su ficha → Capacidades."),
-    campo("Ver: cerebro con vista", selVista, "Describe las imágenes a los agentes cuyo cerebro no ve."),
-    campo("Crear imágenes", selImg), campo("Crear música", selMus, tr("Dónde se activa: en la ficha de cada agente → Capacidades → «Crear música».") + " " + (conMusica.length ? tr("Ahora la tienen:") + " " + conMusica.join(", ") + "." : tr("Ahora no la tiene ningún agente."))),
-    campo("Hablar: modelo de voz", selVoz), campo("Voz del jefe", selVc, "Los demás agentes, si no eligen la suya, reciben cada uno una voz distinta de ese modelo."),
-    campo("Oír: tu voz a texto", selOido),
-    h("label", { class: "cap" }, chk, h("span", {}, "Si le hablas por el micro, te contesta en voz alta aunque el altavoz esté apagado")),
-    h("label", { class: "cap" }, chkCorta, h("span", {}, "Respuestas cortas cuando habláis por voz", h("small", {}, "De una a tres frases; si quieres más, pídele el detalle."))),
-    h("label", { class: "cap" }, chkCortar, h("span", {}, "Se calla cuando le hablas", h("small", {}, "El micro sigue abierto mientras habla. Con altavoces muy altos, si se corta solo, usa auriculares o apaga esto."))),
-    campo("Modelo que convierte las monedas en lecciones", selLec, "Uno barato: redacta la regla y tú la apruebas en la bandeja.")));
+  const selLec = selectorModelo("texto", aj.modeloLecciones, { vacio: `The cheapest that will do (${nombreModelo(elegirModelo("economico", ed.modelos)) || "none"})`, alCambiar: (v) => guardarAj({ modeloLecciones: v }) });
+  c.append(h("div", { class: "bloque" }, h("h4", {}, "Building's default models"),
+    h("p", { class: "nota", style: { margin: 0 } }, "Used by every agent that doesn't have its own. Each one picks its own in its profile → Capabilities."),
+    campo("See: brain with vision", selVista, "Describes images to the agents whose brain can't see."),
+    campo("Create images", selImg), campo("Create music", selMus, tr("Where it's turned on: in each agent's profile → Capabilities → “Create music”.") + " " + (conMusica.length ? tr("These have it now:") + " " + conMusica.join(", ") + "." : tr("No agent has it now."))),
+    campo("Speak: voice model", selVoz), campo("The boss's voice", selVc, "The other agents, if they don't choose their own, each get a different voice from that model."),
+    campo("Hear: your voice to text", selOido),
+    h("label", { class: "cap" }, chk, h("span", {}, "If you talk to it through the mic, it answers out loud even if the speaker is off")),
+    h("label", { class: "cap" }, chkCorta, h("span", {}, "Short answers when you talk by voice", h("small", {}, "One to three sentences; if you want more, ask for the details."))),
+    h("label", { class: "cap" }, chkCortar, h("span", {}, "Stops talking when you speak", h("small", {}, "The mic stays open while it talks. With very loud speakers, if it cuts itself off, use headphones or turn this off."))),
+    campo("Model that turns coins into lessons", selLec, "A cheap one: it writes the rule and you approve it in the inbox.")));
   // modelos recomendados: arriba de cada selector. Arturito propone los nuevos; tú decides.
   const pendModelos = (ed.e.propuestasModelos || []).filter((x) => x.estado === "pendiente");
   const resumenRec = h("div", { class: "lista" }, Object.keys(TIPOS_MODELO).filter((t) => t !== "otros").map((t) => {
@@ -2310,112 +2310,112 @@ function pintarAjustes() {
     const lineas = NIVELES.filter((n) => (rec[n] || []).length).map((n) => h("div", {}, h("b", {}, tr(NOMBRE_NIVEL[n]) + ": "), rec[n].map(nombreModelo).join(", ")));
     return lineas.length ? h("div", { class: "item" }, h("div", { class: "cab" }, h("span", {}, tr(TIPOS_MODELO[t]))), lineas) : null;
   }).filter(Boolean));
-  c.append(h("div", { class: "bloque" }, h("h4", {}, "Modelos recomendados"),
-    h("p", { class: "nota", style: { margin: 0 } }, "En cada selector salen primero los recomendados por nivel de PRECIO (gratis, económico, medio, alto y vanguardia), no de calidad: en cada nivel va la versión más nueva de cada casa. Debajo, todos los de OpenRouter, clasificados por lo que hacen según sus datos. Cuando sale un modelo nuevo, Arturito lo propone; nada cambia sin tu sí."),
-    pendModelos.length ? Object.keys(TIPOS_MODELO).map((t) => propuestasDe(t)).flat() : h("p", { class: "nota", style: { margin: 0 } }, "Arturito no tiene propuestas pendientes."),
-    h("details", {}, h("summary", {}, "Ver los recomendados de ahora"), resumenRec),
-    h("div", {}, h("button", { class: "btn mini", onclick: (ev) => confirmar(ev.target, "¿Volver a los iniciales? Pulsa otra vez", () => Motor.ejecutar({ tipo: "recomendados.restablecer" }).then(() => { pintar(); pintarAjustes(); }).catch(avisar)) }, "Volver a los recomendados iniciales"))));
+  c.append(h("div", { class: "bloque" }, h("h4", {}, "Recommended models"),
+    h("p", { class: "nota", style: { margin: 0 } }, "Every selector first shows the recommended ones by PRICE level (free, cheap, mid, high and cutting-edge), not by quality: each level has the newest version from each maker. Below, all of OpenRouter's, sorted by what they do according to their data. When a new model comes out, Artie proposes it; nothing changes without your yes."),
+    pendModelos.length ? Object.keys(TIPOS_MODELO).map((t) => propuestasDe(t)).flat() : h("p", { class: "nota", style: { margin: 0 } }, "Artie has no pending proposals."),
+    h("details", {}, h("summary", {}, "See the current recommended ones"), resumenRec),
+    h("div", {}, h("button", { class: "btn mini", onclick: (ev) => confirmar(ev.target, "Go back to the original ones? Press again", () => Motor.ejecutar({ tipo: "recomendados.restablecer" }).then(() => { pintar(); pintarAjustes(); }).catch(avisar)) }, "Go back to the original recommended ones"))));
   // lecciones y vista
   const nLec = h("input", { type: "number", min: "1", max: "50", step: "1", value: aj.leccionesPorPapel || 5, onchange: (ev) => guardarAj({ leccionesPorPapel: Math.max(1, Math.min(50, parseInt(ev.target.value, 10) || 5)) }) });
-  const selVistaEd = h("select", { onchange: (ev) => guardarAj({ vistaEdificio: ev.target.value }) }, [["auto", `Automática: franjas a partir de ${AUTO_AGENTES + 1} agentes o ${AUTO_PISOS + 1} pisos`], ["dibujo", "Siempre el dibujo"], ["franjas", "Siempre en franjas"]].map(([v, t]) => h("option", { value: v }, t)));
+  const selVistaEd = h("select", { onchange: (ev) => guardarAj({ vistaEdificio: ev.target.value }) }, [["auto", `Automatic: strips from ${AUTO_AGENTES + 1} agents or ${AUTO_PISOS + 1} floors`], ["dibujo", "Always the drawing"], ["franjas", "Always in strips"]].map(([v, t]) => h("option", { value: v }, t)));
   selVistaEd.value = aj.vistaEdificio || "auto";
-  c.append(h("div", { class: "bloque" }, h("h4", {}, "Monedas, lecciones y vista"),
-    campo("Lecciones que se guardan por papel", nLec, "Al entrar una nueva sale la más antigua. Las que fijes en la ficha no salen nunca."),
-    campo("Cómo se ve el edificio", selVistaEd)));
+  c.append(h("div", { class: "bloque" }, h("h4", {}, "Coins, lessons and view"),
+    campo("Lessons kept per role", nLec, "When a new one comes in, the oldest goes. The ones you pin in the profile never go."),
+    campo("How the building is shown", selVistaEd)));
   if (Object.keys(IDIOMAS).length > 1) {
     const selIdioma = h("select", { onchange: (ev) => cambiarIdioma(ev.target.value) }, Object.entries(IDIOMAS).map(([k, t]) => h("option", { value: k }, t)));
     selIdioma.value = idioma;
-    c.append(h("label", { class: "bloque campo" }, h("span", {}, "Idioma (la web y lo que se dice a los agentes)"), selIdioma));
+    c.append(h("label", { class: "bloque campo" }, h("span", {}, "Language (the website and what the agents are told)"), selIdioma));
   }
   // los agentes de serie que renombraste, otra vez con su nombre oficial (en el idioma del edificio)
   c.append(h("div", { class: "bloque" },
-    h("button", { class: "btn mini", onclick: () => Motor.ejecutar({ tipo: "nombresDeSerie" }).then((r) => { pintar(); pintarAjustes(); avisoFlotante(r && r.cambiados ? tr(`Nombres de serie recuperados: ${r.cambiados}.`) : tr("Ya tienen su nombre de serie.")); }).catch(avisar) }, "Volver a los nombres de serie"),
-    h("small", { class: "nota" }, "Los agentes de serie recuperan su nombre oficial en este idioma. Los que has creado tú no cambian.")));
+    h("button", { class: "btn mini", onclick: () => Motor.ejecutar({ tipo: "nombresDeSerie" }).then((r) => { pintar(); pintarAjustes(); avisoFlotante(r && r.cambiados ? tr(`Built-in names restored: ${r.cambiados}.`) : tr("They already have their built-in names.")); }).catch(avisar) }, "Restore the built-in names"),
+    h("small", { class: "nota" }, "The built-in agents get back their official name in this language. The ones you created don't change.")));
   // copias, mudanza y empezar de nuevo
-  const plantilla = (nombre, txt) => h("button", { class: "btn mini", onclick: (ev) => confirmar(ev.target, "¿Seguro? Se borra el edificio actual", () => Motor.ejecutar({ tipo: "plantilla", nombre }).then(() => { seleccion = "jefe"; plantaAbierta = ""; pintar(); pintarChat(true); cerrarCajon(); }).catch(avisar)) }, txt);
-  const fi = h("input", { type: "file", accept: "application/json,.json", hidden: true, onchange: async (ev) => { const f = ev.target.files[0]; if (!f) return; try { const r = await cargarCopia(await f.text()); pintar(); pintarChat(true); cerrarCajon(); avisoFlotante(r.mudanza ? "Mudanza recibida: agentes, ajustes, imágenes y música. Pega otra vez tus claves en Ajustes (no viajan en el archivo)." : (r.medios ? tr(`Copia cargada con ${r.medios} imágenes y músicas.`) : tr("Copia cargada."))); } catch (err) { avisar(err); } } });
+  const plantilla = (nombre, txt) => h("button", { class: "btn mini", onclick: (ev) => confirmar(ev.target, "Sure? The current building will be deleted", () => Motor.ejecutar({ tipo: "plantilla", nombre }).then(() => { seleccion = "jefe"; plantaAbierta = ""; pintar(); pintarChat(true); cerrarCajon(); }).catch(avisar)) }, txt);
+  const fi = h("input", { type: "file", accept: "application/json,.json", hidden: true, onchange: async (ev) => { const f = ev.target.files[0]; if (!f) return; try { const r = await cargarCopia(await f.text()); pintar(); pintarChat(true); cerrarCajon(); avisoFlotante(r.mudanza ? "Move received: agents, settings, images and music. Paste your keys again in Settings (they don't travel in the file)." : (r.medios ? tr(`Backup loaded with ${r.medios} images and music tracks.`) : tr("Backup loaded."))); } catch (err) { avisar(err); } } });
   const t = ultimaCopia();
-  c.append(h("div", { class: "bloque" }, h("h4", {}, "Copias y mudanza"),
-    h("p", { class: "nota", style: { margin: 0 } }, `Última copia: ${t ? new Date(t).toLocaleString(LOCALE) + " (" + haceCuanto(t) + ")" : "ninguna todavía"}. La copia lleva agentes, memorias, ajustes, gasto, imágenes y música. No lleva tus claves.`),
-    h("div", { class: "fila-c" }, h("button", { class: "btn mini primario", onclick: () => guardarCopia({ conMedios: true }).then(() => pintarAjustes()).catch(avisar) }, "Guardar copia ahora"), h("button", { class: "btn mini", onclick: () => fi.click() }, "Cargar una copia o una mudanza"), fi),
-    h("p", { class: "nota", style: { margin: 0 } }, "Mudanza (cuando la web pase a tu dominio): aquí pulsa «Preparar la mudanza»; en la web nueva, «Cargar una copia o una mudanza» con ese archivo. Pasan agentes, ajustes, imágenes y música; las claves las pegas otra vez. Si usas Google Drive, añade la dirección nueva en Google Cloud (paso 6 de conectar Drive)."),
-    h("div", { class: "fila-c" }, h("button", { class: "btn mini", onclick: () => guardarCopia({ conMedios: true, mudanza: true }).catch(avisar) }, "Preparar la mudanza")),
-    modo === "local" && store.get(K.v4) ? h("div", { class: "fila-c" }, h("span", { class: "nota" }, "Tu edificio de la versión 4, tal cual estaba."), h("button", { class: "btn mini", onclick: () => descargar(store.get(K.v4), "fer-edificio-version-4.json") }, "Descargarlo")) : null,
-    copiaTecno() ? h("div", { class: "fila-c" }, h("span", { class: "nota" }, `Última copia de Tecno: ${copiaTecno().dia}.`), h("button", { class: "btn mini", onclick: () => descargar(copiaTecno().json, `fer-edificio-copia-${copiaTecno().dia}.json`) }, "Descargarla")) : null));
-  c.append(h("div", { class: "bloque" }, h("h4", {}, "Empezar de nuevo"),
-    h("p", { class: "nota", style: { margin: 0 } }, "Agentes de serie: los que trae Fer Agent (los sabios, Tecno, Arturito, el Creador, JEV, el Interventor y Memory). Se instalan y se quitan desde su página."),
-    h("div", { class: "fila-c" }, h("button", { class: "btn mini", onclick: () => { cerrarCajon(); abrirPantalla("serie"); } }, "Abrir «Agentes de serie»")),
+  c.append(h("div", { class: "bloque" }, h("h4", {}, "Backups and moving"),
+    h("p", { class: "nota", style: { margin: 0 } }, `Last backup: ${t ? new Date(t).toLocaleString(LOCALE) + " (" + haceCuanto(t) + ")" : "none yet"}. The backup includes agents, memories, settings, spending, images and music. It doesn't include your keys.`),
+    h("div", { class: "fila-c" }, h("button", { class: "btn mini primario", onclick: () => guardarCopia({ conMedios: true }).then(() => pintarAjustes()).catch(avisar) }, "Save a backup now"), h("button", { class: "btn mini", onclick: () => fi.click() }, "Load a backup or a move"), fi),
+    h("p", { class: "nota", style: { margin: 0 } }, "Moving (when the website moves to your own domain): here press “Prepare the move”; on the new website, “Load a backup or a move” with that file. Agents, settings, images and music go across; you paste the keys again. If you use Google Drive, add the new address in Google Cloud (step 6 of connecting Drive)."),
+    h("div", { class: "fila-c" }, h("button", { class: "btn mini", onclick: () => guardarCopia({ conMedios: true, mudanza: true }).catch(avisar) }, "Prepare the move")),
+    modo === "local" && store.get(K.v4) ? h("div", { class: "fila-c" }, h("span", { class: "nota" }, "Your version 4 building, exactly as it was."), h("button", { class: "btn mini", onclick: () => descargar(store.get(K.v4), "fer-edificio-version-4.json") }, "Download it")) : null,
+    copiaTecno() ? h("div", { class: "fila-c" }, h("span", { class: "nota" }, `Techie's last backup: ${copiaTecno().dia}.`), h("button", { class: "btn mini", onclick: () => descargar(copiaTecno().json, `fer-edificio-copia-${copiaTecno().dia}.json`) }, "Download the copy")) : null));
+  c.append(h("div", { class: "bloque" }, h("h4", {}, "Start again"),
+    h("p", { class: "nota", style: { margin: 0 } }, "Built-in agents: the ones that come with Fer Agent (the sages, Techie, Artie, the Creator, JEV, the Controller and Memory). They're installed and removed from their page."),
+    h("div", { class: "fila-c" }, h("button", { class: "btn mini", onclick: () => { cerrarCajon(); abrirPantalla("serie"); } }, "Open “Built-in agents”")),
     ultimoAjuste ? h("p", { class: "nota", style: { margin: 0 } }, ultimoAjuste) : null,
-    h("p", { class: "nota", style: { margin: 0 } }, "Empezar de cero: «Solo el jefe» o «Con el equipo recomendado» (cúpula, planta técnica y vestíbulo con sus agentes). Se conservan los ajustes y el gasto."),
-    h("div", { class: "fila-c" }, plantilla("vacio", "Solo el jefe"), plantilla("basico", "Con el equipo recomendado"))));
-  c.append(h("p", { class: "nota" }, `Fer Agent Edificio · versión ${VERSION} · código abierto · los precios y modelos vienen en directo de OpenRouter.`));
+    h("p", { class: "nota", style: { margin: 0 } }, "Start from scratch: “Just the boss” or “With the recommended team” (dome, tech floor and lobby with their agents). Settings and spending are kept."),
+    h("div", { class: "fila-c" }, plantilla("vacio", "Just the boss"), plantilla("basico", "With the recommended team"))));
+  c.append(h("p", { class: "nota" }, `Fer Agent Building · version ${VERSION} · open source · prices and models come live from OpenRouter.`));
   c.scrollTop = sc;
 }
 // El cerebro en Ajustes: dónde vive, cómo conectarlo y qué ve la web
 function bloqueCerebro() {
-  const st = cerebro.estado, caja = h("div", { class: "bloque" }, h("h4", {}, "Cerebro: Biblioteca y Memoria larga"));
+  const st = cerebro.estado, caja = h("div", { class: "bloque" }, h("h4", {}, "Brain: Library and Long-term memory"));
   if (esApp()) {
-    const cc = casaInfo.carpeta || {};
-    caja.append(h("p", { class: "nota", style: { margin: 0 } }, "En la aplicación, el cerebro vive en una carpeta de este ordenador: «Biblioteca» (tus notas), «Memoria larga» (una nota por tema) y «edificio.json». Si eliges una carpeta dentro de Google Drive para ordenador, también la tienes en Drive y en Obsidian."),
-      h("div", { class: "estado-carpeta" }, h("i", { class: "punto " + (cc.ruta ? "ok" : "") }), h("span", {}, tr("Carpeta:") + " ", crudo(cc.ruta || "")),
-        cc.notas !== undefined ? h("span", { class: "nota" }, " · " + tr(`${cc.notas} temas`) + " · " + tr(`${cc.biblioteca || 0} notas en la Biblioteca`)) : null),
+    const cc = Object.assign({ n: carpetasCerebro(ed.e) }, casaInfo.carpeta || {});
+    caja.append(h("p", { class: "nota", style: { margin: 0 } }, `In the app, the brain lives in a folder on this computer: “${cc.n.biblioteca}” (your notes), “${cc.n.memoria}” (one note per topic) and “${cc.n.copia}”. If you choose a folder inside Google Drive for desktop, you also have it in Drive and in Obsidian.`),
+      h("div", { class: "estado-carpeta" }, h("i", { class: "punto " + (cc.ruta ? "ok" : "") }), h("span", {}, tr("Folder:") + " ", crudo(cc.ruta || "")),
+        cc.notas !== undefined ? h("span", { class: "nota" }, " · " + tr(`${cc.notas} topics`) + " · " + tr(`${cc.biblioteca || 0} notes in the Library`)) : null),
       window.ferApp && window.ferApp.elegirCarpeta ? h("button", { class: "btn mini", type: "button", onclick: async () => {
         try {
           const ruta = await window.ferApp.elegirCarpeta(); if (!ruta) return;
           await llamarApp("/api/conf/carpeta", { ruta });
-          avisoFlotante("Carpeta guardada. La aplicación se vuelve a abrir para usarla.");
+          avisoFlotante("Folder saved. The app reopens to use it.");
           setTimeout(() => window.ferApp.reiniciar(), 1500);
         } catch (e) { avisar(e); }
-      } }, "Cambiar la carpeta") : null);
+      } }, "Change the folder") : null);
     return caja;
   }
   if (modo === "casa") {
-    const cc = casaInfo.carpeta || {};
-    caja.append(h("p", { class: "nota", style: { margin: 0 } }, "Con Fer Casa, el cerebro vive en una carpeta de ese ordenador: «Biblioteca» (tus notas), «Memoria larga» (una nota por tema) y «edificio.json». Si esa carpeta está dentro de Google Drive para ordenador, también la tienes en Drive y en Obsidian."),
-      h("div", { class: "estado-carpeta" }, h("i", { class: "punto " + (cc.ruta ? "ok" : "") }), h("span", {}, cc.ruta ? `Carpeta: ${cc.ruta}` : "Carpeta: la de datos de Fer Casa (datos/cerebro)"),
-        cc.notas !== undefined ? h("span", { class: "nota" }, `· ${cc.notas} temas · ${cc.biblioteca || 0} notas en la Biblioteca`) : null),
-      h("small", { class: "nota" }, "Para cambiarla: en el ordenador de Fer Casa, node fer-casa.mjs carpeta"));
+    const cc = Object.assign({ n: carpetasCerebro(ed.e) }, casaInfo.carpeta || {});
+    caja.append(h("p", { class: "nota", style: { margin: 0 } }, `With Fer Home, the brain lives in a folder on that computer: “${cc.n.biblioteca}” (your notes), “${cc.n.memoria}” (one note per topic) and “${cc.n.copia}”. If that folder is inside Google Drive for desktop, you also have it in Drive and in Obsidian.`),
+      h("div", { class: "estado-carpeta" }, h("i", { class: "punto " + (cc.ruta ? "ok" : "") }), h("span", {}, cc.ruta ? `Folder: ${cc.ruta}` : "Folder: Fer Home's data folder (datos/cerebro)"),
+        cc.notas !== undefined ? h("span", { class: "nota" }, `· ${cc.notas} topics · ${cc.biblioteca || 0} notes in the Library`) : null),
+      h("small", { class: "nota" }, "To change it: on the Fer Home computer, node fer-casa.mjs carpeta"));
     return caja;
   }
   const conf = store.json(K.carpeta, null) || {};
   caja.append(h("div", { class: "estado-carpeta" }, h("i", { class: "punto " + (st.conectado ? "ok" : st.error ? "mal" : "") }),
-    h("span", {}, st.conectado ? tr("Conectado:") + " " + st.nombre : st.error ? `${st.nombre || tr("Carpeta")}: ${st.error}` : "Sin carpeta: el cerebro vive solo en este navegador."),
-    st.conectado ? h("span", { class: "nota" }, "· " + tr(`${st.notas} temas en la memoria larga`) + " · " + tr(`${st.biblioteca} notas en la Biblioteca`) + (st.ultimaSync ? " · " + tr(`sincronizado ${haceCuanto(st.ultimaSync)}`) : "")) : null));
-  if (st.necesitaPermiso && cerebro.estado.tipo === "local") caja.append(h("div", {}, h("button", { class: "btn mini primario", onclick: async () => { const hnd = await idb.get("kv", "carpetaLocal"); if (hnd) conectarCerebro(adaptadorLocal(hnd), true).catch(avisar); } }, "Dar permiso otra vez a la carpeta")));
+    h("span", {}, st.conectado ? tr("Connected:") + " " + st.nombre : st.error ? `${st.nombre || tr("Folder")}: ${st.error}` : "No folder: the brain lives only in this browser."),
+    st.conectado ? h("span", { class: "nota" }, "· " + tr(`${st.notas} topics in the long-term memory`) + " · " + tr(`${st.biblioteca} notes in the Library`) + (st.ultimaSync ? " · " + tr(`synced ${haceCuanto(st.ultimaSync)}`) : "")) : null));
+  if (st.necesitaPermiso && cerebro.estado.tipo === "local") caja.append(h("div", {}, h("button", { class: "btn mini primario", onclick: async () => { const hnd = await idb.get("kv", "carpetaLocal"); if (hnd) conectarCerebro(adaptadorLocal(hnd), true).catch(avisar); } }, "Give permission to the folder again")));
   // Google Drive
-  const cid = h("input", { placeholder: "ID de cliente de Google (termina en .apps.googleusercontent.com)", value: conf.clientId || "" });
+  const cid = h("input", { placeholder: "Google client ID (ends in .apps.googleusercontent.com)", value: conf.clientId || "" });
   const conectarDrive = h("button", { class: "btn mini primario", type: "button", onclick: async () => {
     const id = cid.value.trim();
-    if (!/\.apps\.googleusercontent\.com$/.test(id)) { avisar(Object.assign(new Error("Ese no parece un ID de cliente de Google (debe terminar en .apps.googleusercontent.com). Mira los pasos."), { mostrado: true })); return; }
+    if (!/\.apps\.googleusercontent\.com$/.test(id)) { avisar(Object.assign(new Error("That doesn't look like a Google client ID (it must end in .apps.googleusercontent.com). Check the steps."), { mostrado: true })); return; }
     store.set(K.carpeta, JSON.stringify({ tipo: "drive", clientId: id }));
     conectarDrive.disabled = true;
-    try { await conectarCerebro(adaptadorDrive(id), true); avisoFlotante("Drive conectado: la web ve solo su carpeta «Fer Agent»."); } catch (err) { avisar(Object.assign(new Error("No se pudo conectar Drive: " + err.message), { mostrado: true })); }
+    try { await conectarCerebro(adaptadorDrive(id), true); avisoFlotante("Drive connected: the website only sees its “Fer Agent” folder."); } catch (err) { avisar(Object.assign(new Error(`Couldn't connect Drive: ${err.message}`), { mostrado: true })); }
     conectarDrive.disabled = false;
-  } }, st.conectado && st.tipo === "drive" ? "Volver a conectar" : "Conectar Google Drive");
-  caja.append(h("div", { class: "campo" }, h("span", {}, "Google Drive (recomendado: el móvil y el Mac ven el mismo edificio)"), cid, h("div", {}, conectarDrive)),
-    h("details", {}, h("summary", {}, "Pasos para conectar Drive (una vez, unos 10 minutos)"), h("ol", { class: "nota pasos-drive" },
-      h("li", {}, "Entra en console.cloud.google.com con tu cuenta de Google y crea un proyecto (arriba: «Seleccionar proyecto» → «Proyecto nuevo»). Nombre: Fer Agent."),
-      h("li", {}, "Menú → «APIs y servicios» → «Biblioteca» → busca «Google Drive API» → «Habilitar»."),
-      h("li", {}, "«APIs y servicios» → «Pantalla de consentimiento de OAuth» (o «Google Auth Platform»): tipo «Externo», nombre de la app Fer Agent, tu correo de soporte y de contacto. Guarda."),
-      h("li", {}, "En «Público» (o «Usuarios de prueba»), añade tu correo de Google como usuario de prueba. Deja la app «en pruebas»: no hace falta publicarla."),
-      h("li", {}, "En «Acceso a datos» (o «Permisos»), añade el permiso …/auth/drive.file. Es el que solo deja ver los archivos que crea la propia web."),
-      h("li", {}, tr("«Credenciales» (o «Clientes») → «Crear credenciales» → «ID de cliente de OAuth» → tipo «Aplicación web». En «Orígenes de JavaScript autorizados» pon") + " " + location.origin + " " + tr("(y, cuando te mudes, también la dirección nueva). No hace falta poner nada en «URIs de redirección».")),
-      h("li", {}, "Copia el «ID de cliente» (termina en .apps.googleusercontent.com), pégalo arriba y pulsa «Conectar Google Drive». Elige tu cuenta y da permiso. Si Google avisa de que la app no está verificada, es porque es la tuya y está en pruebas: pulsa «Continuar»."),
-      h("li", {}, "Repite el paso 7 en el móvil (mismo ID). La web creará en tu Drive la carpeta «Fer Agent». No la crees tú a mano."))));
+  } }, st.conectado && st.tipo === "drive" ? "Connect again" : "Connect Google Drive");
+  caja.append(h("div", { class: "campo" }, h("span", {}, "Google Drive (recommended: phone and computer see the same building)"), cid, h("div", {}, conectarDrive)),
+    h("details", {}, h("summary", {}, "Steps to connect Drive (once, about 10 minutes)"), h("ol", { class: "nota pasos-drive" },
+      h("li", {}, "Go to console.cloud.google.com with your Google account and create a project (at the top: “Select a project” → “New project”). Name: Fer Agent."),
+      h("li", {}, "Menu → “APIs & Services” → “Library” → search for “Google Drive API” → “Enable”."),
+      h("li", {}, "“APIs & Services” → “OAuth consent screen” (or “Google Auth Platform”): type “External”, app name Fer Agent, your support and contact email. Save."),
+      h("li", {}, "Under “Audience” (or “Test users”), add your Google email as a test user. Leave the app “in testing”: there's no need to publish it."),
+      h("li", {}, "Under “Data access” (or “Scopes”), add the …/auth/drive.file scope. It's the one that only lets the website see the files it creates itself."),
+      h("li", {}, tr("“Credentials” (or “Clients”) → “Create credentials” → “OAuth client ID” → type “Web application”. Under “Authorised JavaScript origins” put") + " " + location.origin + " " + tr("(and, when you move, the new address too). There's no need to put anything under “Redirect URIs”.")),
+      h("li", {}, "Copy the “Client ID” (it ends in .apps.googleusercontent.com), paste it above and press “Connect Google Drive”. Choose your account and grant permission. If Google warns that the app isn't verified, that's because it's yours and in testing: press “Continue”."),
+      h("li", {}, "Repeat step 7 on your phone (same ID). The website will create the “Fer Agent” folder in your Drive. Don't create it by hand."))));
   // carpeta de este ordenador
-  if (window.showDirectoryPicker) caja.append(h("div", { class: "campo" }, h("span", {}, "O una carpeta de este ordenador (Chrome o Edge)"),
+  if (window.showDirectoryPicker) caja.append(h("div", { class: "campo" }, h("span", {}, "Or a folder on this computer (Chrome or Edge)"),
     h("div", {}, h("button", { class: "btn mini", type: "button", onclick: async () => {
       let hnd; try { hnd = await window.showDirectoryPicker({ mode: "readwrite", id: "fer-agent-cerebro" }); } catch { return; }
       await idb.put("kv", "carpetaLocal", hnd); store.set(K.carpeta, JSON.stringify({ tipo: "local" }));
-      try { await conectarCerebro(adaptadorLocal(hnd), true); avisoFlotante("Carpeta conectada."); } catch (err) { avisar(err); }
-    } }, st.conectado && st.tipo === "local" ? "Elegir otra carpeta" : "Elegir carpeta")),
-    h("small", { class: "nota" }, "Sirve para quien no use Drive. Ojo: lo que guarde otro aparato en Drive con la web no lo verá esta carpeta, ni al revés; usa una sola forma en todos tus aparatos.")));
-  const fb = h("input", { type: "file", multiple: true, accept: ".md,.txt,text/markdown,text/plain", hidden: true, onchange: async (ev) => { try { const n = await subirBiblioteca([...ev.target.files]); avisoFlotante(n === 1 ? tr("1 nota añadida a la Biblioteca.") : tr(`${n} notas añadidas a la Biblioteca.`)); pintarAjustes(); } catch (err) { avisar(err); } ev.target.value = ""; } });
+      try { await conectarCerebro(adaptadorLocal(hnd), true); avisoFlotante("Folder connected."); } catch (err) { avisar(err); }
+    } }, st.conectado && st.tipo === "local" ? "Choose another folder" : "Choose folder")),
+    h("small", { class: "nota" }, "For people who don't use Drive. Careful: what another device saves to Drive through the website won't be seen by this folder, or the other way round; use just one way on all your devices.")));
+  const fb = h("input", { type: "file", multiple: true, accept: ".md,.txt,text/markdown,text/plain", hidden: true, onchange: async (ev) => { try { const n = await subirBiblioteca([...ev.target.files]); avisoFlotante(n === 1 ? tr("1 note added to the Library.") : tr(`${n} notes added to the Library.`)); pintarAjustes(); } catch (err) { avisar(err); } ev.target.value = ""; } });
   caja.append(h("div", { class: "fila-c" },
-    st.conectado ? h("button", { class: "btn mini", onclick: () => sincronizarCerebro().then(() => avisoFlotante("Sincronizado.")) }, "Sincronizar ahora") : null,
-    h("button", { class: "btn mini", onclick: () => fb.click() }, "Añadir notas a la Biblioteca"), fb,
-    st.conectado || conf.tipo ? h("button", { class: "btn mini", onclick: (ev) => confirmar(ev.target, "¿Desconectar? Pulsa otra vez", () => { clearInterval(cerebro.temporizador); cerebro.ad = null; Object.assign(cerebro.estado, { conectado: false, error: "", nombre: "" }); try { localStorage.removeItem(K.carpeta); } catch {} cargarBibliotecaLocal(); pintarAjustes(); }) }, "Desconectar") : null),
-    h("small", { class: "nota" }, "Qué ve la web: con Drive, solo los archivos que ella misma crea en «Fer Agent» (permiso drive.file); nada más de tu Drive. Lo que corrijas en Obsidian en esas notas lo vuelve a leer. Una nota NUEVA que escribas a mano en Obsidian no la ve, porque no la creó ella: súbela con «Añadir notas a la Biblioteca» (queda dentro de su carpeta y desde ahí la editas). Para que viera cualquier nota nueva haría falta el permiso de leer todo tu Drive, que Google trata como restringido y que dejaría ver todo, no solo su carpeta: por eso no se pide."));
+    st.conectado ? h("button", { class: "btn mini", onclick: () => sincronizarCerebro().then(() => avisoFlotante("Synced.")) }, "Sync now") : null,
+    h("button", { class: "btn mini", onclick: () => fb.click() }, "Add notes to the Library"), fb,
+    st.conectado || conf.tipo ? h("button", { class: "btn mini", onclick: (ev) => confirmar(ev.target, "Disconnect? Press again", () => { clearInterval(cerebro.temporizador); cerebro.ad = null; Object.assign(cerebro.estado, { conectado: false, error: "", nombre: "" }); try { localStorage.removeItem(K.carpeta); } catch {} cargarBibliotecaLocal(); pintarAjustes(); }) }, "Disconnect") : null),
+    h("small", { class: "nota" }, "What the website sees: with Drive, only the files it creates itself in “Fer Agent” (drive.file permission); nothing else in your Drive. Whatever you correct in Obsidian in those notes, it reads again. A NEW note you write by hand in Obsidian isn't seen, because the website didn't create it: upload it with “Add notes to the Library” (it stays inside its folder and you edit it from there). For it to see any new note it would need permission to read your whole Drive, which Google treats as restricted and which would let it see everything, not just its folder: that's why it isn't requested."));
   return caja;
 }
 let ultimoAjuste = "";
@@ -2444,7 +2444,7 @@ function adaptadorDrive(clientId) {
     const r = await new Promise((res, rej) => {
       const tc = google.accounts.oauth2.initTokenClient({ client_id: clientId, scope: "https://www.googleapis.com/auth/drive.file",
         callback: (x) => (x && x.error ? rej(new Error(x.error_description || x.error)) : res(x)),
-        error_callback: (e) => rej(new Error((e && (e.message || e.type)) || "Google no dio permiso")) });
+        error_callback: (e) => rej(new Error((e && (e.message || e.type)) || "Google didn't grant permission")) });
       tc.requestAccessToken({ prompt: interactivo ? "consent" : "" });
     });
     token = r.access_token; caduca = Date.now() + ((Number(r.expires_in) || 3600) - 120) * 1000;
@@ -2453,7 +2453,7 @@ function adaptadorDrive(clientId) {
     if (!token || Date.now() > caduca) await pedirToken(false);
     const r = await fetch(url, Object.assign({}, init, { headers: Object.assign({ Authorization: "Bearer " + token }, init.headers || {}) }));
     if (r.status === 401 && otra) { token = null; return api(url, init, false); }
-    if (!r.ok) { let det = ""; try { det = ((await r.json()).error || {}).message || ""; } catch {} throw new Error(`Google Drive respondió ${r.status}${det ? ": " + det : ""}`); }
+    if (!r.ok) { let det = ""; try { det = ((await r.json()).error || {}).message || ""; } catch {} throw new Error(`Google Drive replied ${r.status}${det ? ": " + det : ""}`); }
     return r;
   }
   const comillas = (t) => String(t).replace(/\\/g, "\\\\").replace(/'/g, "\\'");
@@ -2474,8 +2474,8 @@ function adaptadorDrive(clientId) {
     return padre;
   }
   return {
-    tipo: "drive", nombre: "Google Drive · carpeta «Fer Agent»",
-    async conectar(interactivo) { await pedirToken(interactivo); await idCarpeta("Biblioteca"); await idCarpeta("Memoria larga"); },
+    tipo: "drive", nombre: "Google Drive · “Fer Agent” folder",
+    async conectar(interactivo) { await pedirToken(interactivo); const n = carpetasCerebro(ed.e); await idCarpeta(n.biblioteca); await idCarpeta(n.memoria); },
     async listar(sub, recursivo) {
       const out = [];
       const recorrer = async (ruta, id, nivel) => {
@@ -2511,12 +2511,12 @@ function adaptadorDrive(clientId) {
 function adaptadorLocal(handle) {
   async function dir(ruta, crear) { let d = handle; for (const p of String(ruta).split("/").filter(Boolean)) d = await d.getDirectoryHandle(p, { create: crear }); return d; }
   return {
-    tipo: "local", nombre: `Carpeta de este ordenador «${handle.name}»`,
+    tipo: "local", nombre: `Folder on this computer “${handle.name}”`,
     async conectar(interactivo) {
       let p = await handle.queryPermission({ mode: "readwrite" });
       if (p !== "granted" && interactivo) p = await handle.requestPermission({ mode: "readwrite" });
-      if (p !== "granted") throw Object.assign(new Error("Chrome necesita que vuelvas a dar permiso a la carpeta (Ajustes → Cerebro)."), { permiso: true });
-      await dir("Biblioteca", true); await dir("Memoria larga", true);
+      if (p !== "granted") throw Object.assign(new Error("Chrome needs you to grant permission to the folder again (Settings → Brain)."), { permiso: true });
+      const n = carpetasCerebro(ed.e); await dir(n.biblioteca, true); await dir(n.memoria, true);
     },
     async listar(sub, recursivo) {
       const out = [];
@@ -2574,9 +2574,10 @@ async function sincronizarCerebro(op = {}) {
     // Antes de escribir nada se mira la carpeta, para no pisar lo de tu otro aparato ni lo que corregiste a mano
     if (await traerEdificio(ad)) return;   // había un edificio más nuevo de tu otro aparato: ya está cargado
     // Memoria larga: lo que corregiste a mano entra (sin perder lo apuntado aquí después de la última vez)
-    for (const x of await ad.listar("Memoria larga", false)) {
+    const cc = carpetasCerebro(ed.e);
+    for (const x of await ad.listar(cc.memoria, false)) {
       const nombre = x.ruta.split("/").pop();
-      if (!/\.md$/i.test(nombre) || nombre === "Índice.md") continue;
+      if (!/\.md$/i.test(nombre) || nombre === cc.indice + ".md") continue;
       if ((cerebro.vistos.get(x.ruta) || 0) >= x.modificado) continue;
       const texto = await ad.leer(x);
       cerebro.vistos.set(x.ruta, x.modificado);
@@ -2586,7 +2587,7 @@ async function sincronizarCerebro(op = {}) {
     if (!op.soloEscribir) {
       // Biblioteca: tus notas, para que Memory busque en ellas (solo lectura)
       const docs = [];
-      for (const x of (await ad.listar("Biblioteca", true)).filter((y) => /\.(md|txt)$/i.test(y.ruta))) {
+      for (const x of (await ad.listar(cc.biblioteca, true)).filter((y) => /\.(md|txt)$/i.test(y.ruta))) {
         let c = await idb.get("biblio", ad.tipo + ":" + x.ruta);
         if (!c || c.modificado < x.modificado) { c = { modificado: x.modificado, texto: (await ad.leer(x)).slice(0, 300000) }; await idb.put("biblio", ad.tipo + ":" + x.ruta, c); }
         docs.push({ ruta: x.ruta, titulo: x.ruta.split("/").pop().replace(/\.(md|txt)$/i, ""), texto: c.texto });
@@ -2595,7 +2596,7 @@ async function sincronizarCerebro(op = {}) {
       cerebro.estado.biblioteca = docs.length;
     }
     // lo que cambió aquí sale a la carpeta: las notas de la Memoria larga y la copia del edificio
-    const notas = notasMemoriaMd(ed.e.memoriaLarga, nombresAgentes());
+    const notas = notasMemoriaMd(ed.e.memoriaLarga, nombresAgentes(), cc);
     for (const n of notas) {
       if (cerebro.escritos.get(n.ruta) === n.texto) continue;
       await ad.escribir(n.ruta, n.texto);
@@ -2614,13 +2615,13 @@ async function sincronizarCerebro(op = {}) {
 }
 async function escribirEdificio(ad) {
   const ts = Date.now();
-  await ad.escribir("edificio.json", JSON.stringify({ tipo: "fer-agent-edificio", version: VERSION, aparato, ts, edificio: ed.e }), "application/json");
+  await ad.escribir(carpetasCerebro(ed.e).copia, JSON.stringify({ tipo: "fer-agent-edificio", version: VERSION, aparato, ts, edificio: ed.e }), "application/json");
   cerebro.miEdificio = ts; cerebro.vistoEdificio = Math.max(cerebro.vistoEdificio, ts); cerebro.cambios = 0;
   cerebro.estado.ultimaCopia = ts;
 }
 // ¿Tu otro aparato (el móvil o el Mac) guardó el edificio después? Si aquí no has cambiado nada, se carga; si sí, eliges.
 async function traerEdificio(ad) {
-  const x = (await ad.listar("", false)).find((y) => y.ruta === "edificio.json");
+  const x = (await ad.listar("", false)).find((y) => y.ruta === carpetasCerebro(ed.e).copia);
   if (!x || x.modificado <= cerebro.vistoEdificio) return false;
   let d = null; try { d = JSON.parse(await ad.leer(x)); } catch { return false; }
   if (!d || d.tipo !== "fer-agent-edificio" || !d.edificio || d.aparato === aparato || (d.ts || 0) <= cerebro.miEdificio) { cerebro.vistoEdificio = x.modificado; return false; }
@@ -2629,17 +2630,17 @@ async function traerEdificio(ad) {
   cerebro.vistoEdificio = x.modificado;
   await Motor.ejecutar({ tipo: "importar", estado: d.edificio });
   cerebro.miEdificio = d.ts; cerebro.cambios = 0;
-  avisoFlotante(`Cargado el edificio que guardó tu otro aparato (${new Date(d.ts).toLocaleString(LOCALE)}).`);
+  avisoFlotante(`Loaded the building your other device saved (${new Date(d.ts).toLocaleString(LOCALE)}).`);
   pintar(); if (chatId) pintarChat(true);
   return true;
 }
 function avisoConflicto(d) {
   if ($("conflicto")) return;
   const caja = h("div", { id: "conflicto", class: "aviso-flotante conflicto", role: "alertdialog" },
-    h("b", {}, "Tu otro aparato guardó cambios en el edificio"), h("span", {}, `Los suyos son de ${new Date(d.ts).toLocaleString(LOCALE)}. Aquí también has cambiado cosas. ¿Con cuáles te quedas?`),
+    h("b", {}, "Your other device saved changes to the building"), h("span", {}, `Its changes are from ${new Date(d.ts).toLocaleString(LOCALE)}. You've changed things here too. Which ones do you keep?`),
     h("div", { class: "fila-c" },
-      h("button", { class: "btn mini primario", onclick: async () => { caja.remove(); const c = cerebro.conflicto; cerebro.conflicto = null; await Motor.ejecutar({ tipo: "importar", estado: d.edificio }).catch(avisar); cerebro.miEdificio = d.ts; cerebro.cambios = 0; if (c) cerebro.vistoEdificio = Math.max(cerebro.vistoEdificio, c.modificado); pintar(); if (chatId) pintarChat(true); } }, "Cargar los del otro aparato"),
-      h("button", { class: "btn mini", onclick: async () => { caja.remove(); const c = cerebro.conflicto; cerebro.conflicto = null; if (c) cerebro.vistoEdificio = Math.max(cerebro.vistoEdificio, c.modificado); if (cerebro.ad) await escribirEdificio(cerebro.ad).catch(avisar); } }, "Quedarme con los de aquí")));
+      h("button", { class: "btn mini primario", onclick: async () => { caja.remove(); const c = cerebro.conflicto; cerebro.conflicto = null; await Motor.ejecutar({ tipo: "importar", estado: d.edificio }).catch(avisar); cerebro.miEdificio = d.ts; cerebro.cambios = 0; if (c) cerebro.vistoEdificio = Math.max(cerebro.vistoEdificio, c.modificado); pintar(); if (chatId) pintarChat(true); } }, "Load the other device's"),
+      h("button", { class: "btn mini", onclick: async () => { caja.remove(); const c = cerebro.conflicto; cerebro.conflicto = null; if (c) cerebro.vistoEdificio = Math.max(cerebro.vistoEdificio, c.modificado); if (cerebro.ad) await escribirEdificio(cerebro.ad).catch(avisar); } }, "Keep the ones here")));
   document.body.append(caja);
 }
 // La Biblioteca sin carpeta (solo en este navegador) o subir notas a la carpeta
@@ -2648,8 +2649,9 @@ async function subirBiblioteca(archivos) {
   for (const f of archivos) {
     if (!/\.(md|txt)$/i.test(f.name)) continue;
     const texto = await f.text();
-    if (cerebro.ad) await cerebro.ad.escribir("Biblioteca/" + f.name, texto);
-    else await idb.put("biblio", "navegador:Biblioteca/" + f.name, { modificado: Date.now(), texto: texto.slice(0, 300000) });
+    const bib = carpetasCerebro(ed.e).biblioteca;
+    if (cerebro.ad) await cerebro.ad.escribir(bib + "/" + f.name, texto);
+    else await idb.put("biblio", "navegador:" + bib + "/" + f.name, { modificado: Date.now(), texto: texto.slice(0, 300000) });
     n++;
   }
   if (cerebro.ad) await sincronizarCerebro(); else await cargarBibliotecaLocal();
@@ -2698,10 +2700,10 @@ async function guardarCopia({ conMedios = true, mudanza = false } = {}) {
   store.set(K.ultimaCopia, String(Date.now()));
   if (cerebro.ad) await escribirEdificio(cerebro.ad).catch(() => {});
   pintarCopiaTop();
-  avisoFlotante(mudanza ? "Mudanza preparada: abre la web nueva y en Ajustes → Mudanza carga este archivo." : (Object.keys(p.medios || {}).length ? tr(`Copia guardada en tus descargas con ${Object.keys(p.medios).length} imágenes y músicas.`) : tr("Copia guardada en tus descargas.")));
+  avisoFlotante(mudanza ? "Move prepared: open the new website and in Settings → Moving load this file." : (Object.keys(p.medios || {}).length ? tr(`Backup saved in your downloads with ${Object.keys(p.medios).length} images and music tracks.`) : tr("Backup saved in your downloads.")));
 }
 async function cargarCopia(texto) {
-  let d; try { d = JSON.parse(texto); } catch { throw Object.assign(new Error("Ese archivo no es una copia de Fer Agent."), { mostrado: true }); }
+  let d; try { d = JSON.parse(texto); } catch { throw Object.assign(new Error("That file isn't a Fer Agent backup."), { mostrado: true }); }
   const edif = d && d.tipo === "fer-agent-copia" ? d.edificio : d && d.tipo === "fer-agent-edificio" ? d.edificio : d;
   await Motor.ejecutar({ tipo: "importar", estado: edif });
   let n = 0;
@@ -2741,7 +2743,7 @@ $("cerrarChat").onclick = volverAtras;
 $("irPortada").onclick = mostrarPortada;
 $("volverPortada").onclick = mostrarPortada;
 $("abrirBandeja").onclick = () => abrirPantalla("bandeja");
-$("pausa").onclick = () => { const p = !ed.e.ajustes.pausa; Motor.ejecutar({ tipo: "pausa", pausa: p }).then(() => { pintar(); avisoFlotante(p ? "Pausa general puesta: nada que gaste se despierta solo." : "Automático en marcha: los latidos vuelven a funcionar."); }).catch(avisar); };
+$("pausa").onclick = () => { const p = !ed.e.ajustes.pausa; Motor.ejecutar({ tipo: "pausa", pausa: p }).then(() => { pintar(); avisoFlotante(p ? "General pause on: nothing that spends wakes up on its own." : "Automatic work running: heartbeats are working again."); }).catch(avisar); };
 $("copiaRapida").onclick = () => guardarCopia({ conMedios: true }).catch(avisar);
 $("pararVoz").onclick = () => pararAudio();
 $("verFichaChat").onclick = () => { const a = agenteChat(); cerrarChat(); if (a) { fichaTab = "identidad"; elegir(a); } };
@@ -2781,9 +2783,9 @@ async function unaSolaPestana() {
   });
   if (mia) return true;
   document.body.append(h("div", { class: "otra-pestana", role: "alertdialog", "aria-labelledby": "otraT" },
-    h("div", {}, h("h2", { id: "otraT" }, "El edificio ya está abierto en otra pestaña"),
-      h("p", {}, "Úsalo allí. Si lo abres en dos pestañas a la vez, una puede deshacer lo que hace la otra y algún trabajo se pagaría dos veces."),
-      h("p", { class: "nota" }, "Si cierras la otra, esta se abre sola."))));
+    h("div", {}, h("h2", { id: "otraT" }, "The building is already open in another tab"),
+      h("p", {}, "Use it there. If you open it in two tabs at once, one can undo what the other does and some work would be paid for twice."),
+      h("p", { class: "nota" }, "If you close the other one, this one opens by itself."))));
   navigator.locks.request("fer-edificio-pestana", () => { location.reload(); return new Promise(() => {}); });
   return false;
 }
@@ -2822,7 +2824,7 @@ async function sincronizarIdioma() {
     ed.e = null;
     await listas; ed.setModelos(modelos);
     await refrescarCasa();
-    if (!ed.e) { ed.e = { nombre: "Fer Casa", ajustes: { pausa: true }, plantas: [], agentes: [], memoriaLarga: [], conversacion: [], registro: [], propuestas: [], monedas: [], lecciones: [], reuniones: [], consultasJev: [], propuestasModelos: [], autorizaciones: [] }; abrirCajon("ajustes"); }
+    if (!ed.e) { ed.e = { nombre: "Fer Home", ajustes: { pausa: true }, plantas: [], agentes: [], memoriaLarga: [], conversacion: [], registro: [], propuestas: [], monedas: [], lecciones: [], reuniones: [], consultasJev: [], propuestasModelos: [], autorizaciones: [] }; abrirCajon("ajustes"); }
     setInterval(async () => { await refrescarCasa(); latirAntena(); }, 5000);
   } else {
     if (!(await unaSolaPestana())) return;
@@ -2833,7 +2835,7 @@ async function sincronizarIdioma() {
         catch {
           // si no cabe, primero se sacrifica la copia de Tecno (se puede descargar otra en Ajustes) y se reintenta
           try { if (localStorage.getItem(K.copia)) { localStorage.removeItem(K.copia); localStorage.setItem(K.estado, json); avisoLleno = false; return; } } catch {}
-          if (!avisoLleno) { avisoLleno = true; pendientesError.push("No se pudo guardar el edificio: el almacenamiento de este navegador está lleno. Descarga una copia en Ajustes y borra tareas o recuerdos antiguos."); pintarChat(true); } }
+          if (!avisoLleno) { avisoLleno = true; pendientesError.push("The building couldn't be saved: this browser's storage is full. Download a backup in Settings and delete old tasks or memories."); pintarChat(true); } }
       },
       clave: () => store.get(K.clave),
       claves: () => Object.fromEntries((ed ? ed.conexiones() : []).map((c) => [c.id, store.get(claveApi(c.id))]).filter((x) => x[1])),
@@ -2844,7 +2846,7 @@ async function sincronizarIdioma() {
         const e = JSON.parse(json);   // la configuración de todos (sin conversación, registro ni memoria corta)
         delete e.conversacion; delete e.registro; for (const a of e.agentes || []) { a.memoriaCorta = []; a.tareas = (a.tareas || []).filter((t) => t.estado === "pendiente"); }
         const txt = JSON.stringify(e);
-        if (txt.length > 1e6) throw new Error("el edificio es demasiado grande para guardarlo en el navegador; descarga la copia en Ajustes");
+        if (txt.length > 1e6) throw new Error("the building is too big to store in the browser; download the backup in Settings");
         localStorage.setItem(K.copia, JSON.stringify({ dia, json: txt }));
       },
       alCambiar: (ev) => {

@@ -17,7 +17,7 @@ The interface is in **English** and **Spanish** (EN · ES switch on the home pag
 - **Talk to each agent**, in writing or by voice, each with its own voice. Bring several together in the **meeting room**: the boss chairs and writes the minutes.
 - **Coins and lessons.** Give gold or red coins under any reply; a cheap model turns the reason into a rule that you approve in the **Inbox**, and everyone with the same role learns it.
 - **The Agent Creator** designs a new agent from a description in your own words; nothing is created until you accept it.
-- **Memory.** Short memory per agent and a long memory for the building, kept as Obsidian notes in Google Drive, a folder on your computer or Fer Home's folder.
+- **Memory.** Short memory per agent and a long-term memory for the building, kept as Obsidian notes in Google Drive, a folder on your computer or Fer Home's folder.
 - **Firewalls instead of permission prompts.** Agents open the addresses they need, but never one carrying data from your notes; content from outside reaches them marked as “data, not orders”; anything with effects outside the website waits for your yes in the Inbox.
 
 ## Where it lives

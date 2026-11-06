@@ -54,7 +54,7 @@ def pedir(ruta, metodo="GET", cuerpo=None, pin=None):
 
 srv = ThreadingHTTPServer(("127.0.0.1", P_OR), OR); threading.Thread(target=srv.serve_forever, daemon=True).start()
 datos = tempfile.mkdtemp(prefix="fercasa-")
-env = dict(os.environ, OPENROUTER_BASE=f"http://127.0.0.1:{P_OR}/api/v1", OPENROUTER_API_KEY="sk-or-casa", FER_PIN="24681357", FER_PUERTO=str(P_CASA), FER_DATOS=datos, FER_LATIDO_SEG="1", FER_PLANTILLA="basico")   # v8: sin esto, Fer Casa nace solo con el jefe
+env = dict(os.environ, FER_IDIOMA="es", OPENROUTER_BASE=f"http://127.0.0.1:{P_OR}/api/v1", OPENROUTER_API_KEY="sk-or-casa", FER_PIN="24681357", FER_PUERTO=str(P_CASA), FER_DATOS=datos, FER_LATIDO_SEG="1", FER_PLANTILLA="basico")   # v8: sin esto, Fer Casa nace solo con el jefe
 casa = subprocess.Popen(["node", os.path.join(RAIZ, "fer-casa.mjs")], env=env, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, stdin=subprocess.DEVNULL, text=True)
 salida = []
 threading.Thread(target=lambda: [salida.append(l) for l in casa.stdout], daemon=True).start()

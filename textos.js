@@ -1,15 +1,16 @@
 // =====================================================================
-// Fer Agent · TEXTOS Y TRADUCCIÓN
-// La web está escrita en español. Para traducirla no hay que tocar el resto del código:
-//   1. Copia textos/es.js como textos/xx.js (xx = el idioma).
-//   2. Traduce los valores (lo de la derecha). Las frases con datos usan {1}, {2}…
-//   3. Añade el idioma a IDIOMAS (aquí) y a IDIOMAS_MOTOR (engine.js).
-// Cada texto que se ve en pantalla pasa por tr(): si hay traducción, se usa; si no, se queda en español.
-// El mismo diccionario lo usa el motor para lo que se dice a los agentes en un edificio en ese idioma.
+// Fer Agent · TEXTS AND TRANSLATION
+// The website is written in English. To translate it you don't need to touch the rest of the code:
+//   1. Copy textos/es.js as textos/xx.js (xx = the language code).
+//   2. Translate the values (the right-hand side). Texts with data use {1}, {2}…
+//   3. Add the language to IDIOMAS (here) and to IDIOMAS_MOTOR (engine.js).
+// Every text shown on screen goes through tr(): if there's a translation, it's used; if not, it stays in English.
+// The engine uses the same dictionary for what it tells the agents in a building in that language.
+// In English, tr() also turns into English what buildings made before version 9 saved in Spanish (activity, states…).
 // =====================================================================
 let exactos = null, patrones = [], porInicio = new Map(), generales = [];
-export let idioma = "es";
-// Idiomas que se pueden elegir (en la portada y en Ajustes)
+export let idioma = "en";
+// Languages that can be chosen (on the home page and in Settings)
 export const IDIOMAS = { en: "English", es: "Español" };
 const GUARDADO = "ferAgent.idioma";
 
@@ -21,7 +22,7 @@ function compilar(dic) {
   exactos = new Map(); patrones = []; porInicio = new Map(); generales = [];
   for (const [es, otro] of Object.entries(dic || {})) {
     if (typeof otro !== "string" || !otro) continue;
-    if (/\{\d+\}/.test(es)) {
+    if (/\{\d+\}/.test(es) && es !== "#{1}") {   // «#{1}» (a place in a ranking) only as it is: as a pattern it would catch any text that starts with #
       const k = quitarEspacios(es);
       const partes = k.split(/(\{\d+\})/);
       const orden = [];
@@ -82,18 +83,21 @@ export async function cargarIdioma(delEdificio) {
   let pedido = "";
   try { pedido = new URLSearchParams(location.search).get("lang") || ""; } catch {}
   pedido = pedido || idiomaGuardado() || delEdificio || idiomaDelNavegador();
-  pedido = String(pedido).toLowerCase().replace(/[^a-z-]/g, "").slice(0, 8) || "es";
-  idioma = "es"; exactos = null; patrones = []; porInicio = new Map(); generales = [];
-  document.documentElement.lang = "es";
-  if (pedido === "es") return "es";
-  try {
-    const mod = await import("./textos/" + pedido + ".js");
-    compilar(mod.default || {});
-    idioma = pedido;
-    document.documentElement.lang = pedido;
-  } catch { exactos = null; patrones = []; }
+  pedido = String(pedido).toLowerCase().replace(/[^a-z-]/g, "").slice(0, 8) || "en";
+  idioma = "en"; exactos = null; patrones = []; porInicio = new Map(); generales = [];
+  document.documentElement.lang = "en";
+  const es = await diccionario("es");
+  // English: the program's own texts stay as they are; what earlier versions saved in Spanish is turned into English
+  if (es) compilar(Object.fromEntries(Object.entries(es).filter(([, v]) => typeof v === "string" && v).map(([k, v]) => [v, k])));
+  if (pedido === "en") return "en";
+  const dic = pedido === "es" ? es : await diccionario(pedido);
+  if (!dic) return idioma;
+  compilar(dic);
+  idioma = pedido;
+  document.documentElement.lang = pedido;
   return idioma;
 }
+async function diccionario(id) { try { return (await import("./textos/" + id + ".js")).default || {}; } catch { return null; } }
 
 // Traduce lo que viene escrito en la página (index.html): textos y los atributos que se leen.
 export function traducirPagina(raiz) {

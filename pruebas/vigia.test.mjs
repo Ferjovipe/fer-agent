@@ -5,6 +5,8 @@ import http from "node:http";
 import { construirBusquedas, aplicarRegla, formatear, leerTweetsEnPagina } from "../skills/vigia-x/vigia.mjs";
 import vigia from "../skills/vigia-x/vigia.mjs";
 import { leerSkillMd, dentroDe } from "../manos.mjs";
+import { traducir, rellenar } from "../engine.js";
+const enEspanol = (s, ...v) => rellenar(traducir("es", s), v);
 import { readFileSync } from "node:fs";
 import { paginaX } from "./x-imitacion.mjs";
 import { createRequire } from "node:module";
@@ -32,10 +34,11 @@ test("la regla: nuevos en la ventana con 3 o más; viejos que han ganado 3 desde
   r = aplicarRegla([t("1", 3, 10, 1, 0), t("2", 5, 3, 1, 0), t("3", 30, 52, 5, 5)], r.estado, despues, 10, 3);   // los mismos tweets (misma hora de publicación)
   assert.deepEqual(r.salen.map((x) => x.id), ["2"]);
   assert.equal(r.salen[0].gana, 3);
-  const txt = formatear(r.salen, despues, 10, 3);
+  const txt = formatear(r.salen, despues, 10, 3, enEspanol);   // v9: written in English, here in a Spanish building
   assert.match(txt, /^1 tweet ha sumado 3 o más interacciones en los últimos 10 minutos:/);
   assert.match(txt, /@a2 · hace 15 min · 3 me gusta · 1 respuestas · 0 reposts \(\+3\)/);
-  assert.equal(formatear([], despues, 10, 3), "NADA");
+  assert.match(formatear(r.salen, despues, 10, 3), /^1 tweet has gained 3 or more interactions in the last 10 minutes:\n\n1\. @a2 · 15 min ago · 3 likes · 1 replies · 0 reposts \(\+3\)\n“IA 2”/);
+  assert.equal(formatear([], despues, 10, 3), "NOTHING");
   // lo que no se avisó se olvida pronto (no llena la memoria)
   r = aplicarRegla([], r.estado, despues + 60 * min, 10, 3);
   assert.deepEqual(Object.keys(r.estado.vistos).sort(), ["1", "2", "5"], "solo quedan (un día) los ya avisados");
@@ -43,8 +46,8 @@ test("la regla: nuevos en la ventana con 3 o más; viejos que han ganado 3 desde
 
 test("las rutas de la carpeta de los agentes no pueden salir de ella", () => {
   assert.equal(dentroDe("/tmp/agentes", "notas/a.md"), "/tmp/agentes/notas/a.md");
-  assert.throws(() => dentroDe("/tmp/agentes", "../etc/passwd"), /sale de la carpeta/);
-  assert.throws(() => dentroDe("/tmp/agentes", "notas/../../x"), /sale de la carpeta/);
+  assert.throws(() => dentroDe("/tmp/agentes", "../etc/passwd"), /leaves the agents|sale de la carpeta/);
+  assert.throws(() => dentroDe("/tmp/agentes", "notas/../../x"), /leaves the agents|sale de la carpeta/);
   assert.equal(dentroDe("/tmp/agentes", "/abs/ruta.md"), "/tmp/agentes/abs/ruta.md", "una ruta absoluta se toma dentro de la carpeta");
 });
 
@@ -125,7 +128,7 @@ test("el lector y el Vigía entero, contra una página que imita a X (Chrome de 
     assert.ok(Math.abs(leidos[0].ts - (ahora - 2 * 60e3)) < 1000, "la hora del tweet");
     await pag.close();
     visitas = 0;
-    const h = { conPagina: async (f) => { const p = await b.newPage(); try { return await f(p); } finally { await p.close(); } }, ahora: () => ahora + 1000, log: () => {} };
+    const h = { conPagina: async (f) => { const p = await b.newPage(); try { return await f(p); } finally { await p.close(); } }, ahora: () => ahora + 1000, log: () => {}, L: enEspanol };   // a Spanish building
     const ajustes = { terminos: ['"inteligencia artificial"', '"AI agents"'], minutos: 10, minimo: 3, desplazamientos: 2, base: url };
     const r1 = await vigia(ajustes, h, { estado: {} });
     assert.match(r1.texto, /2 tweets han sumado 3 o más/);

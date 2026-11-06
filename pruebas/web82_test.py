@@ -52,9 +52,9 @@ CORTAS = re.compile(r"(?<![\w'’-])(de|en|y|su|tu|se|es|un|al|lo|ya|mi|ve|sí|t
 # además: cualquier palabra que solo aparece en los textos en español del diccionario (y no en su inglés)
 def _palabras(t): return set(w.lower() for w in re.findall(r"[A-Za-zÁÉÍÓÚáéíóúñÑ]{3,}", t))
 _es, _en = set(), set()
-for linea in open(os.path.join(RAIZ, "textos", "en.js"), encoding="utf8"):
-    m = re.match(r'\s*("(?:[^"\\]|\\.)*"): ("(?:[^"\\]|\\.)*"),\s*$', linea)
-    if m: _es |= _palabras(json.loads(m.group(1))); _en |= _palabras(json.loads(m.group(2)))
+for linea in open(os.path.join(RAIZ, "textos", "es.js"), encoding="utf8"):   # v9: English on the left, Spanish on the right
+    m = re.match(r'\s*("(?:[^"\\]|\\.)*"): ("(?:[^"\\]|\\.)*"),?\s*$', linea)
+    if m: _en |= _palabras(json.loads(m.group(1))); _es |= _palabras(json.loads(m.group(2)))
 SOLO_ES = _es - _en - {"fer", "casa", "biblioteca", "memoria", "larga", "edificio", "json", "datos", "config", "cerebro", "node", "mjs", "claves", "carpeta", "tecno", "arturito", "jev", "memory", "español", "índice"}
 restos = {}
 def espanol(page, sel, donde):

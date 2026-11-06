@@ -14,7 +14,9 @@ import { pathToFileURL } from "node:url";
 import { createRequire } from "node:module";
 import dns from "node:dns/promises";
 import net from "node:net";
+import { traducir, rellenar, IDIOMA } from "./engine.js";
 const requerir = createRequire(import.meta.url);
+const L = (s, ...v) => rellenar(traducir(IDIOMA, s), v);   // in the building's language (Fer Home sets it when it opens the building)
 
 // ---------------- Solo internet: nada de tu red de casa, de este ordenador ni de las direcciones internas de un servidor ----------------
 function ipPrivada(ip) {
@@ -67,7 +69,7 @@ export function leerSkillMd(texto) {
 export function dentroDe(base, ruta) {
   const destino = path.resolve(base, String(ruta || ".").replace(/^[/\\]+/, ""));
   const raiz = path.resolve(base);
-  if (destino !== raiz && !destino.startsWith(raiz + path.sep)) throw new Error("Esa ruta sale de la carpeta de los agentes: no se permite.");
+  if (destino !== raiz && !destino.startsWith(raiz + path.sep)) throw new Error(L("That path leaves the agents' folder: not allowed."));
   return destino;
 }
 
@@ -94,7 +96,7 @@ export function crearManos(op) {
             efecto: cab.efecto === "externo" ? "externo" : "lee", fija: cab.fija === true, datos: cab.datos ? String(cab.datos) : "",   // «fija» solo si su SKILL.md lo dice
             tiempo: Math.min(3600, Math.max(10, Number(cab.tiempo) || 300)),   // segundos que puede tardar como mucho (por defecto 5 minutos)
             ajustes: Array.isArray(cab.ajustes) ? cab.ajustes : [], script: cab.script ? path.join(dir, n, String(cab.script)) : "", instrucciones: cuerpo.slice(0, 4000), carpeta: path.join(dir, n) });
-        } catch (err) { o.log(`No pude leer la skill ${n}: ${err.message}`); }
+        } catch (err) { o.log(L("I couldn't read the skill {1}: {2}", n, err.message)); }
       }
     }
     skills = nuevas;
@@ -109,17 +111,17 @@ export function crearManos(op) {
     abriendo = (async () => {
       let pw = null;
       for (const n of ["playwright-core", "playwright"]) { try { pw = await import(n); break; } catch {} try { pw = requerir(n); break; } catch {} }
-      if (!pw) throw Object.assign(new Error("Falta instalar Playwright. En la carpeta de Fer Casa, escribe: npm install playwright-core"), { mostrado: true });
+      if (!pw) throw Object.assign(new Error(L("Playwright isn't installed. In the Fer Home folder, type: npm install playwright-core")), { mostrado: true });
       const chromium = pw.chromium || (pw.default && pw.default.chromium);
       const base = { headless: !o.visible, viewport: { width: 1280, height: 900 }, locale: (typeof o.locale === "function" ? o.locale() : o.locale) || "es-ES", args: ["--disable-blink-features=AutomationControlled"] };
       try { contexto = await chromium.launchPersistentContext(o.perfilChrome, Object.assign({ channel: o.canal || "chrome" }, base)); }
       catch (err) {
         try { contexto = await chromium.launchPersistentContext(o.perfilChrome, base); }   // si no hay Google Chrome, el Chromium de Playwright (si está)
-        catch { throw Object.assign(new Error("No pude abrir el Chrome de los agentes. ¿Tienes Google Chrome instalado? (" + err.message.split("\n")[0] + ")"), { mostrado: true }); }
+        catch { throw Object.assign(new Error(L("I couldn't open the agents' Chrome. Do you have Google Chrome installed? ({1})", err.message.split("\n")[0])), { mostrado: true }); }
       }
       const este = contexto;
       este.on("close", () => { if (contexto === este) contexto = null; });
-      o.log(`Chrome de los agentes abierto (perfil: ${o.perfilChrome}).`);
+      o.log(L("The agents' Chrome is open (profile: {1}).", o.perfilChrome));
       return contexto;
     })();
     try { return await abriendo; } finally { abriendo = null; }
@@ -140,7 +142,8 @@ export function crearManos(op) {
     carpeta: o.carpetaAgentes,
     ruta: (r) => dentroDe(o.carpetaAgentes, r),
     log: (...a) => o.log(...a),
-    ahora: () => Date.now()
+    ahora: () => Date.now(),
+    L   // their messages, in the building's language: h.L("English text {1}", value) (the translation goes in textos/es.js)
   };
 
   return {
@@ -150,17 +153,17 @@ export function crearManos(op) {
     ejecutar(nombre, datos, ctx) {
       const tarea = cola.then(async () => {
         const sk = skills.get(nombre);
-        if (!sk) throw new Error(`No existe la skill «${nombre}».`);
-        if (sk.efecto === "externo" && !(ctx && ctx.autorizado)) throw new Error(`La skill «${nombre}» tiene efecto fuera de la web: necesita tu permiso (bandeja).`);
+        if (!sk) throw new Error(L("The skill “{1}” doesn't exist.", nombre));
+        if (sk.efecto === "externo" && !(ctx && ctx.autorizado)) throw new Error(L("The skill “{1}” has an effect outside the website: it needs your permission (inbox).", nombre));
         if (!sk.script) return { texto: sk.instrucciones };   // una skill solo de instrucciones
         const mod = await import(pathToFileURL(sk.script).href + "?v=" + Date.now());
         const f = mod.default || mod.ejecutar;
-        if (typeof f !== "function") throw new Error(`La skill «${nombre}» no tiene programa que ejecutar.`);
+        if (typeof f !== "function") throw new Error(L("The skill “{1}” has no program to run.", nombre));
         // Con reloj: si una página se cuelga, la skill se para, se cierra su Chrome y la cola sigue con la siguiente
         const corre = Promise.resolve().then(() => f(datos || {}, herramientas, ctx || {}));
         corre.catch(() => {});
         let reloj;
-        const limite = new Promise((_, mal) => { reloj = setTimeout(() => mal(Object.assign(new Error(`La skill «${nombre}» tardó más de ${sk.tiempo} s: la he parado y he cerrado su Chrome.`), { mostrado: true, tiempo: true })), sk.tiempo * 1000); });
+        const limite = new Promise((_, mal) => { reloj = setTimeout(() => mal(Object.assign(new Error(L("The skill “{1}” took more than {2} s: I stopped it and closed its Chrome.", nombre, sk.tiempo)), { mostrado: true, tiempo: true })), sk.tiempo * 1000); });
         let r;
         try { r = await Promise.race([corre, limite]); }
         catch (err) { if (err.tiempo) { o.log(err.message); await cerrarChrome(); } throw err; }

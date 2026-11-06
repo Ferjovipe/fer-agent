@@ -1,14 +1,14 @@
 ---
 name: leer-web
-title: Leer una web
-description: Abre una página web en el Chrome de los agentes y devuelve su texto. Solo lee; no pulsa ni envía nada.
+title: Read a website
+description: Opens a web page in the agents' Chrome and returns its text. It only reads; it doesn't click or send anything.
 efecto: lee
 fija: false
 datos: {"url": "https://…"}
 script: leer.mjs
 ---
-# Leer una web
+# Read a website
 
-Abre la dirección en el Chrome de los agentes (con las sesiones que tengan iniciadas) y devuelve el título y el texto visible de la página, recortado a unos 12.000 caracteres.
+Opens the address in the agents' Chrome (with the sessions they have signed in to) and returns the title and the visible text of the page, cut to about 12,000 characters.
 
-Úsala para leer una noticia, una ficha de producto o una página que te pidan. No sirve para rellenar formularios ni para publicar.
+Use it to read a news story, a product page or a page you are asked about. It's not for filling in forms or publishing.

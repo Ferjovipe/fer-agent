@@ -1,10 +1,11 @@
 // =====================================================================
-// Vigía de X: lee la pestaña «Más recientes» de X con el Chrome de los agentes y pasa
-// solo los tweets que en los últimos minutos han sumado las interacciones pedidas.
-// Sin API y sin cerebro: no cuesta nada. Las funciones de abajo se prueban sin X (pruebas/vigia.test.mjs).
+// X Watcher: reads X's "Latest" tab with the agents' Chrome and passes on
+// only the tweets that have gained the requested interactions in the last few minutes.
+// No API and no brain: it costs nothing. The functions below are tested without X (pruebas/vigia.test.mjs).
 // =====================================================================
+const enIngles = (s, ...v) => String(s).replace(/\{(\d+)\}/g, (m, n) => (v[n - 1] === undefined ? m : String(v[n - 1])));   // without a dictionary: as it is
 
-// Los términos, juntos en búsquedas de «A OR B OR C» que X acepte (no muy largas)
+// The terms, grouped into "A OR B OR C" searches that X accepts (not too long)
 export function construirBusquedas(terminos, maxLargo = 380) {
   const lista = (terminos || []).map((t) => String(t).trim()).filter(Boolean);
   const grupos = []; let actual = [];
@@ -16,11 +17,11 @@ export function construirBusquedas(terminos, maxLargo = 380) {
   return grupos.map((g) => `(${g.join(" OR ")}) -filter:retweets`);
 }
 
-// Lo que se ejecuta DENTRO de la página de X: lee cada tweet (texto, autor, hora y contadores)
+// What runs INSIDE the X page: it reads each tweet (text, author, time and counters)
 export function leerTweetsEnPagina() {
   const num = (t) => {
     const s = String(t || "").replace(/\s/g, "");
-    const m = s.match(/([\d.,]+)(mill|mil|k|m)?/i);   // primero las largas: «1,2 mil» son 1.200, no 1,2 millones
+    const m = s.match(/([\d.,]+)(mill|mil|k|m)?/i);   // the long ones first: «1,2 mil» is 1,200, not 1.2 million
     if (!m) return 0;
     const suf = (m[2] || "").toLowerCase();
     let n = suf ? parseFloat(m[1].replace(",", ".")) : parseInt(m[1].replace(/[.,]/g, ""), 10);
@@ -33,7 +34,7 @@ export function leerTweetsEnPagina() {
       if (!b) continue;
       const al = b.getAttribute("aria-label") || "";
       const m = al.match(/\d[\d.,]*/);
-      if (m) return parseInt(m[0].replace(/[.,]/g, ""), 10) || 0;   // la etiqueta trae el número exacto
+      if (m) return parseInt(m[0].replace(/[.,]/g, ""), 10) || 0;   // the label carries the exact number
       return num(b.innerText);
     }
     return 0;
@@ -54,7 +55,7 @@ export function leerTweetsEnPagina() {
   }).filter((t) => t.id);
 }
 
-// La regla: ¿cuáles han sumado al menos «minimo» interacciones en los últimos «minutos»?
+// The rule: which ones have gained at least "minimo" interactions in the last "minutos"?
 export function aplicarRegla(tweets, estado, ahora, minutos, minimo) {
   const vistos = Object.assign({}, (estado && estado.vistos) || {});
   const ventana = Math.max(1, Number(minutos) || 10) * 60e3, min = Math.max(1, Number(minimo) || 3);
@@ -65,37 +66,38 @@ export function aplicarRegla(tweets, estado, ahora, minutos, minimo) {
     const inter = (t.megusta || 0) + (t.respuestas || 0) + (t.reposts || 0);
     const v = vistos[t.id];
     let gana = null;
-    if (t.ts && ahora - t.ts <= ventana) gana = inter;                                   // publicado en la ventana: todo lo ganó ahora
-    else if (v && ahora - v.ts <= ventana * 2.5) gana = inter - v.inter;               // ya visto en la vuelta anterior: lo que ha ganado desde entonces
+    if (t.ts && ahora - t.ts <= ventana) gana = inter;                                   // published within the window: it gained everything now
+    else if (v && ahora - v.ts <= ventana * 2.5) gana = inter - v.inter;               // already seen on the previous round: what it has gained since then
     const cumple = gana !== null && gana >= min;
     if (cumple && !(v && v.rep)) salen.push(Object.assign({}, t, { inter, gana }));
     vistos[t.id] = { inter, ts: ahora, rep: !!(v && v.rep) || cumple };
   }
-  // se olvidan: los no avisados de hace más de 3 ventanas y los avisados de hace más de un día
+  // forgotten: the ones not passed on from more than 3 windows ago and the ones passed on from more than a day ago
   for (const [id, v] of Object.entries(vistos)) if (ahora - v.ts > (v.rep ? 86400e3 : ventana * 3)) delete vistos[id];
   return { salen, estado: { vistos } };
 }
 
-export function formatear(salen, ahora, minutos, minimo) {
-  if (!salen.length) return "NADA";
-  const hace = (ts) => { const m = Math.max(0, Math.round((ahora - ts) / 60e3)); return !ts ? "" : m < 60 ? `hace ${m} min` : `hace ${Math.round(m / 60)} h`; };
-  const cab = `${salen.length} ${salen.length === 1 ? "tweet ha" : "tweets han"} sumado ${minimo} o más interacciones en los últimos ${minutos} minutos:`;
+// The message (L translates it into the building's language; the tests use it without a dictionary or in Spanish)
+export function formatear(salen, ahora, minutos, minimo, L = enIngles) {
+  if (!salen.length) return "NOTHING";
+  const hace = (ts) => { const m = Math.max(0, Math.round((ahora - ts) / 60e3)); return !ts ? "" : m < 60 ? L("{1} min ago", m) : L("{1} h ago", Math.round(m / 60)); };
+  const cab = salen.length === 1 ? L("1 tweet has gained {1} or more interactions in the last {2} minutes:", minimo, minutos) : L("{1} tweets have gained {2} or more interactions in the last {3} minutes:", salen.length, minimo, minutos);
   return cab + "\n\n" + salen.sort((a, b) => b.gana - a.gana).map((t, i) =>
-    `${i + 1}. @${t.autor} · ${hace(t.ts)} · ${t.megusta} me gusta · ${t.respuestas} respuestas · ${t.reposts} reposts (+${t.gana})\n«${String(t.texto).replace(/\s+/g, " ").slice(0, 280)}»\n${t.url}`).join("\n\n");
+    L("{1}. @{2} · {3} · {4} likes · {5} replies · {6} reposts (+{7})\n“{8}”\n{9}", i + 1, t.autor, hace(t.ts), t.megusta, t.respuestas, t.reposts, t.gana, String(t.texto).replace(/\s+/g, " ").slice(0, 280), t.url)).join("\n\n");
 }
 
-// El latido del Vigía
+// The Watcher's heartbeat
 export default async function vigia(ajustes, h, ctx) {
   const a = Object.assign({ terminos: [], minutos: 10, minimo: 3, desplazamientos: 8, base: "https://x.com" }, ajustes || {});
   const busquedas = construirBusquedas(a.terminos);
-  if (!busquedas.length) throw new Error("El Vigía no tiene términos de búsqueda: añádelos en su ficha → Capacidades.");
+  if (!busquedas.length) throw new Error(h.L("The Watcher has no search terms: add them in its profile → Capabilities."));
   const ahora = h.ahora(), ventana = a.minutos * 60e3, todos = [];
   let revisados = 0;
   await h.conPagina(async (p) => {
     for (const q of busquedas) {
       await p.goto(`${a.base}/search?q=${encodeURIComponent(q)}&src=typed_query&f=live`, { waitUntil: "domcontentloaded", timeout: 45000 });
       if (/\/(i\/flow\/)?login/.test(p.url()) || await p.$('[data-testid="loginButton"]')) {
-        throw Object.assign(new Error("X pide entrar. Entra una vez con la cuenta nueva en el Chrome de los agentes: en el ordenador de Fer Casa, node fer-casa.mjs entrar https://x.com/login"), { mostrado: true });
+        throw Object.assign(new Error(h.L("X is asking you to sign in. Sign in once with the new account in the agents' Chrome: on the Fer Home computer, node fer-casa.mjs entrar https://x.com/login")), { mostrado: true });
       }
       const hay = await p.waitForSelector('article[data-testid="tweet"]', { timeout: 20000 }).then(() => true).catch(() => false);
       if (!hay) continue;
@@ -103,7 +105,7 @@ export default async function vigia(ajustes, h, ctx) {
       for (let i = 0; i <= a.desplazamientos; i++) {
         for (const t of await p.evaluate(leerTweetsEnPagina)) vistos.set(t.id, t);
         const masViejo = Math.min(...[...vistos.values()].map((t) => t.ts || ahora));
-        if (ahora - masViejo > ventana * 1.5) break;   // ya llega a tweets de antes de la ventana
+        if (ahora - masViejo > ventana * 1.5) break;   // it already reaches tweets from before the window
         const antes = vistos.size;
         await p.evaluate(() => window.scrollBy(0, window.innerHeight * 1.8));
         await p.waitForTimeout(1300);
@@ -111,9 +113,9 @@ export default async function vigia(ajustes, h, ctx) {
       }
       revisados += vistos.size;
       todos.push(...vistos.values());
-      await p.waitForTimeout(800 + Math.random() * 1200);   // con calma entre búsquedas, como una persona
+      await p.waitForTimeout(800 + Math.random() * 1200);   // calmly between searches, like a person
     }
   });
   const r = aplicarRegla(todos, ctx && ctx.estado, ahora, a.minutos, a.minimo);
-  return { texto: formatear(r.salen, ahora, a.minutos, a.minimo), estado: r.estado, resumen: `${revisados} tweets leídos en ${busquedas.length} búsquedas; ${r.salen.length} cumplen la regla` };
+  return { texto: formatear(r.salen, ahora, a.minutos, a.minimo, h.L), estado: r.estado, resumen: h.L("{1} tweets read in {2} searches; {3} meet the rule", revisados, busquedas.length, r.salen.length) };
 }
