@@ -7,3 +7,5 @@ node_modules/
 # Salidas de las pruebas
 pruebas/capturas/
 __pycache__/
+# La aplicación: lo que se fabrica
+dist/

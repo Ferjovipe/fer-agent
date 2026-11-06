@@ -1,0 +1,93 @@
+{
+  "name": "fer-agent",
+  "productName": "Fer Agent",
+  "version": "9.0.0",
+  "description": "Your AI agents live in a building: an open-source agentic company on your computer.",
+  "author": "Fernando Villar Peláez",
+  "homepage": "https://feragent.netlify.app",
+  "license": "MIT",
+  "type": "module",
+  "main": "app/main.cjs",
+  "scripts": {
+    "app": "electron .",
+    "casa": "node fer-casa.mjs",
+    "instaladores": "electron-builder --publish never"
+  },
+  "dependencies": {
+    "playwright-core": "1.63.0"
+  },
+  "devDependencies": {
+    "electron": "44.10.2",
+    "electron-builder": "26.18.0"
+  },
+  "build": {
+    "appId": "app.feragent.desktop",
+    "productName": "Fer Agent",
+    "copyright": "Copyright © 2026 Fernando Villar Peláez",
+    "asar": false,
+    "directories": {
+      "output": "dist",
+      "buildResources": "build"
+    },
+    "files": [
+      "app/**",
+      "index.html",
+      "app.js",
+      "engine.js",
+      "landing.js",
+      "textos.js",
+      "textos/**",
+      "personajes.js",
+      "img/**",
+      "fer-casa.mjs",
+      "manos.mjs",
+      "skills/**",
+      "build/icon.png",
+      "package.json",
+      "LICENSE"
+    ],
+    "mac": {
+      "target": [
+        {
+          "target": "dmg",
+          "arch": [
+            "arm64",
+            "x64"
+          ]
+        }
+      ],
+      "category": "public.app-category.productivity",
+      "identity": "-",
+      "hardenedRuntime": false,
+      "gatekeeperAssess": false
+    },
+    "dmg": {
+      "title": "Fer Agent"
+    },
+    "win": {
+      "target": [
+        {
+          "target": "nsis",
+          "arch": [
+            "x64"
+          ]
+        }
+      ]
+    },
+    "nsis": {
+      "oneClick": false,
+      "perMachine": false,
+      "allowToChangeInstallationDirectory": true,
+      "createDesktopShortcut": true,
+      "shortcutName": "Fer Agent"
+    },
+    "linux": {
+      "target": [
+        "AppImage"
+      ],
+      "category": "Office",
+      "maintainer": "Fernando Villar Peláez"
+    },
+    "artifactName": "Fer-Agent-${version}-${os}-${arch}.${ext}"
+  }
+}

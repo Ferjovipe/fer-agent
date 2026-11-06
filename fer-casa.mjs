@@ -40,6 +40,9 @@ for (const f of ["chico", "chica", "abuelo", "abuela"]) ARCHIVOS["/img/pj-" + f 
 try { for (const f of readdirSync(path.join(AQUI, "textos"))) if (/^[a-z-]{2,8}\.js$/.test(f)) ARCHIVOS["/textos/" + f] = "textos/" + f; } catch {}
 const TIPOS = { ".html": "text/html; charset=utf-8", ".js": "text/javascript; charset=utf-8", ".webp": "image/webp", ".png": "image/png" };
 const ORDEN = (process.argv[2] || "").toLowerCase();
+// Dentro de la aplicación de escritorio (versión 9): sin Terminal. El PIN lo pone la aplicación sola, la clave se pega en Ajustes
+// y el servidor solo se oye en este ordenador.
+const APP = process.env.FER_APP === "1";
 
 mkdirSync(DATOS, { recursive: true });
 const ARCHIVO_CONF = path.join(DATOS, "config.json");
@@ -56,6 +59,12 @@ async function configuracion() {
   try { conf = JSON.parse(readFileSync(ARCHIVO_CONF, "utf8")); } catch {}
   if (process.env.OPENROUTER_API_KEY) conf.clave = process.env.OPENROUTER_API_KEY;
   if (process.env.FER_PIN) conf.pin = process.env.FER_PIN;
+  if (APP) {   // en la aplicación no se pregunta nada: el PIN se crea solo (la ventana lo lleva) y la clave se pega en Ajustes
+    if (!conf.pin || String(conf.pin).length < 24) { conf.pin = crypto.randomBytes(18).toString("base64url"); await guardarConf(Object.assign({ claves: {} }, conf)); }
+    conf.clave = conf.clave || "";
+    conf.claves = Object.assign({}, conf.claves || {});
+    return conf;
+  }
   if (conf.pin && String(conf.pin).length < 8) {
     if (process.stdin.isTTY) { console.log("El PIN guardado es demasiado corto (mínimo 8). Elige otro."); conf.pin = ""; }
     else { console.error("El PIN debe tener al menos 8 cifras o letras. Ejecuta «node fer-casa.mjs» a mano para cambiarlo."); process.exit(1); }
@@ -143,7 +152,8 @@ const MEDIOS = path.join(DATOS, "medios");
 mkdirSync(MEDIOS, { recursive: true });
 // Las manos: el Chrome de los agentes, su carpeta y las skills (las de Fer Agent y las tuyas en datos/skills)
 const manos = crearManos({ carpetaAgentes: CARPETA_AGENTES, perfilChrome: path.join(DATOS, "chrome-agentes"), carpetasSkills: [path.join(AQUI, "skills"), path.join(DATOS, "skills")],
-  visible: !!conf.manosVisibles || process.env.FER_MANOS_VISIBLES === "1", canal: process.env.FER_CHROME_CANAL || "chrome", log: (...a) => log(...a) });
+  visible: !!conf.manosVisibles || process.env.FER_MANOS_VISIBLES === "1", canal: process.env.FER_CHROME_CANAL || "chrome", log: (...a) => log(...a),
+  locale: () => (typeof ed !== "undefined" && ed.e && ed.e.idioma === "en" ? "en-US" : "es-ES") });   // las webs, en el idioma del edificio
 if (ORDEN === "entrar") {
   const url = process.argv[3] || "https://x.com/login";
   console.log(`\nAbro el Chrome de los agentes en ${url}. Entra con tu cuenta y, cuando acabes, cierra esa ventana de Chrome.\n`);
@@ -437,11 +447,19 @@ const servidor = http.createServer(async (req, res) => {
       res.writeHead(200, { "Content-Type": TIPOS[path.extname(f)], "Cache-Control": f.startsWith("img/") ? "max-age=86400" : "no-cache" });
       return res.end(cuerpo);
     }
-    if (ruta === "/api/hola") return json(res, 200, { ferCasa: true, version: VERSION, nombre: ed.e.nombre });
+    if (ruta === "/api/hola") return json(res, 200, { ferCasa: true, app: APP, version: VERSION, nombre: ed.e.nombre });
+    // la ventana de la aplicación entra con su PIN sin que tengas que escribirlo
+    if (APP && ruta === "/app/entrar" && req.method === "GET") {
+      const t = String(url.searchParams.get("t") || "");
+      const ok = t.length === String(conf.pin).length && crypto.timingSafeEqual(Buffer.from(t), Buffer.from(String(conf.pin)));
+      if (!ok) { res.writeHead(403, { "Content-Type": "text/plain; charset=utf-8" }); return res.end("No."); }
+      res.writeHead(200, { "Content-Type": "text/html; charset=utf-8", "Cache-Control": "no-store", "Referrer-Policy": "no-referrer" });
+      return res.end(`<!doctype html><meta charset="utf-8"><script>try{localStorage.setItem("ferEdificio.pin",${JSON.stringify(String(conf.pin))})}catch(e){}location.replace("/")</script>`);
+    }
     if (ruta.startsWith("/api/")) {
       if (!pinValido(req)) { await new Promise((r) => setTimeout(r, 400)); return json(res, 401, { error: "PIN incorrecto" }); }
       if (ruta === "/api/estado" && req.method === "GET") return json(res, 200, { estado: ed.e, ocupados: [...ed.ocupados], skills: manos.catalogo(),
-        casa: { telegram: !!tg, claves: Object.fromEntries([...new Set([...Object.keys(PROVEEDORES), ...ed.conexiones().map((c) => c.id)])].filter((k) => k !== "openrouter").map((k) => [k, !!(conf.claves || {})[k]])),
+        casa: { app: APP, clave: !!conf.clave, datos: APP ? DATOS : "", telegram: !!tg, claves: Object.fromEntries([...new Set([...Object.keys(PROVEEDORES), ...ed.conexiones().map((c) => c.id)])].filter((k) => k !== "openrouter").map((k) => [k, !!(conf.claves || {})[k]])),
           carpeta: { ruta: CARPETA_CEREBRO, notas: cerebro.notas, biblioteca: cerebro.biblioteca, ultimaSync: cerebro.ultimaSync, error: cerebro.error }, carpetaAgentes: CARPETA_AGENTES } });
       // imágenes y música guardadas
       if (ruta.startsWith("/api/medio/") && req.method === "GET") {
@@ -452,6 +470,37 @@ const servidor = http.createServer(async (req, res) => {
         const tipo = { png: "image/png", jpg: "image/jpeg", webp: "image/webp", mp3: "audio/mpeg", wav: "audio/wav", ogg: "audio/ogg", flac: "audio/flac" }[f.split(".").pop()] || "application/octet-stream";
         res.writeHead(200, { "Content-Type": tipo, "Cache-Control": "private, max-age=86400" });
         return res.end(await fs.readFile(path.join(MEDIOS, f)));
+      }
+      // En la aplicación, las claves se ponen desde Ajustes (no hay Terminal). Se guardan en datos/config.json, solo en este ordenador.
+      if (APP && ruta === "/api/conf/clave" && req.method === "POST") {
+        let d; try { d = JSON.parse((await leerCuerpo(req, 4096)).toString("utf8")); } catch { return json(res, 400, { error: "Petición ilegible." }); }
+        const prov = String(d.prov || "openrouter"), clave = String(d.clave || "").trim();
+        if (prov === "openrouter") {
+          if (!/^sk-or-[A-Za-z0-9_-]{10,}$/.test(clave)) return json(res, 400, { error: "Esa no parece una clave de OpenRouter (empieza por sk-or-)." });
+          conf.clave = clave;
+        } else {
+          if (!ed.proveedor(prov)) return json(res, 400, { error: "No existe esa API." });
+          if (clave) conf.claves[prov] = clave; else delete conf.claves[prov];
+        }
+        await guardarConf(conf);
+        if (prov === "openrouter") cargarModelos().catch(() => {});
+        return json(res, 200, { ok: true });
+      }
+      // En la aplicación: dónde vive el cerebro (la carpeta la elige la ventana; se usa al volver a abrir la aplicación)
+      if (APP && ruta === "/api/conf/carpeta" && req.method === "POST") {
+        let d; try { d = JSON.parse((await leerCuerpo(req, 8192)).toString("utf8")); } catch { return json(res, 400, { error: "Petición ilegible." }); }
+        const r = path.resolve(String(d.ruta || ""));
+        try { if (!(await fs.stat(r)).isDirectory()) throw 0; } catch { return json(res, 400, { error: "Esa carpeta no existe." }); }
+        conf.carpetaCerebro = r; await guardarConf(conf);
+        return json(res, 200, { ok: true, reiniciar: true });
+      }
+      // En la aplicación: abrir el Chrome de los agentes para que entres tú una vez en tus webs (la sesión se queda en este ordenador)
+      if (APP && ruta === "/api/conf/entrar" && req.method === "POST") {
+        let d; try { d = JSON.parse((await leerCuerpo(req, 4096)).toString("utf8")); } catch { return json(res, 400, { error: "Petición ilegible." }); }
+        let u; try { u = new URL(String(d.url || "").trim()); } catch { return json(res, 400, { error: "Escribe la dirección completa, por ejemplo https://mail.google.com" }); }
+        if (!/^https?:$/.test(u.protocol)) return json(res, 400, { error: "Escribe la dirección completa, por ejemplo https://mail.google.com" });
+        try { await manos.abrirVisible(u.href); } catch (e) { return json(res, 400, { error: e.message }); }
+        return json(res, 200, { ok: true });
       }
       // la lista de modelos de Claude, OpenAI o Grok con tu clave (la clave no sale de Fer Casa)
       if (ruta.startsWith("/api/modelos/") && req.method === "GET") {
@@ -499,7 +548,8 @@ const servidor = http.createServer(async (req, res) => {
     if (!res.headersSent) json(res, 500, { error: e.message });
   }
 });
-servidor.listen(PUERTO, "0.0.0.0", () => {
+servidor.listen(PUERTO, APP ? "127.0.0.1" : "0.0.0.0", () => {
+  if (APP) { log(`Fer Agent ${VERSION} (aplicación) en http://127.0.0.1:${PUERTO}. Datos: ${DATOS}`); if (process.send) process.send({ listo: true }); return; }
   const ips = Object.values(os.networkInterfaces()).flat().filter((i) => i && i.family === "IPv4" && !i.internal).map((i) => i.address);
   console.log(`\nFer Casa ${VERSION} encendido. El edificio late cada ${LATIDO_SEG} segundos.`);
   console.log(`  Cerebro (Biblioteca, Memoria larga, copia): ${CARPETA_CEREBRO}`);

@@ -111,7 +111,7 @@ export function crearManos(op) {
       for (const n of ["playwright-core", "playwright"]) { try { pw = await import(n); break; } catch {} try { pw = requerir(n); break; } catch {} }
       if (!pw) throw Object.assign(new Error("Falta instalar Playwright. En la carpeta de Fer Casa, escribe: npm install playwright-core"), { mostrado: true });
       const chromium = pw.chromium || (pw.default && pw.default.chromium);
-      const base = { headless: !o.visible, viewport: { width: 1280, height: 900 }, locale: "es-ES", args: ["--disable-blink-features=AutomationControlled"] };
+      const base = { headless: !o.visible, viewport: { width: 1280, height: 900 }, locale: (typeof o.locale === "function" ? o.locale() : o.locale) || "es-ES", args: ["--disable-blink-features=AutomationControlled"] };
       try { contexto = await chromium.launchPersistentContext(o.perfilChrome, Object.assign({ channel: o.canal || "chrome" }, base)); }
       catch (err) {
         try { contexto = await chromium.launchPersistentContext(o.perfilChrome, base); }   // si no hay Google Chrome, el Chromium de Playwright (si está)

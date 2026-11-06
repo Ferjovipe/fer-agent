@@ -69,6 +69,12 @@ const idb = {
 // Constructor de elementos sin riesgo: el texto siempre va como texto.
 // Lo que escribe la gente o un agente (mensajes, tareas, notas, motivos, títulos) va tal cual: no pasa por el diccionario
 const crudo = (t) => document.createTextNode(String(t ?? ""));
+// Para quien no ha usado nunca OpenRouter: cómo sacar la clave
+const comoSacarClave = () => h("div", { class: "como-clave" }, h("b", {}, "¿Aún no tienes clave? Se saca en unos minutos:"),
+  h("ol", {},
+    h("li", {}, "Crea una cuenta en OpenRouter: con tu correo, con Google o con GitHub. ", h("a", { href: "https://openrouter.ai", target: "_blank", rel: "noopener" }, "openrouter.ai")),
+    h("li", {}, "En «Credits», añade saldo. Se paga por adelantado y solo se gasta lo que usen tus agentes. ", h("a", { href: "https://openrouter.ai/credits", target: "_blank", rel: "noopener" }, "openrouter.ai/credits")),
+    h("li", {}, "En «Keys», pulsa «Create Key», ponle un límite de gasto y copia la clave: solo se ve una vez. Pégala aquí arriba y pulsa «Guardar». ", h("a", { href: "https://openrouter.ai/keys", target: "_blank", rel: "noopener" }, "openrouter.ai/keys"))));
 const entreComillas = (t) => { const [a, b] = tr("«{1}»").split("{1}"); return [a, crudo(t), b]; };   // «…» en español, “…” en inglés
 function h(tag, attrs, ...kids) {
   const el = document.createElement(tag);
@@ -116,9 +122,18 @@ const Motor = {
     return d;
   }
 };
+let casaApp = false;   // Fer Home dentro de la aplicación de escritorio (versión 9): la clave se pega aquí y no hay PIN que escribir
 async function detectarCasa() {
-  try { const r = await fetch("./api/hola", { cache: "no-store" }); if (r.ok) { const d = await r.json(); return !!(d && d.ferCasa); } } catch {}
+  try { const r = await fetch("./api/hola", { cache: "no-store" }); if (r.ok) { const d = await r.json(); casaApp = !!(d && d.app); return !!(d && d.ferCasa); } } catch {}
   return false;
+}
+const esApp = () => modo === "casa" && (casaApp || !!casaInfo.app);
+// En la aplicación: guardar una clave o abrir el Chrome de los agentes (lo hace la aplicación, en este ordenador)
+async function llamarApp(ruta, datos) {
+  const r = await fetch("." + ruta, { method: "POST", headers: { "Content-Type": "application/json", "X-Fer-Pin": pin }, body: JSON.stringify(datos) });
+  const d = await r.json().catch(() => ({}));
+  if (!r.ok) throw Object.assign(new Error(d.error || "No se pudo."), { mostrado: true });
+  return d;
 }
 let pinRechazado = false;
 let skillsCasa = [], casaInfo = {};   // en Fer Casa: las skills (manos) que tiene y cómo está (Telegram, carpeta del cerebro)
@@ -139,7 +154,7 @@ async function refrescarCasa() {
 function pedirPin() { if ($("cajon").hidden) abrirCajon("ajustes"); }
 const apiBase = () => (modo === "local" ? OR : "./api/or");
 const apiCab = (json) => { const c = modo === "local" ? { Authorization: "Bearer " + store.get(K.clave) } : { "X-Fer-Pin": pin }; if (json) c["Content-Type"] = "application/json"; return c; };
-const hayAcceso = () => (modo === "casa" ? !!pin : !!store.get(K.clave));
+const hayAcceso = () => (modo === "casa" ? !!pin && !(esApp() && casaInfo.clave === false) : !!store.get(K.clave));
 
 // =====================================================================
 // Listas de modelos de OpenRouter (públicas, sin clave)
@@ -459,7 +474,7 @@ function pintarTop() {
   $("medHoy").textContent = hoy > 0 ? tr("Hoy " + fmt(hoy)) : tr("Hoy, sin gasto");
   $("medTope").textContent = n0(aj.topeDiario) ? tr("tope " + fmtTope(n0(aj.topeDiario))) : tr("sin tope");
   const b = $("medBarra"); b.style.width = Math.min(100, uso * 100) + "%"; b.className = faseClase();
-  $("modo").textContent = tr(modo === "casa" ? "Conectado a Fer Casa · trabaja 24 h" : "En este navegador · trabaja mientras esté abierto");
+  $("modo").textContent = tr(esApp() ? "En esta aplicación · trabaja mientras esté abierta" : modo === "casa" ? "Conectado a Fer Casa · trabaja 24 h" : "En este navegador · trabaja mientras esté abierto");
   $("modo").classList.toggle("casa", modo === "casa");
   $("hablarJefe").textContent = tr("Hablar con " + (j ? j.nombre : "el jefe"));
   const pend = (ed.e.monedas || []).filter((m) => m.estado === "propuesta").length;
@@ -595,7 +610,7 @@ function tramoEdificio(p) {
 function franjaPiso(p) {
   const ags = ed.e.agentes.filter((a) => a.planta === p.id), est = ags.map(estadoVisible);
   const trab = est.filter((x) => x === "trabajando").length, g = gastoPlanta(p);
-  const datos = `${ags.length === 1 ? "1 agente" : ags.length + " agentes"} · ${trab} trabajando` + (g > 0 ? " · " + fmt(g) : "");
+  const datos = tr(ags.length === 1 ? "1 agente" : `${ags.length} agentes`) + " · " + tr(`${trab} trabajando`) + (g > 0 ? " · " + fmt(g) : "");
   return h("div", { class: "tramo piso franja" },
     h("img", { class: "fondo", src: TRAMO.piso.img, alt: "", draggable: "false" }),
     h("button", { class: "entrar", type: "button", "aria-label": `Entrar en ${p.nombre}`, title: `Entrar en ${p.nombre}${p.funcion ? ": " + p.funcion : ""}`, onclick: () => abrirPlanta(p.id) }),
@@ -664,7 +679,7 @@ function pintarPlanta(cont, p) {
   cont.append(h("div", { class: "planta-cab" },
     h("button", { class: "volver", type: "button", onclick: volverAtras }, "← Volver a todo el edificio"),
     nombre, funcion,
-    h("p", { class: "planta-datos" }, `${ags.length} ${ags.length === 1 ? "agente" : "agentes"}` + (gastoPlanta(p) > 0 ? ` · hoy ${fmt(gastoPlanta(p))}` : "") + (p.tipo === "piso" ? ` · ${p.oficinas} ${p.oficinas === 1 ? "oficina" : "oficinas"} · ${p.pools} ${p.pools === 1 ? "pool" : "pools"}` : ""))));
+    h("p", { class: "planta-datos" }, tr(ags.length === 1 ? "1 agente" : `${ags.length} agentes`) + (gastoPlanta(p) > 0 ? " · " + tr(`hoy ${fmt(gastoPlanta(p))}`) : "") + (p.tipo === "piso" ? " · " + tr(p.oficinas === 1 ? "1 oficina" : `${p.oficinas} oficinas`) + " · " + tr(p.pools === 1 ? "1 pool" : `${p.pools} pools`) : ""))));
   // la planta dibujada
   const tira = h("div", { class: "tira " + p.tipo });
   if (p.tipo === "piso") {
@@ -733,7 +748,7 @@ function pintarPlanta(cont, p) {
     const est = estadoVisible(a);
     lista.append(h("button", { class: "quien " + est + (seleccion === a.id ? " sel" : ""), type: "button", onclick: () => elegir(a) },
       h("img", { src: figura(a.aspecto), alt: "" }),
-      h("span", { class: "q-txt" }, h("b", {}, a.nombre), h("small", {}, `${rolTxt(a)} · ${NOMBRE_PUESTO[a.puesto] || a.puesto}`), h("small", {}, `${tr(ESTADO_TXT[est])} · ${["interventor", "memory"].includes(a.rol) ? "no gasta" : textoLatido(a.latido)}${ed.gastoAgente(a, "hoy") > 0 ? " · hoy " + fmt(ed.gastoAgente(a, "hoy")) : ""}`))));
+      h("span", { class: "q-txt" }, h("b", {}, a.nombre), h("small", {}, `${rolTxt(a)} · ${NOMBRE_PUESTO[a.puesto] || a.puesto}`), h("small", {}, `${tr(ESTADO_TXT[est])} · ${["interventor", "memory"].includes(a.rol) ? tr("no gasta") : textoLatido(a.latido)}${ed.gastoAgente(a, "hoy") > 0 ? " · " + tr(`hoy ${fmt(ed.gastoAgente(a, "hoy"))}`) : ""}`))));
   }
   cont.append(ags.length ? lista : h("p", { class: "planta-vacia" }, p.tipo === "piso" ? "Planta vacía. Pon un jefe de sección en el despacho y sus subagentes en las oficinas o en el pool." : "Planta vacía."));
 }
@@ -1213,7 +1228,7 @@ function pintarChat(forzar) {
   const m = $("mensajes"); m.innerHTML = "";
   m.append(h("div", { class: "msg bot saludo" }, h("div", { class: "burbuja" }, saludoDe(a))));
   if (conversa(a) && !hayAcceso()) m.append(h("div", { class: "msg bot saludo" }, h("div", { class: "burbuja" },
-    h("p", {}, modo === "casa" ? "Para que pueda contestarte, escribe en Ajustes el PIN que pusiste al arrancar Fer Casa." : "Para que pueda contestarte, pega tu clave de OpenRouter en Ajustes. Se queda solo en este navegador."),
+    h("p", {}, esApp() ? "Para que pueda contestarte, pega tu clave de OpenRouter en Ajustes. Se queda solo en este ordenador." : modo === "casa" ? "Para que pueda contestarte, escribe en Ajustes el PIN que pusiste al arrancar Fer Casa." : "Para que pueda contestarte, pega tu clave de OpenRouter en Ajustes. Se queda solo en este navegador."),
     h("button", { class: "btn mini", onclick: () => abrirCajon("ajustes") }, "Abrir Ajustes"))));
   const habla = a.capacidades.includes("hablar");
   for (const x of conv) {
@@ -1387,7 +1402,7 @@ async function costeVoz(modelo, chars, secs, genId, metaEl, quien) {
   try { await Motor.ejecutar({ tipo: "gastoExterno", id: quien || "jefe", coste, estimado: real === null, concepto: "voz " + modelo }); } catch {}
   if (cola.meta === metaEl) { cola.chars += chars; cola.coste += coste; cola.estimado = cola.estimado || real === null; chars = cola.chars; }
   const total = cola.meta === metaEl ? cola.coste : coste, est = cola.meta === metaEl ? cola.estimado : real === null;
-  nota(metaEl, `voz: ${modelo} · ${chars} caracteres · ${est ? "≈" : ""}${fmt(total)}${est ? " (estimado)" : ""}`);
+  nota(metaEl, tr("voz:") + " " + modelo + " · " + tr(`${chars} caracteres`) + " · " + (est ? "≈" : "") + fmt(total) + (est ? " " + tr("(estimado)") : ""));
   pintar();
 }
 function vocesNavegador() { try { return window.speechSynthesis ? speechSynthesis.getVoices() : []; } catch { return []; } }
@@ -2156,8 +2171,14 @@ function bloqueOtrasApi() {
     const msg = h("small", { class: "nota" });
     const probar = h("button", { class: "btn mini", type: "button", onclick: async () => { probar.disabled = true; msg.textContent = tr("Probando…"); try { const l = await cargarModelosDirectos(P.id); msg.textContent = tr(`Funciona: ${l.length} modelos. El primero: ${l[0] || "—"}.`); } catch (err) { msg.textContent = err.message; } probar.disabled = false; } }, "Probar");
     const fuera = h("button", { class: "btn mini peligro", type: "button", onclick: (ev) => confirmar(ev.target, "¿Quitar esta API? Sus agentes vuelven a OpenRouter. Pulsa otra vez", () => { try { localStorage.removeItem(claveApi(P.id)); } catch {} guardarLista(listaActual().filter((x) => x.id !== P.id)); }) }, "Quitar esta API");
-    const fila = h("div", { class: "campo api-fila" }, h("span", {}, P.nombre + (tieneClaveApi(P.id) && !P.sinClave ? " · clave puesta" : "")), h("small", { class: "nota" }, P.api + (P.formato === "anthropic" ? " · idioma de Claude" : "")));
+    const fila = h("div", { class: "campo api-fila" }, h("span", {}, P.nombre + (tieneClaveApi(P.id) && !P.sinClave ? " · " + tr("clave puesta") : "")), h("small", { class: "nota" }, P.api + (P.formato === "anthropic" ? " · idioma de Claude" : "")));
     if (P.sinClave) fila.append(h("small", { class: "nota" }, "Un modelo en tu propio ordenador: no lleva clave. Tiene que estar encendido (y, para usarlo desde esta web, permitir llamadas desde el navegador)."));
+    else if (esApp()) {
+      const kk = h("input", { type: "password", autocomplete: "off", placeholder: tieneClaveApi(P.id) ? "••••••••••" : P.web ? `Tu clave (de ${P.web})` : "Tu clave" });
+      fila.append(h("div", { class: "clave-fila" }, kk,
+        h("button", { class: "btn mini primario", type: "button", onclick: async () => { try { await llamarApp("/api/conf/clave", { prov: P.id, clave: kk.value.trim() }); await refrescarCasa(); pintarAjustes(); avisoFlotante(kk.value.trim() ? "Clave guardada en este ordenador." : "Clave quitada."); } catch (e) { avisar(e); } } }, "Guardar")),
+        h("small", { class: "nota" }, "Se guarda solo en este ordenador y solo viaja a la dirección de esta API. Para quitarla, déjala vacía y pulsa «Guardar»."));
+    }
     else if (modo === "casa") fila.append(h("small", { class: "nota" }, tieneClaveApi(P.id) ? "Clave puesta en Fer Casa." : "Sin clave en Fer Casa. En el ordenador de Fer Casa: node fer-casa.mjs claves"));
     else {
       const tiene = !!store.get(claveApi(P.id));
@@ -2194,8 +2215,9 @@ function pintarAjustes() {
   // dónde vive
   c.append(h("div", { class: "bloque" }, h("h4", {}, "Dónde vive tu edificio"),
     h("div", { class: "donde" },
+      esApp() ? h("div", { class: "aqui" }, h("b", {}, "En esta aplicación"), h("br"), h("span", { class: "nota" }, "En tu ordenador, sin Terminal. Los agentes trabajan mientras la aplicación esté abierta, con manos: su Chrome, su carpeta y sus skills."), casaInfo.datos ? h("br") : null, casaInfo.datos ? h("small", { class: "nota" }, tr("Tus datos:") + " ", crudo(casaInfo.datos)) : null) : null,
       h("div", { class: modo === "local" ? "aqui" : "" }, h("b", {}, "En este navegador"), h("br"), h("span", { class: "nota" }, "Funciona ya, sin instalar nada. Los agentes trabajan mientras esta web esté abierta en algún aparato.")),
-      h("div", { class: modo === "casa" ? "aqui" : "" }, h("b", {}, "Fer Casa: ordenador o teléfono encendido"), h("br"), h("span", { class: "nota" }, "El programa fer-casa.mjs mueve este mismo edificio las 24 horas y da manos a los agentes (su Chrome, su carpeta, sus skills). Abres la web desde la dirección que te da.")),
+      h("div", { class: modo === "casa" && !esApp() ? "aqui" : "" }, h("b", {}, "Fer Casa: ordenador o teléfono encendido"), h("br"), h("span", { class: "nota" }, "El programa fer-casa.mjs mueve este mismo edificio las 24 horas y da manos a los agentes (su Chrome, su carpeta, sus skills). Abres la web desde la dirección que te da.")),
       h("div", {}, h("b", {}, "Fer Casa en la nube"), h("br"), h("span", { class: "nota" }, "El mismo programa en un servidor alquilado. Trabaja aunque en casa esté todo apagado."))),
     h("small", { class: "nota" }, "Cómo instalar Fer Casa: archivo LEEME.txt del ZIP y documento «Fer Agent · El Edificio».")));
   // acceso: tu clave y tu dinero
@@ -2206,12 +2228,26 @@ function pintarAjustes() {
       h("div", { class: "fila-c" }, k, h("button", { class: "btn primario mini", onclick: () => { if (!k.value.startsWith("•")) store.set(K.clave, k.value.trim()); k.value = store.get(K.clave) ? "••••••••••" : ""; pintar(); pintarChat(true); cerrarCajon(); } }, "Guardar")),
       h("p", { class: "nota", style: { margin: 0 } }, "Dónde está y a dónde va: se guarda solo en este navegador, en este aparato. No pasa por ningún servidor de Fer Agent: cuando un agente piensa, habla u oye, este navegador la manda directamente a OpenRouter, y a nadie más. Quien use este mismo navegador sí podría usarla."),
       h("small", { class: "nota" }, "Red de seguridad: ponle un límite de gasto a la clave en la web de OpenRouter."),
-      // para quien no ha usado nunca OpenRouter: cómo sacar la clave
-      h("div", { class: "como-clave" }, h("b", {}, "¿Aún no tienes clave? Se saca en unos minutos:"),
-        h("ol", {},
-          h("li", {}, "Crea una cuenta en OpenRouter: con tu correo, con Google o con GitHub. ", h("a", { href: "https://openrouter.ai", target: "_blank", rel: "noopener" }, "openrouter.ai")),
-          h("li", {}, "En «Credits», añade saldo. Se paga por adelantado y solo se gasta lo que usen tus agentes. ", h("a", { href: "https://openrouter.ai/credits", target: "_blank", rel: "noopener" }, "openrouter.ai/credits")),
-          h("li", {}, "En «Keys», pulsa «Create Key», ponle un límite de gasto y copia la clave: solo se ve una vez. Pégala aquí arriba y pulsa «Guardar». ", h("a", { href: "https://openrouter.ai/keys", target: "_blank", rel: "noopener" }, "openrouter.ai/keys"))))));
+      comoSacarClave()));
+  } else if (esApp()) {
+    // en la aplicación: la clave se pega aquí y se guarda en este ordenador; y se entra una vez en tus webs con el Chrome de los agentes
+    const k = h("input", { type: "password", autocomplete: "off", placeholder: "sk-or-...", value: casaInfo.clave ? "••••••••••" : "" });
+    k.onfocus = () => { if (k.value.startsWith("•")) k.value = ""; };
+    c.append(h("div", { class: "bloque" }, h("h4", {}, "Tu clave de OpenRouter"),
+      h("div", { class: "fila-c" }, k, h("button", { class: "btn primario mini", onclick: async () => {
+        if (!k.value.trim() || k.value.startsWith("•")) return;
+        try { await llamarApp("/api/conf/clave", { prov: "openrouter", clave: k.value.trim() }); await refrescarCasa(); avisoFlotante("Clave guardada en este ordenador."); pintar(); pintarChat(true); cerrarCajon(); } catch (e) { avisar(e); }
+      } }, "Guardar")),
+      h("p", { class: "nota", style: { margin: 0 } }, "Dónde está y a dónde va: se guarda solo en este ordenador, en la carpeta de datos de la aplicación. Solo viaja a OpenRouter cuando un agente piensa, habla u oye."),
+      h("small", { class: "nota" }, "Red de seguridad: ponle un límite de gasto a la clave en la web de OpenRouter."),
+      comoSacarClave()));
+    const u = h("input", { type: "url", placeholder: "https://mail.google.com" });
+    c.append(h("div", { class: "bloque" }, h("h4", {}, "Tus webs, en el Chrome de los agentes"),
+      h("p", { class: "nota", style: { margin: 0 } }, "Para que un agente use una web con tu cuenta (tu correo, una red social…), entra tú una vez: se abre el Chrome de los agentes, inicias sesión y cierras esa ventana. La sesión se queda en este ordenador."),
+      h("div", { class: "fila-c" }, u, h("button", { class: "btn mini", onclick: async () => {
+        try { await llamarApp("/api/conf/entrar", { url: u.value.trim() }); avisoFlotante("Se ha abierto el Chrome de los agentes. Entra con tu cuenta y, cuando acabes, cierra esa ventana."); } catch (e) { avisar(e); }
+      } }, "Abrir")),
+      h("small", { class: "nota" }, "Necesita Google Chrome instalado en este ordenador.")));
   } else {
     const p = h("input", { type: "password", placeholder: "PIN de Fer Casa", value: pin });
     c.append(h("div", { class: "bloque" }, h("h4", {}, "PIN de Fer Casa"),
@@ -2318,6 +2354,21 @@ function pintarAjustes() {
 // El cerebro en Ajustes: dónde vive, cómo conectarlo y qué ve la web
 function bloqueCerebro() {
   const st = cerebro.estado, caja = h("div", { class: "bloque" }, h("h4", {}, "Cerebro: Biblioteca y Memoria larga"));
+  if (esApp()) {
+    const cc = casaInfo.carpeta || {};
+    caja.append(h("p", { class: "nota", style: { margin: 0 } }, "En la aplicación, el cerebro vive en una carpeta de este ordenador: «Biblioteca» (tus notas), «Memoria larga» (una nota por tema) y «edificio.json». Si eliges una carpeta dentro de Google Drive para ordenador, también la tienes en Drive y en Obsidian."),
+      h("div", { class: "estado-carpeta" }, h("i", { class: "punto " + (cc.ruta ? "ok" : "") }), h("span", {}, tr("Carpeta:") + " ", crudo(cc.ruta || "")),
+        cc.notas !== undefined ? h("span", { class: "nota" }, " · " + tr(`${cc.notas} temas`) + " · " + tr(`${cc.biblioteca || 0} notas en la Biblioteca`)) : null),
+      window.ferApp && window.ferApp.elegirCarpeta ? h("button", { class: "btn mini", type: "button", onclick: async () => {
+        try {
+          const ruta = await window.ferApp.elegirCarpeta(); if (!ruta) return;
+          await llamarApp("/api/conf/carpeta", { ruta });
+          avisoFlotante("Carpeta guardada. La aplicación se vuelve a abrir para usarla.");
+          setTimeout(() => window.ferApp.reiniciar(), 1500);
+        } catch (e) { avisar(e); }
+      } }, "Cambiar la carpeta") : null);
+    return caja;
+  }
   if (modo === "casa") {
     const cc = casaInfo.carpeta || {};
     caja.append(h("p", { class: "nota", style: { margin: 0 } }, "Con Fer Casa, el cerebro vive en una carpeta de ese ordenador: «Biblioteca» (tus notas), «Memoria larga» (una nota por tema) y «edificio.json». Si esa carpeta está dentro de Google Drive para ordenador, también la tienes en Drive y en Obsidian."),
@@ -2328,7 +2379,7 @@ function bloqueCerebro() {
   }
   const conf = store.json(K.carpeta, null) || {};
   caja.append(h("div", { class: "estado-carpeta" }, h("i", { class: "punto " + (st.conectado ? "ok" : st.error ? "mal" : "") }),
-    h("span", {}, st.conectado ? `Conectado: ${st.nombre}` : st.error ? `${st.nombre || "Carpeta"}: ${st.error}` : "Sin carpeta: el cerebro vive solo en este navegador."),
+    h("span", {}, st.conectado ? tr("Conectado:") + " " + st.nombre : st.error ? `${st.nombre || tr("Carpeta")}: ${st.error}` : "Sin carpeta: el cerebro vive solo en este navegador."),
     st.conectado ? h("span", { class: "nota" }, "· " + tr(`${st.notas} temas en la memoria larga`) + " · " + tr(`${st.biblioteca} notas en la Biblioteca`) + (st.ultimaSync ? " · " + tr(`sincronizado ${haceCuanto(st.ultimaSync)}`) : "")) : null));
   if (st.necesitaPermiso && cerebro.estado.tipo === "local") caja.append(h("div", {}, h("button", { class: "btn mini primario", onclick: async () => { const hnd = await idb.get("kv", "carpetaLocal"); if (hnd) conectarCerebro(adaptadorLocal(hnd), true).catch(avisar); } }, "Dar permiso otra vez a la carpeta")));
   // Google Drive

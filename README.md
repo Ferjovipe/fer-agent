@@ -22,11 +22,20 @@ The interface is in **English** and **Spanish** (EN · ES switch on the home pag
 
 ## Where it lives
 
-1. **In your browser** (the easiest): open the website, paste your OpenRouter key in Settings. The agents work while the website is open on some device.
-2. **Fer Home** (`fer-casa.mjs`, Node 18+): the same building running around the clock on a computer or an old phone, with “hands” for the agents: their own Chrome, their folder and skills in the `SKILL.md` format. *Fer Home's Terminal messages and its skills are still in Spanish; a desktop app that replaces the Terminal is planned.*
-3. **Fer Home in the cloud**: the same program on a rented server, behind a secure tunnel.
+1. **The desktop app** (Mac and Windows): download it from [Releases](https://github.com/Ferjovipe/fer-agent/releases), install it with a double click and paste your OpenRouter key in Settings. No Terminal. The agents work while the app is open, with “hands”: their own Chrome (it uses the Google Chrome installed on your computer), their folder and skills in the `SKILL.md` format.
+2. **In your browser** (no install): open the website, paste your OpenRouter key in Settings. The agents work while the website is open on some device.
+3. **Fer Home** (`fer-casa.mjs`, Node 18+): the same program as the app, run from the Terminal, for an always-on computer, an old phone or a rented server behind a secure tunnel. *Its Terminal messages and its skills are still in Spanish.*
 
 You move the building from one to another with **Save backup** and **Load a backup or a move**. Keys never travel in backups.
+
+## The desktop app
+
+- **First time on a Mac:** the app isn't signed with an Apple certificate yet, so macOS says it can't verify the developer. Open **System Settings → Privacy & Security**, scroll down and press **Open Anyway** (only once).
+- **First time on Windows:** if you see “Windows protected your PC”, press **More info → Run anyway** (only once).
+- **Your data** (building, keys, brain folder, the agents' Chrome profile) stays on your computer: on a Mac in `~/Library/Application Support/Fer Agent/datos`, on Windows in `%APPDATA%\Fer Agent\datos`. A log, `fer-agent.log`, is kept there too.
+- **Your websites:** Settings → *Your websites, in the agents' Chrome* opens the agents' Chrome so you sign in once (your email, a social network…); the session stays on your computer.
+- **The brain folder:** Settings → *Change the folder*. Choose one inside Google Drive for desktop and you also have it in Drive and Obsidian.
+- **Building it yourself:** `npm install`, then `npm run app` to try it, or `npm run instaladores` to make the installer for your system. GitHub makes the Mac and Windows installers by itself (the *Aplicación* workflow in Actions).
 
 ## Getting started
 
@@ -45,6 +54,7 @@ You move the building from one to another with **Save backup** and **Load a back
 | `textos.js`, `textos/` | Languages: `textos/en.js` (English) and `textos/es.js` (template to translate into another language) |
 | `personajes.js`, `img/` | The ten characters and the building drawings |
 | `fer-casa.mjs`, `manos.mjs`, `skills/` | Fer Home and the agents' hands |
+| `app/`, `build/`, `package.json` | The desktop app (Electron) and how its installers are made |
 | `pruebas/` | Automated tests |
 
 ## Adding a language
@@ -65,6 +75,8 @@ python3 pruebas/web8_test.py     # website (Spanish), v8 features
 python3 pruebas/web82_test.py    # website in English: no Spanish left on any screen
 python3 pruebas/casa_test.py     # Fer Home
 python3 pruebas/casa7_test.py    # Fer Home with hands, Telegram, brain folder and another API
+python3 pruebas/app9_test.py     # the desktop app inside: keys in Settings, local only, the agents' Chrome
+node pruebas/app9_humo.cjs dist/linux-unpacked/fer-agent   # the built app, opened for real (needs a screen or xvfb-run)
 ```
 
 The code comments are in Spanish for now.

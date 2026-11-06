@@ -2,7 +2,7 @@
 // y nada de lo que el motor dice o apunta se queda sin traducir. Ejecutar: node --test pruebas/motor82.test.mjs
 import test from "node:test";
 import assert from "node:assert/strict";
-import { writeFileSync } from "node:fs";
+import { writeFileSync, mkdirSync } from "node:fs";
 import { Edificio, SIN_TRADUCIR, fmt, textoLatido, IDIOMA, fijarIdioma, notasMemoriaMd } from "../engine.js";
 
 const M = (id, prompt, completion) => ({ id, name: id, pricing: { prompt: String(prompt), completion: String(completion) }, architecture: { input_modalities: ["text"], output_modalities: ["text"] }, context_length: 200000 });
@@ -88,6 +88,7 @@ test("lo que se dice a los agentes, en inglés: chat, tarea con MISSING, ronda d
   assert.ok(bandeja.length >= 2);
   // todo lo que se mandó a los cerebros, en inglés
   const s = sistemas(llamadas);
+  mkdirSync(new URL("./capturas/", import.meta.url), { recursive: true });   // en una copia recién bajada de GitHub no existe
   writeFileSync(new URL("./capturas/motor82-prompts.txt", import.meta.url), s.join("\n\n==========\n\n"));
   assert.ok(s.length >= 8, "hubo llamadas");
   // (al Creador se le dan las claves del JSON tal cual: «nombre», «planta»… son nombres de campos, no texto)

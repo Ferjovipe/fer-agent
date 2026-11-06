@@ -1,4 +1,4 @@
-FER AGENT · EL EDIFICIO (versión 8.3)
+FER AGENT · EL EDIFICIO (versión 9.0)
 =====================================
 
 Tienes una empresa agéntica a tu servicio. Nosotros ponemos la base; tú decides el organigrama
@@ -18,6 +18,28 @@ engine.js                 El motor. Lo usan igual la web y Fer Casa.
 fer-casa.mjs              Fer Casa: el mismo edificio encendido las 24 horas en un ordenador, y las manos.
 manos.mjs, skills/        Las manos de los agentes (solo con Fer Casa): su Chrome, su carpeta y las skills.
 pruebas/                  Las pruebas automáticas (no hacen falta para usarlo).
+
+
+Versión 9.0
+-----------
+La aplicación de escritorio (Mac y Windows). Es el mismo edificio con Fer Home dentro, sin Terminal:
+  - Se instala con doble clic. Los instaladores los fabrica GitHub (pestaña «Actions», «Aplicación»)
+    y, con cada versión, quedan en «Releases».
+  - La primera vez en un Mac: como todavía no lleva la firma de Apple, el Mac dice que no puede
+    verificar al desarrollador. Ajustes del Sistema → Privacidad y seguridad → «Abrir igualmente»
+    (solo una vez). En Windows, si sale «Windows protegió tu PC»: «Más información» → «Ejecutar de
+    todas formas».
+  - Un edificio nuevo nace en el idioma del ordenador (español si está en español; si no, inglés).
+  - La clave de OpenRouter, y las de otras API, se pegan en Ajustes y se guardan solo en este
+    ordenador (carpeta de datos de la aplicación). El PIN lo pone la aplicación sola.
+  - Solo se oye en este ordenador: nadie de tu red puede entrar.
+  - Ajustes → «Tus webs, en el Chrome de los agentes»: abre el Chrome de los agentes para que entres
+    tú una vez en tus webs (correo, redes…). Usa el Google Chrome que tengas instalado.
+  - Ajustes → Cerebro → «Cambiar la carpeta»: si eliges una carpeta dentro de Google Drive para
+    ordenador, el cerebro también está en Drive y en Obsidian.
+  - Los datos: en un Mac, ~/Library/Application Support/Fer Agent/datos; en Windows,
+    %APPDATA%\Fer Agent\datos. Ahí queda también fer-agent.log, por si algo falla.
+  - En el Mac, cerrar la ventana no apaga el edificio (sigue en el Dock); en Windows, sí.
 
 
 Versión 8.3

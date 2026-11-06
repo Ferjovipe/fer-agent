@@ -5,7 +5,7 @@
 // cerebros de OpenRouter y apunta el gasto. La web y Fer Casa lo usan igual.
 // =====================================================================
 
-export const VERSION = "8.3";
+export const VERSION = "9.0";
 
 // ---------------- Idioma ----------------
 // El motor está escrito en español. Un edificio en otro idioma (por ahora «en») usa el mismo diccionario que la web
