@@ -1,6 +1,7 @@
 # Builds the Fer Agent desktop app (Mac and Windows) on GitHub's machines.
 # - By hand: "Actions" tab → "Desktop app" → "Run workflow". The installers are left in that run's "Artifacts".
 # - With a version (for example v9.0.0), when run by hand or with a tag: they are also published in "Releases".
+# - On the v9-completa branch (before it's in main, where "Run workflow" lives): a push whose message says [build installers].
 name: Desktop app
 
 on:
@@ -12,12 +13,15 @@ on:
         default: ""
   push:
     tags: ["v*"]
+    branches: ["v9-completa"]
 
 permissions:
   contents: write
 
 jobs:
   build:
+    # a push to the branch builds only when its message asks for it (the others are skipped at once and cost nothing)
+    if: github.event_name != 'push' || startsWith(github.ref, 'refs/tags/') || contains(github.event.head_commit.message, '[build installers]')
     strategy:
       fail-fast: false
       matrix:
@@ -46,7 +50,7 @@ jobs:
             dist/*.exe
           if-no-files-found: error
       - name: Publish in Releases (only with a version)
-        if: startsWith(github.ref, 'refs/tags/v') || inputs.version != ''
+        if: startsWith(github.ref, 'refs/tags/v') || (github.event_name == 'workflow_dispatch' && inputs.version != '')
         uses: softprops/action-gh-release@v2
         with:
           tag_name: ${{ inputs.version || github.ref_name }}
