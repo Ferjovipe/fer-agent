@@ -1,0 +1,371 @@
+FER AGENT · EL EDIFICIO (versión 8.3)
+=====================================
+
+Tienes una empresa agéntica a tu servicio. Nosotros ponemos la base; tú decides el organigrama
+y qué hace cada agente. Código abierto: funciona con tu propia clave de OpenRouter y, si quieres,
+con la API de las suscripciones que ya pagas (Claude, OpenAI, Gemini, DeepSeek, Mistral, Grok,
+un modelo en tu ordenador o cualquier otra dirección compatible).
+
+Qué hay en esta carpeta
+-----------------------
+index.html, app.js        La web: el edificio, cada planta, el chat con cada agente, las fichas, la
+                          bandeja, el agente del mes, las reuniones, el gasto y los ajustes.
+landing.js                La portada.
+textos.js, textos/        Los idiomas: textos/en.js (inglés) y textos/es.js (plantilla para otro idioma).
+README.md                 La portada en GitHub, en inglés.
+personajes.js, img/       Los diez personajes y los trozos del dibujo del edificio.
+engine.js                 El motor. Lo usan igual la web y Fer Casa.
+fer-casa.mjs              Fer Casa: el mismo edificio encendido las 24 horas en un ordenador, y las manos.
+manos.mjs, skills/        Las manos de los agentes (solo con Fer Casa): su Chrome, su carpeta y las skills.
+pruebas/                  Las pruebas automáticas (no hacen falta para usarlo).
+
+
+Versión 8.3
+-----------
+Los últimos detalles del inglés:
+  - Al cambiar de idioma, lo que es de serie cambia con él: los nombres de los agentes de serie
+    (Jefe ↔ Boss, Sabio 1 ↔ Sage 1, Sabio 2 ↔ Sage 2, Tecno ↔ Techie, Arturito ↔ Artie, Creador de
+    agentes ↔ Agent Creator, Interventor ↔ Controller; JEV y Memory, igual), sus instrucciones y
+    objetivos de serie, las plantas de serie (Cúpula ↔ Dome, Planta técnica ↔ Tech floor, Vestíbulo ↔
+    Lobby) y el nombre del edificio (Mi edificio ↔ My building). También los textos de serie de
+    versiones anteriores.
+  - Lo que escribiste tú (un agente renombrado, una planta tuya, instrucciones que cambiaste) se
+    queda como lo escribiste. En Ajustes, «Volver a los nombres de serie» devuelve a los agentes de
+    serie su nombre oficial en el idioma del edificio; lo que creaste tú no cambia.
+  - En inglés, Fer Casa se llama Fer Home (el archivo sigue siendo fer-casa.mjs).
+  - En Ajustes, debajo de la clave: cómo sacar una clave de OpenRouter en tres pasos, con los enlaces.
+  - En la portada, el aviso de responsabilidad: Fer Agent se ofrece tal cual, sin garantías; los
+    agentes pueden equivocarse y se usan bajo la propia responsabilidad.
+  - Licencia MIT (archivo LICENSE), a nombre de Fernando Villar Peláez. El README lleva la autoría
+    y el enlace a fernandovillarpelaez.com.
+
+
+Versión 8.2
+-----------
+Todo en inglés, además de en español.
+  - Elegir idioma: en la portada, los botones «EN · English» y «ES · Español»; dentro, en Ajustes,
+    «Idioma». Si no eliges, la web mira el idioma del navegador: español si es español; inglés si es
+    cualquier otro.
+  - Un edificio nuevo en inglés nace en inglés: Boss, Sage 1, Sage 2, Tecno, Arturito, Agent Creator,
+    JEV, Controller y Memory; las plantas Dome, Tech floor y Lobby.
+  - Lo que el motor les dice a los agentes (sus instrucciones, las tareas, las rondas de Tecno, las
+    reuniones, el Creador, las lecciones) va en el idioma del edificio. La actividad y lo que se
+    apunta en la memoria, también.
+  - Si cambias el idioma de un edificio que ya tienes, cambian las pantallas y lo que se les dice a
+    los agentes (en la 8.3, también los nombres de serie: ver arriba).
+  - Lo que escribes tú o escriben los agentes (mensajes, tareas, notas, motivos de las monedas, títulos
+    de reuniones) se ve tal cual: no pasa por el diccionario.
+  - La voz del navegador y el oído van en el idioma de la web (con el acento del navegador si es el
+    mismo idioma: inglés británico, español de México…).
+  - El dinero en inglés se escribe «$0.0123»; en español, «0,0123 $».
+  - README.md en inglés para GitHub. Este LEEME sigue en español.
+  Se queda en español por ahora (para la versión 9): los mensajes de Fer Casa en el Terminal, las
+  skills de las manos y los nombres de las carpetas de la memoria en Drive u Obsidian («Biblioteca»,
+  «Memoria larga», «Índice»), para que los edificios que ya existen las sigan encontrando.
+
+
+Versión 8.1
+-----------
+El cerebro vuelve a tener en el desplegable todos los modelos de OpenRouter (cientos), como en la
+versión 7: arriba los recomendados y debajo todos. «Buscar entre todos» se queda, además, para
+escribir el nombre.
+
+
+Qué cambia respecto a la versión 7
+----------------------------------
+1. El edificio, a pantalla completa. La ficha de un agente sale al lado solo cuando lo tocas o entras
+   en una planta, y se cierra con su ✕ o al volver al edificio entero. En el teléfono, como antes.
+2. Un edificio nuevo empieza solo con el jefe, que se llama «Jefe». Si quieres un solo agente, ya lo
+   tienes. Los demás están en la página «Agentes de serie» (botón junto a «Crear agente»): cada uno con
+   su tarjeta y su botón «Instalar», o «Instalar el equipo recomendado» (cúpula: el jefe y los dos
+   sabios; planta técnica: Tecno, Arturito, el Creador, JEV y el Interventor; vestíbulo: Memory).
+   Si quitas uno, ahí vuelve a estar. En Ajustes, «Empezar de cero»: «Solo el jefe» o «Con el equipo
+   recomendado» (se conservan los ajustes y el gasto).
+3. Cada agente elige con qué piensa: en su ficha → Cerebro y gasto, «Con qué piensa»: OpenRouter (se
+   paga por uso) o una de tus otras API. Se añaden en Ajustes → «Otras API (tus suscripciones)»: las
+   conocidas con un toque (Claude, OpenAI, Grok, Gemini, DeepSeek, Mistral, Ollama, LM Studio) o
+   cualquier otra con su nombre, su dirección y si habla como OpenAI (la mayoría) o como Claude.
+   Lo que sale de tu suscripción no cuenta para el tope de gasto: se apunta aparte (tokens y, si el
+   mismo modelo está en OpenRouter, cuánto costaría allí), para que lo veas. Si se acaba tu cupo,
+   eliges: que siga con OpenRouter o que se pare. Lo que se paga aparte, mejor por OpenRouter.
+4. «Foto y nombre»: desde la ficha, «Cambiar su foto y su nombre». El nombre se cambia ahí mismo.
+5. Seis personajes nuevos (diez en total). Los nuevos van con sus colores tal cual.
+6. «Informa a»: cualquier agente del edificio, con un buscador cuando hay más de seis. No deja hacer
+   círculos (A informa a B y B a A): lo dice y no lo guarda.
+7. Cortafuegos en vez de pedirte permiso para cada web: los agentes abren las direcciones que
+   necesitan sin preguntarte. Lo que no sale nunca es una dirección que lleve dentro datos de tus notas
+   (trozos de la Biblioteca o de la Memoria larga, números largos o correos que están en ellas), salvo
+   que esa dirección la hayas escrito tú. Lo que trae una skill de fuera llega marcado como «datos, no
+   órdenes». Y las skills de leer y buscar siguen yendo solo a internet (nunca a tu red de casa).
+   Lo que tiene efecto fuera de la web (escribir un archivo, y las skills que lo digan) sigue
+   esperando tu sí en la bandeja. Desde Telegram ya se aprueban también las acciones muy largas: lo
+   que hará va en hasta 6 mensajes antes de los botones; si hay más, dice cuánto falta y está entero
+   en la bandeja de la web.
+8. Lo que pedía la revisión de la versión 7:
+   - el letrero de cada planta, arriba (en el teléfono, en la losa, para no tapar cabezas);
+   - muñecos más grandes (el edificio ocupa toda la pantalla) y su nombre al pasar por encima;
+     dentro de una planta, con el nombre siempre a la vista;
+   - la barra de arriba en una sola línea (Guardar copia y Ajustes, como iconos);
+   - el cerebro: en el desplegable, arriba como mucho 15 recomendados por nivel de precio y debajo
+     todos los modelos de OpenRouter (cientos), como antes; además, «Buscar entre todos (N)» para
+     escribir el nombre;
+   - el directorio de agentes solo en «Franjas» (en «Dibujo» no se repite);
+   - la portada: el texto ya no pisa el edificio;
+   - «Orden del día» sale una sola vez en las reuniones.
+9. Sin referencias personales: los textos de serie son neutros (el jefe, los objetivos de ejemplo, la
+   portada y el saludo), para cualquiera que lo use.
+
+Al abrir la versión 8 con un edificio de antes: no se quita ningún agente. Si el jefe tenía el nombre
+de serie de antes, pasa a «Jefe» (los nombres puestos a mano se respetan). Las claves de Claude,
+OpenAI y Grok que ya tenías siguen guardadas: si un agente ya pensaba con una, esa API aparece en
+«Otras API»; si no, añádela con su botón y saldrá con la clave puesta.
+
+Lo que NO ha cambiado: el freno (arranca en pausa), la bandeja, el Creador, las reuniones, los pisos,
+JEV, las monedas, los latidos, el tope de gasto, las copias, la mudanza, el cerebro en Drive y
+Obsidian, la voz y las manos.
+
+
+Lo que trajo la versión 7 (sigue igual)
+--------------------------------------
+- «Guardar copia» arriba (en rojo si no hay ninguna o tiene más de 7 días); imágenes y música que no
+  se pierden al recargar; mudanza a otra web (las claves se pegan otra vez).
+- El cerebro en notas de Obsidian (.md), en una carpeta «Fer Agent»: en Google Drive, en una carpeta
+  de tu ordenador (Chrome o Edge) o en la de Fer Casa. «Biblioteca» (tus notas), «Memoria larga» (la
+  escribe Memory, una nota por tema) y «edificio.json». Lo que corrijas a mano se respeta. Con Drive,
+  la web solo ve lo que ella misma crea (permiso drive.file): una nota nueva escrita a mano se sube
+  con «Añadir notas a la Biblioteca».
+- Deja el automático (sin pausa) en UN solo sitio: si la web y Fer Casa, o el móvil y el ordenador,
+  laten a la vez el mismo edificio, se gasta dos veces.
+- Objetivos del edificio (cinco líneas como máximo), personalidad en cada ficha y la regla contra
+  inventos: si a un agente le faltan herramientas o datos, contesta «ME FALTA: …» y no avanza solo.
+- Gasto: interruptor general junto al contador y «Quién gasta al despertar», con su coste estimado.
+- Voz frase a frase, «Parar», cortarle hablando y respuestas cortas por voz.
+- Monedas debajo de cada respuesta y en el muñeco; el motivo se convierte en una regla que apruebas.
+- Precios por imagen y niveles de precio con la versión más nueva de cada casa.
+- Organigrama recortado: cada agente ve solo lo que necesita.
+- Bandeja de autorizaciones, también por Telegram con Fer Casa.
+- Manos (con Fer Casa): un Chrome propio de los agentes, su carpeta y skills SKILL.md. Vienen cinco:
+  leer una web, buscar en internet gratis (DuckDuckGo), leer de su carpeta, escribir en su carpeta
+  (pide tu sí cada vez) y el Vigía de X.
+
+
+Suscripciones: cuáles se pueden usar aquí (FUENTE: páginas de ayuda de cada empresa, noviembre de 2026)
+--------------------------------------------------------------------------------------------------------
+Regla general: solo con una CLAVE DE API. Nunca con el inicio de sesión de la app (usuario y
+contraseña u OAuth) en programas de terceros, salvo que la empresa lo permita por escrito.
+- Claude: algunos planes traen créditos de API cada mes, que se reclaman vinculando una organización
+  de Claude Console. Con esa clave, permitido. Cuando se acaban, las llamadas paran.
+- ChatGPT: algunos planes traen créditos de API (se vinculan a una organización de
+  platform.openai.com). Con esa clave, permitido. Deja la recarga automática apagada.
+- Gemini: Google AI Pro y Ultra traen créditos mensuales de Google Cloud que sirven para la API de
+  Gemini (la cantidad: DATO FALTANTE, mírala en tu cuenta). La clave, en aistudio.google.com.
+- Grok: el cupo de SuperGrok no tiene permiso publicado para programas como este; la API de xAI se
+  paga aparte (mejor por OpenRouter).
+- Planes de «código» que solo valen para las herramientas que la empresa lista (por ejemplo, el GLM
+  Coding Plan de Z.ai): no los uses aquí.
+- Perplexity quitó el crédito de API incluido en su plan el 12 de febrero de 2026.
+- X (Twitter): sus condiciones prohíben leer la web de forma automática sin su permiso. El Vigía lo
+  hace como lo harías tú, con una cuenta nueva y separada: X puede pedir verificaciones o cerrarla.
+Antes de usar una suscripción, mira en la web de esa empresa si su plan incluye API. Si no lo dice,
+no la uses aquí.
+
+
+Manos en tu Mac: paso a paso (Fer Casa)
+---------------------------------------
+Una sola vez:
+  a) Instala Node: https://nodejs.org → versión «LTS» → doble clic en el instalador.
+  b) Descomprime el ZIP, por ejemplo en Documentos/fer-agent.
+  c) Abre Terminal, escribe  cd  y un espacio, arrastra la carpeta a la ventana y pulsa Enter.
+  d) Escribe:   npm install playwright-core
+     (Es la pieza que mueve el Chrome de los agentes. Usa tu Google Chrome; no hace falta descargar otro.)
+  e) Si usas otras API (las de tus suscripciones):   node fer-casa.mjs claves
+     y pega la clave de cada una (Intro deja la que haya). Se guardan en datos/config.json.
+     Si añadiste una API propia en la web (Ajustes → Otras API), aparece también en la lista.
+  f) Escribe:   node fer-casa.mjs entrar https://x.com/login
+     Se abre el Chrome de los agentes: entra con la cuenta NUEVA de X y cierra esa ventana. La sesión
+     queda guardada en datos/chrome-agentes (separada de tu Chrome).
+  g) Si quieres Telegram:   node fer-casa.mjs telegram   y sigue los pasos (con @BotFather).
+  h) Si quieres el cerebro en Drive y Obsidian:   node fer-casa.mjs carpeta   y elige una carpeta dentro
+     de Google Drive para ordenador (en un Mac suele estar en
+     /Users/TU_USUARIO/Library/CloudStorage/GoogleDrive-…/Mi unidad/Fer Agent).
+Cada día:
+  i) En la carpeta, escribe:   caffeinate -i node fer-casa.mjs
+     La primera vez te pide la clave de OpenRouter y un PIN. Abre http://localhost:8787 y pon el PIN.
+     Un edificio nuevo de Fer Casa empieza solo con el jefe: el resto, en «Agentes de serie».
+     Si ya tenías tu edificio en la web: allí «Guardar copia» y aquí, en Ajustes,
+     «Cargar una copia o una mudanza».
+  j) Crea el Vigía: «Crear agente», nombre «Vigía de X», latido cada 10 minutos. En su ficha →
+     Capacidades: marca «Manos», elige «Vigía de X» en «En cada latido, sin cerebro» y revisa los
+     términos. No gasta: sigue funcionando con la pausa general puesta. Lo que encuentra te llega a su
+     chat y, si conectaste Telegram, al móvil.
+Telegram: además de la bandeja con botones, entiende /bandeja, /pausa y /marcha. Solo hace caso a tu chat.
+
+
+Conectar Google Drive (para la web; unos 10 minutos, una vez)
+--------------------------------------------------------------
+Los pasos están también en la web: Ajustes → Cerebro → «Pasos para conectar Drive».
+  1. console.cloud.google.com → crea un proyecto (por ejemplo, «Fer Agent»).
+  2. «APIs y servicios» → «Biblioteca» → «Google Drive API» → «Habilitar».
+  3. «Pantalla de consentimiento de OAuth» (o «Google Auth Platform»): tipo «Externo», nombre Fer Agent,
+     tu correo. En «Público», añade tu correo como usuario de prueba. Déjala «en pruebas».
+  4. En «Acceso a datos», añade el permiso …/auth/drive.file (solo lo que crea la propia web).
+  5. «Credenciales» (o «Clientes») → «ID de cliente de OAuth» → «Aplicación web». En «Orígenes de
+     JavaScript autorizados»: la dirección de tu web (por ejemplo, https://tu-sitio.netlify.app).
+  6. Copia el ID de cliente (termina en .apps.googleusercontent.com), pégalo en Ajustes → Cerebro y
+     pulsa «Conectar Google Drive». Haz lo mismo en el móvil. No crees tú la carpeta: la crea la web.
+(Los nombres de los menús de Google cambian a veces: si alguno no coincide, busca el más parecido.)
+
+
+Lo que está comprobado y lo que no
+----------------------------------
+Comprobado con pruebas automáticas (todo simulado: OpenRouter, Claude, una API cualquiera, Google
+Drive, Telegram y una página que imita a X; el Chrome de los agentes es un Chromium de verdad):
+  - lo nuevo de la versión 8: el edificio a pantalla completa y la ficha al tocar o entrar en una
+    planta; empezar solo con el jefe; «Agentes de serie» (instalar uno, el equipo, quitar y volver
+    a instalar); los letreros arriba (y en el teléfono, sin tapar a nadie); la barra en una línea a
+    1084 y 1470 px; el directorio solo en «Franjas»; el cerebro con los recomendados, todos los de OpenRouter y «Buscar entre todos»;
+    «Otras API» con una dirección cualquiera (su clave, «Probar», elegirla en la ficha, la respuesta,
+    «tu suscripción» y que no suma al tope); «Informa a» con buscador y sin círculos; el nombre en
+    «Foto y nombre»; los personajes nuevos; «Orden del día» una vez; sin referencias personales en
+    pantalla; el cortafuegos de direcciones (en el motor);
+  - lo nuevo de la versión 8.2: la web entera en inglés (una prueba recorre la portada, Ajustes, el
+    edificio, Franjas, todas las pestañas de la ficha de ocho agentes, los cajones, Agentes de serie,
+    la bandeja, el agente del mes, las salas, la actividad, un chat y una reunión, con los saludos
+    y las opciones de los desplegables, y busca palabras en español: no queda ninguna); además, una
+    revisión del código busca cada texto en español de la web y comprueba que el diccionario lo
+    traduce tal y como llega a la pantalla (también los que solo salen con errores: el micrófono,
+    Drive, la conexión); un edificio en español, con un agente renombrado y una planta propia, que
+    pasa a inglés (lo de serie, en inglés; lo tuyo, tal cual; y el botón «Volver a los nombres de
+    serie»); el aviso de la portada y los pasos para sacar la clave de OpenRouter; la voz en inglés; el cambio EN/ES en la portada y en Ajustes; lo que el motor manda a
+    los cerebros en inglés (chat, tarea con «MISSING», ronda de Tecno, sabios, reunión, Creador y
+    lección) y lo que apunta (actividad, bandeja, notas de memoria); y que en español todo sigue igual
+    que en la 8.1;
+  - todo lo de las versiones 6 y 7 (el freno, la bandeja, la voz, la navegación, las copias, la
+    mudanza, la carpeta del cerebro, Fer Casa con sus manos y Telegram), adaptado a la versión 8.
+NO comprobado (falta hacerlo con lo de verdad):
+  - Con claves reales: ninguna de las otras API (Claude, OpenAI, Grok, Gemini, DeepSeek, Mistral);
+    que cada una deje llamar desde el navegador (si alguna no deja, desde Fer Casa sí); el error
+    exacto cuando se acaba el cupo de cada empresa.
+  - Ollama y LM Studio desde la web: tienen que estar encendidos y permitir llamadas desde el
+    navegador (SUPUESTO: Ollama necesita que se lo permitas con su ajuste OLLAMA_ORIGINS).
+  - El aspecto en pantallas y navegadores reales distintos de los de las pruebas (Chromium).
+  - Google Drive de verdad (inicio de sesión de Google, permisos, ritmo de peticiones).
+  - Elegir una carpeta del ordenador con la ventana de Chrome y que Chrome la recuerde al recargar.
+  - X de verdad: entrar, que X no bloquee la cuenta y que su web siga como la imitación; con términos
+    muy populares quizá se escapen tweets (SUPUESTO: falta mirarlo con X de verdad).
+  - Telegram de verdad, DuckDuckGo de verdad y Playwright con Google Chrome en el Mac.
+  - El micrófono real cortándole mientras habla (con auriculares no hay eco; se puede apagar en Ajustes).
+  - De la versión 6 siguen sin probar con clave real: la API de decisiones de JEV y el audio de Lyria.
+  - El inglés, leído por alguien de habla inglesa (lo ha revisado una prueba que busca restos de
+    español, no una persona nativa).
+  - Qué contestan en inglés los modelos de verdad a las instrucciones en inglés (las pruebas simulan
+    las respuestas).
+
+
+Traducir a otro idioma
+----------------------
+El mismo diccionario traduce las pantallas y lo que el motor les dice a los agentes:
+  1. Copia textos/es.js como textos/xx.js (xx: el código del idioma, por ejemplo fr).
+  2. Escribe a la derecha de cada texto su traducción. Lo que quede vacío sale en español.
+     Los {1}, {2}… son datos (nombres, cifras): se dejan tal cual. Respeta los espacios del principio
+     y del final de cada texto.
+  3. Añade el idioma a IDIOMAS en textos.js (por ejemplo  fr: "Français") y a IDIOMAS_MOTOR en
+     engine.js (fr: "fr-FR"). Aparece en Ajustes y en la portada.
+     Para probarlo sin tocar nada más: abre la web con  ?lang=fr  al final de la dirección.
+
+
+Hay tres maneras de usarlo
+--------------------------
+Puedes empezar por la 1 y pasar a la 2 o la 3 cuando quieras:
+arriba, «Guardar copia», y en la otra, Ajustes → «Cargar una copia o una mudanza»: te llevas el edificio entero.
+
+
+1. EN EL NAVEGADOR (la más fácil)
+---------------------------------
+Sube el ZIP a Netlify y abre la dirección. Pega tu clave de OpenRouter en Ajustes.
+Los agentes trabajan mientras la web esté abierta en algún aparato. Si cierras todo, se paran
+y siguen donde lo dejaron cuando vuelves a abrirla.
+
+
+2. FER CASA EN UN ORDENADOR O UN MÓVIL ENCENDIDO (trabaja con todo cerrado)
+----------------------------------------------------------------------------
+Necesita Node 18 o más nuevo. Para las manos (el Chrome de los agentes), además Playwright (ver «Manos en tu Mac»).
+
+En un Mac
+  a) Instala Node: entra en https://nodejs.org, descarga la versión «LTS» y haz doble clic en el instalador.
+  b) Descomprime el ZIP, por ejemplo en Documentos.
+  c) Abre la aplicación Terminal. Escribe  cd  y un espacio, arrastra la carpeta a la ventana y pulsa Enter.
+  d) Escribe:   caffeinate -i node fer-casa.mjs
+     («caffeinate -i» evita que el Mac se duerma mientras Fer Casa está encendido.)
+  e) La primera vez te pide la clave de OpenRouter y un PIN. Se guardan en la carpeta «datos».
+  f) Abre en el navegador:  http://localhost:8787   y escribe el PIN.
+  Para pararlo: Ctrl+C en la Terminal.
+
+En un móvil Android viejo (Termux)
+  a) Instala F-Droid (https://f-droid.org) y, desde F-Droid, la app Termux.
+     No uses la Termux de Google Play: es experimental.
+  b) Copia el ZIP al móvil (carpeta Descargas). En Termux escribe, una línea cada vez:
+       termux-setup-storage
+       pkg install nodejs unzip
+       unzip ~/storage/downloads/fer-agent-edificio-v8.zip -d ~/fer
+       cd ~/fer
+       termux-wake-lock
+       node fer-casa.mjs
+  c) Abre en el navegador del móvil:  http://localhost:8787
+  d) En Ajustes de Android → Aplicaciones → Termux → Batería: «Sin restricciones», para que no lo duerma.
+  e) Para que arranque solo si el móvil se reinicia: instala también «Termux:Boot» desde F-Droid,
+     ábrelo una vez y crea el archivo ~/.termux/boot/fer.sh con estas tres líneas:
+       #!/data/data/com.termux/files/usr/bin/sh
+       termux-wake-lock
+       cd ~/fer && node fer-casa.mjs >> ~/fer/datos/pantalla.txt 2>&1
+     Y dale permiso:  chmod +x ~/.termux/boot/fer.sh
+  Déjalo enchufado. Si la batería se hincha, deja de usar ese móvil.
+
+Desde otro aparato de tu casa
+  Fer Casa enseña al arrancar una dirección del tipo http://192.168.1.x:8787. Ábrela desde el
+  ordenador o el móvil conectados al mismo wifi y escribe el PIN. Por esa dirección el micro no
+  funciona (los navegadores solo lo permiten con https o en el propio aparato); el teclado sí.
+
+
+3. FER CASA EN LA NUBE (un servidor Linux alquilado)
+----------------------------------------------------
+Es el mismo programa: copia la carpeta, instala Node 18+ y ejecuta «node fer-casa.mjs» una vez a mano
+para poner la clave y el PIN. Después déjalo funcionando como servicio del sistema.
+No abras el puerto 8787 a internet sin https: para entrar desde fuera usa un túnel seguro
+(por ejemplo Cloudflare Tunnel o Tailscale). Eso queda como siguiente paso.
+
+
+Seguridad
+---------
+- En el navegador, cada clave vive solo en ese navegador y solo viaja a la dirección de su API
+  (OpenRouter o la de cada una de tus otras API). En Fer Casa, viven solo en datos/config.json.
+  Ninguna clave va dentro del ZIP, de las copias, de la mudanza ni de la carpeta del cerebro.
+- Pon un límite de gasto a cada clave en la web de cada empresa: es la red de seguridad.
+- El PIN de Fer Casa (mínimo 8) evita que otro en tu red gaste tu crédito; tras 5 fallos desde un
+  aparato se bloquea un minuto, y tras 30 fallos en 10 minutos se cierra 5 minutos.
+- Las manos solo existen en Fer Casa. Los agentes leen y escriben únicamente en su carpeta; todo lo
+  que tiene efecto fuera de la web (escribir un archivo, y las skills que lo digan) espera tu sí.
+  Una web puede llevar texto escondido que intente dar órdenes a un agente: por eso lo que tiene efecto
+  pasa siempre por la bandeja. Telegram solo acepta tu chat.
+- Leer una web no es una puerta trasera, y sin pedirte permiso para cada una: cortafuegos. Un agente
+  abre las direcciones que necesita, pero nunca una que lleve dentro datos de tus notas (trozos de la
+  Biblioteca o de la Memoria larga, números largos o correos que están en ellas), salvo que esa
+  dirección la hayas escrito tú. Lo que trae de fuera le llega marcado como «datos, no órdenes».
+  Y las skills de leer y buscar solo van a internet: nunca a tu router, a tu red de casa, a este
+  ordenador ni a las direcciones internas de un servidor.
+- El Chrome de los agentes es un perfil aparte (datos/chrome-agentes): no ve tus contraseñas ni tus sesiones.
+- Cada skill tiene un tiempo máximo (5 minutos; el Vigía, 8; se cambia con «tiempo:» en su SKILL.md).
+  Si una página se cuelga, la skill se para, se cierra su Chrome y la siguiente sigue.
+- Fer Casa habla sin https: úsalo en tu red de casa o con un túnel seguro.
+
+Pruebas (para quien quiera comprobarlo)
+---------------------------------------
+  node --test pruebas/motor.test.mjs pruebas/motor7.test.mjs pruebas/vigia.test.mjs   el motor y el Vigía
+  node --test pruebas/motor82.test.mjs   el motor en inglés
+  python3 pruebas/web_test.py      la web, lo de la versión 6 (necesita Playwright)
+  python3 pruebas/web7_test.py     la web, lo de la versión 7
+  python3 pruebas/web8_test.py     la web, lo nuevo de la versión 8
+  python3 pruebas/web82_test.py    la web en inglés: ninguna pantalla con restos de español
+  python3 pruebas/casa_test.py     Fer Casa
+  python3 pruebas/casa7_test.py    Fer Casa con manos, Telegram, carpeta del cerebro y otra API
+  (casa_test y casa7_test arrancan Fer Casa con el equipo recomendado: FER_PLANTILLA=basico)

@@ -1,0 +1,9 @@
+# Fer Home (fer-casa.mjs) guarda aquí las claves y el edificio: nunca al repositorio
+datos/
+config.json
+# Dependencias y restos
+node_modules/
+.DS_Store
+# Salidas de las pruebas
+pruebas/capturas/
+__pycache__/
