@@ -96,6 +96,8 @@ export const BASIC_CAPS = CAPABILITIES.filter((c) => c.type === "basic").map((c)
 
 const DAY = 86400e3;
 const MAX_SHORT = 20, MAX_TASKS = 30, MAX_LOG = 300, MAX_CONVERSATION = 80, MAX_JEV = 300;
+// Automatic memory: a conversation is filed when it has been quiet for 10 minutes, or every 20 messages if it goes on
+const MEMORY_QUIET_MS = 10 * 60e3, MEMORY_BATCH = 20;
 const MAX_MEETINGS = 100, MAX_COINS = 2000;   // so the browser doesn't fill up: the latest ones are kept
 const MAX_APPROVALS = 300;
 // A text's words for the firewall: lower case, no accents, 2 letters or more
@@ -123,6 +125,13 @@ const numbers = (m) => { const o = {}; for (const [d, v] of Object.entries(m && 
 const removeAccents = (s) => s.normalize("NFD").replace(/[̀-ͯ]/g, "");
 const STOP_WORDS = new Set(("remember remembers recall about have has had this that these those what which when where with from into your yours their there here they them were been being would could should will shall does did done make made want know just also very more less some something nothing every each other same please tell said says the and for are was not but you all any can our out get got how why who whom whose " + "recuerdas recuerda recuerdo acuerdas acuerdo sobre tengo tiene tienes tenia esta este esto estos estas eso esos esas aquel cual cuales cuando donde como para pero porque desde hasta entre tambien muy mas menos algo nada todo todos todas cada otro otra otros otras mismo misma puede pueden hacer hace hizo dijo dije decir quiero quieres queria sabes saber sera seria fueron estaba habia hemos han has ese esa unos unas nuestro nuestra vuestro favor gracias hola dime cosa cosas the that this with what").split(" "));
 
+// What Memory's model answers: {"facts": [...]} (also a bare list, or wrapped in ```json)
+export function memoryFacts(t) {
+  const s = String(t || "").replace(/```(?:json)?/gi, "").trim();
+  const a = Math.min(...["{", "["].map((c) => s.indexOf(c)).filter((i) => i >= 0)), b = Math.max(s.lastIndexOf("}"), s.lastIndexOf("]"));
+  if (!isFinite(a) || b < a) return [];
+  try { const d = JSON.parse(s.slice(a, b + 1)); const l = Array.isArray(d) ? d : d && Array.isArray(d.facts) ? d.facts : []; return l.filter((f) => f && typeof f === "object"); } catch { return []; }
+}
 export function keywords(text) {
   return [...new Set(removeAccents(String(text).toLowerCase()).replace(/[^a-z0-9ñ\s]/g, " ").split(/\s+/)
     .filter((w) => w.length >= 4 && !STOP_WORDS.has(w)))];
@@ -353,6 +362,8 @@ const DEFAULT_SETTINGS = {
   recommended: null, buildingView: "auto",
   pause: true,                   // master switch: with the pause on, nothing that spends wakes up on its own (it starts paused)
   lessonsModel: "",           // the cheap model that turns a coin's reason into a rule (empty: the cheapest that will do)
+  autoMemory: true,           // Memory files on its own what matters from each conversation, when it goes quiet
+  memoryModel: "",            // the cheap model Memory files with (empty: the lessons one, or the cheapest that will do)
   shortVoice: true                 // when talking by voice, short answers
 };
 export const MAX_OBJECTIVE_LINES = 5;   // «The building's objectives»: five lines at most
@@ -417,7 +428,8 @@ function baseAgent(o) {
     capabilities: ["write"], off: false, dailyCap: 0,
     look: { p: "boy", clothes: null, eyes: null, hair: null, skin: null },
     state: "idle", statusReason: "", next: 0, last: 0,
-    shortMemory: [], tasks: [], spending: {}, createdAt: 0
+    shortMemory: [], tasks: [], spending: {}, createdAt: 0,
+    memoryUpTo: 0                                                          // the last message of its chat that Memory has already filed
   }, o, { role });
 }
 const look = (p, clothes, hair, extra) => Object.assign({ p, clothes: clothes || null, eyes: null, hair: hair || null, skin: null }, extra || {});
@@ -926,6 +938,8 @@ export class Building {
         else b[k] = String(v);
       }
       for (const k of Object.keys(a)) if (!(k in b)) b[k] = a[k];
+      // an agent from before the automatic memory: only what's said from now on is filed (not its whole past chat)
+      if (a.memoryUpTo === undefined) b.memoryUpTo = (b.role === "boss" ? (Array.isArray(e.conversation) ? e.conversation : []) : b.chat).reduce((x, m) => Math.max(x, Number(m && m.ts) || 0), 0);
       delete b.higherBrain;                                       // v6 no longer repeats work with a more expensive brain
       b.chat = b.chat.filter((m) => m && typeof m === "object").slice(-MAX_CONVERSATION);
       b.voice = { model: String((b.voice && b.voice.model) || ""), voice: String((b.voice && b.voice.voice) || "") };
@@ -1298,7 +1312,7 @@ export class Building {
     this.library = (docs || []).filter((d) => d && d.text).map((d) => ({ path: String(d.path || d.title || "note.md"), title: String(d.title || d.path || ""), chunks: splitIntoChunks(d.text) }));
     this.notice("brain");
   }
-  searchMemory(text, max = 5) {
+  searchMemory(text, max = 5, quiet = false) {
     const keys = keywords(text);
     if (!keys.length) return [];
     const score = (t, tags) => {
@@ -1311,7 +1325,7 @@ export class Building {
     for (const d of this.library || []) for (const t of d.chunks) { const p = score(d.title + " " + t); if (p) found.push({ p, ts: 0, text: t, source: this.L("Library · ") + d.path }); }
     found.sort((a, b) => b.p - a.p || b.ts - a.ts);
     const mem = this.agent("memory");
-    if (mem) this.logActivity(mem, this.F("search “{1}”: {2} {3}", keys.slice(0, 6).join(", "), found.length, found.length === 1 ? this.L("chunk") : this.L("chunks")), 0);
+    if (mem && !quiet) this.logActivity(mem, this.F("search “{1}”: {2} {3}", keys.slice(0, 6).join(", "), found.length, found.length === 1 ? this.L("chunk") : this.L("chunks")), 0);
     return found.slice(0, max).map((x) => Object.assign({}, x.note || {}, { text: x.text, source: x.source, ts: x.ts }));
   }
   memoryText(r) { return r.length ? r.map((n) => `- (${n.source}${n.ts ? ", " + dayOf(n.ts) : ""}) ${String(n.text).slice(0, 700)}`).join("\n") : this.L("Memory found nothing with those words."); }
@@ -1323,6 +1337,72 @@ export class Building {
     if (mem) this.logActivity(mem, this.F("saved in “{1}”: “{2}”", n.topic, n.text.slice(0, 80)), 0);
     this.notice("memory", { topic: n.topic });
     return n;
+  }
+
+  // ---------------- Automatic memory ----------------
+  // When a conversation goes quiet (or piles up), Memory reads what was said since it last filed and keeps what matters,
+  // each fact under its topic: an existing one when it fits, one per person or company and one per project. A cheap model
+  // does it and the agent you talked to pays for it. Searching stays as it was: keywords, only the chunks that matter.
+  memoryModel() { return this.e.settings.memoryModel || this.lessonsModel(); }
+  memoryTopics() {   // the topics there already are, the most used first
+    const n = new Map();
+    for (const m of this.e.longMemory) { const t = cleanTopic(m.topic || (m.tags || [])[0] || "General"); n.set(t, (n.get(t) || 0) + 1); }
+    return [...n].sort((x, y) => y[1] - x[1]).map(([t]) => t);
+  }
+  existingTopic(t) {   // «clientes epsa» goes into the existing «Clientes EPSA»
+    const k = (x) => removeAccents(String(x || "").toLowerCase()).replace(/\s+/g, " ").trim();
+    return this.memoryTopics().find((x) => k(x) === k(t)) || cleanTopic(t);
+  }
+  unfiled(a) {
+    const upTo = Number(a.memoryUpTo) || 0;
+    return this.chatOf(a).filter((m) => m && (m.role === "user" || m.role === "assistant") && (Number(m.ts) || 0) > upTo && String(m.content || "").trim());
+  }
+  async autoMemory() {
+    if (!this.e.settings.autoMemory || !this.o.key() || !this.memoryModel()) return null;
+    const now = this.now();
+    this._memoryRetry = this._memoryRetry || {};
+    for (const a of this.e.agents) {
+      if (this.busyIds.has(a.id) || (this._memoryRetry[a.id] || 0) > now) continue;
+      const news = this.unfiled(a);
+      if (!news.length) continue;
+      if (now - (Number(news.at(-1).ts) || 0) < MEMORY_QUIET_MS && news.length < MEMORY_BATCH) continue;   // the conversation is still going on
+      return await this.fileConversation(a, news);   // one conversation per heartbeat
+    }
+    return null;
+  }
+  async fileConversation(a, news) {
+    const payer = [a, this.boss()].find((x) => x && this.canWork(x));
+    if (!payer) return null;   // frozen or off: it waits, nothing is lost (it's filed when they can spend again)
+    try { this.checkCap(payer); } catch { return null; }
+    const last = Math.max(...news.map((m) => Number(m.ts) || 0));
+    const text = news.map((m) => `${m.role === "user" ? this.L("Owner") : a.name}: ${String(m.content).replace(/\s+/g, " ").slice(0, 2000)}`).join("\n");
+    const known = this.searchMemory(text, 8, true), topics = this.memoryTopics().slice(0, 150), mem = this.agent("memory");
+    let r;
+    try {
+      r = await this.callOpenRouter(payer, this.memoryModel(), [
+        { role: "system", content: [
+          this.L("You are Memory, the building's archivist. You read a conversation between the owner and one of their agents and keep only what will be useful to remember later: facts about people and companies (who they are, what they want, how to reach them), decisions, commitments, deadlines, dates and amounts, the owner's preferences and instructions, and the results of the work. Leave out greetings, small talk and anything that is already in the memory."),
+          this.L("File each fact under a topic: an existing topic whenever one fits (write its name exactly as it is); one topic per person or company (their name) and one per project; a new short topic only if none fits."),
+          this.L("Write each fact as one sentence that can be understood on its own, in the language of the conversation, with names and dates written out (not “he” or “tomorrow”)."),
+          this.L("Reply ONLY with a JSON object, nothing else: {\"facts\": [{\"topic\": \"...\", \"text\": \"...\", \"tags\": [\"...\"]}]}. If nothing is worth keeping: {\"facts\": []}.")].join(" ") },
+        { role: "user", content: this.F("Topics there already are: {1}\n\nAlready in the memory:\n{2}\n\nConversation with {3} ({4}):\n{5}",
+          topics.join(", ") || this.L("(none yet)"), known.length ? this.memoryText(known) : this.L("(nothing)"), a.name, dayOf(last), text) }
+      ], { concept: this.L("memory: filing the conversation"), max_tokens: 1500 });
+    } catch (err) {
+      this._memoryRetry[a.id] = this.now() + MEMORY_QUIET_MS;   // it tries again later
+      if (mem) this.logActivity(mem, this.F("couldn't file the chat with {1}: {2}", a.name, err.message), 0);
+      return null;
+    }
+    a.memoryUpTo = last;   // paid for: these messages aren't sent again, even if the answer can't be read
+    const saved = [];
+    for (const f of memoryFacts(r.msg.content)) {
+      const t = String(f.text || "").replace(/\s+/g, " ").trim();
+      if (t.length < 3) continue;
+      saved.push(this.saveMemory(t + this.F(" (chat with {1})", a.name), Array.isArray(f.tags) ? f.tags : [], mem ? mem.id : "", this.existingTopic(f.topic)));
+    }
+    if (mem) this.logActivity(mem, this.F("filed the chat with {1}: {2} {3}", a.name, saved.length, saved.length === 1 ? this.L("fact") : this.L("facts")), 0);
+    await this.save();
+    return { agent: a.id, saved: saved.length, cost: r.cost };
   }
 
   // ---------------- Images ----------------
@@ -1504,6 +1584,8 @@ export class Building {
     }).sort((x, y) => (x.next || 0) - (y.next || 0) || y.priority - x.priority);
     for (const a of due.slice(0, maxAgents)) doneItems.push(await this.wakeUp(a.id, "heartbeat"));
     if (due.length) await this.save();
+    // automatic memory: the end of a conversation you had (it isn't an agent waking up, so it also works with the general pause on)
+    try { await this.autoMemory(); } catch {}
     return doneItems;
   }
   applyDailyReport() {   // the Controller leaves a report of the previous day (no brain, free)
