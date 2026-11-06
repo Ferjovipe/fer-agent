@@ -92,7 +92,10 @@ try:
         page.goto(URL); page.wait_for_selector("#landing .hero-txt")
         # ---------- Home page ----------
         download = page.locator("#landing .hero .button-outline")
-        check(download.inner_text() == "Download the app" and download.get_attribute("href") == "https://github.com/Ferjovipe/fer-agent/releases/latest", "on the home page, “Download the app”: to the latest version on GitHub, without asking for anything")
+        got = [(download.nth(i).inner_text(), download.nth(i).get_attribute("href")) for i in range(download.count())]
+        check(got == [("Download for Mac", "https://github.com/Ferjovipe/fer-agent/releases/latest/download/Fer-Agent-mac.dmg"),
+                      ("Download for Windows", "https://github.com/Ferjovipe/fer-agent/releases/latest/download/Fer-Agent-windows.exe")],
+              f"on the home page, “Download for Mac” and “Download for Windows”: the installer of the latest version, straight away, without asking for anything ({got})")
         notice = page.inner_text("#landing .landing-notice")
         check(notice.startswith("Fer Agent is free, open-source software, provided “as is”") and "at your own risk" in notice, f"the disclaimer, in English: “{notice[:70]}”")
         check(page.inner_text("#landing h1") == "You have an agentic company at your service." and page.get_attribute(".landing-languages button[lang='en']", "aria-pressed") == "true",

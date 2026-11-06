@@ -62,6 +62,6 @@ jobs:
           draft: false
           prerelease: ${{ contains(inputs.version || github.ref_name, '-') }}
           body: |
-            Fer Agent desktop app · Mac (Apple chip: `mac-arm64`; Intel: `mac-x64`) and Windows (`.exe`).
+            Fer Agent desktop app · Mac: `Fer-Agent-mac.dmg` (any Mac, Apple chip or Intel) · Windows: `Fer-Agent-windows.exe`.
             First time on a Mac: System Settings → Privacy & Security → **Open Anyway**. On Windows: **More info → Run anyway**.
             Then paste your OpenRouter key in Settings.

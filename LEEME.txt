@@ -26,6 +26,8 @@ Versión 9.0
 La aplicación de escritorio (Mac y Windows). Es el mismo edificio con Fer Home dentro, sin Terminal:
   - Se instala con doble clic. Los instaladores los fabrica GitHub (pestaña «Actions», «Desktop app»)
     y, con cada versión, quedan en «Releases».
+  - En la portada, «Descargar para Mac» y «Descargar para Windows» bajan el instalador directamente.
+    Hay uno solo para Mac (Fer-Agent-mac.dmg), que sirve para cualquier Mac, con chip Apple o Intel.
   - La primera vez en un Mac: como todavía no lleva la firma de Apple, el Mac dice que no puede
     verificar al desarrollador. Ajustes del Sistema → Privacidad y seguridad → «Abrir igualmente»
     (solo una vez). En Windows, si sale «Windows protegió tu PC»: «Más información» → «Ejecutar de

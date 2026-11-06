@@ -56,11 +56,11 @@
         {
           "target": "dmg",
           "arch": [
-            "arm64",
-            "x64"
+            "universal"
           ]
         }
       ],
+      "artifactName": "Fer-Agent-mac.${ext}",
       "category": "public.app-category.productivity",
       "identity": "-",
       "hardenedRuntime": false,
@@ -80,6 +80,7 @@
       ]
     },
     "nsis": {
+      "artifactName": "Fer-Agent-windows.${ext}",
       "oneClick": false,
       "perMachine": false,
       "allowToChangeInstallationDirectory": true,

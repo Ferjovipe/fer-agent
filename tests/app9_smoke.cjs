@@ -37,7 +37,7 @@ const check = (c, t) => { console.log((c ? "PASS " : "FAIL ") + t); ok = ok && !
   check(await win.evaluate(() => !!(window.ferApp && window.ferApp.chooseFolder && window.ferApp.restart)) && await win.evaluate(() => typeof require === "undefined"),
     "the window can only ask to choose a folder and reopen (no access to the computer)");
   check((await win.innerText("#landing h1")) === "You have an agentic company at your service.", "a computer in English, the app in English");
-  check((await win.locator("#landing .button-outline").count()) === 0, "inside the app “Download the app” doesn't appear");
+  check((await win.locator("#landing .button-outline").count()) === 0, "inside the app the download buttons don't appear");
   await win.screenshot({ path: path.join(OUTPUT, "app9-smoke-landing.png") });
   await win.waitForTimeout(2000);
   await win.click("#landing .button-big >> nth=0");

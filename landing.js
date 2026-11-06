@@ -5,6 +5,8 @@
 // figura(aspecto, img): paints the character with its colours inside the image
 // Downloading the app: the latest version published on GitHub (no sign-up)
 const DOWNLOAD = "https://github.com/Ferjovipe/fer-agent/releases/latest";
+// the installers of the latest version, straight away (their names don't change from one version to the next)
+const DOWNLOAD_MAC = DOWNLOAD + "/download/Fer-Agent-mac.dmg", DOWNLOAD_WINDOWS = DOWNLOAD + "/download/Fer-Agent-windows.exe";
 export function renderLanding(cont, { h, enter, figure, languages, language, changeLanguage }) {
   cont.innerHTML = "";
   const BUILT_IN = [
@@ -29,7 +31,8 @@ export function renderLanding(cont, { h, enter, figure, languages, language, cha
         h("div", { class: "hero-buttons" },
           h("button", { class: "button-big", type: "button", onclick: enter }, "Enter the building"),
           // the Mac and Windows app, without asking for anything (not shown inside the app itself)
-          /Electron\//.test(navigator.userAgent) ? null : h("a", { class: "button-outline", href: DOWNLOAD, target: "_blank", rel: "noopener" }, "Download the app")),
+          ...(/Electron\//.test(navigator.userAgent) ? [] : [h("a", { class: "button-outline", href: DOWNLOAD_MAC, rel: "noopener" }, "Download for Mac"),
+            h("a", { class: "button-outline", href: DOWNLOAD_WINDOWS, rel: "noopener" }, "Download for Windows")])),
         h("span", { class: "small-print" }, "Open source · Free · Mac, Windows or in the browser · Works with your OpenRouter key or your subscription's API")),
       h("button", { class: "download", type: "button", onclick: () => cont.querySelector(".section-l").scrollIntoView({ behavior: "smooth" }) }, "How it works ↓")),
     h("section", { class: "section-l" },

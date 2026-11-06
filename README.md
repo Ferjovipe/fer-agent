@@ -23,7 +23,7 @@ The interface is in **English** and **Spanish** (EN · ES switch on the home pag
 
 ## Where it lives
 
-1. **The desktop app** (Mac and Windows): download it from [Releases](https://github.com/Ferjovipe/fer-agent/releases), install it with a double click and paste your OpenRouter key in Settings. No Terminal. The agents work while the app is open, with “hands”: their own Chrome (it uses the Google Chrome installed on your computer), their folder and skills in the `SKILL.md` format.
+1. **The desktop app** (Mac and Windows): download it from [Releases](https://github.com/Ferjovipe/fer-agent/releases) — `Fer-Agent-mac.dmg` (any Mac) or `Fer-Agent-windows.exe` — install it with a double click and paste your OpenRouter key in Settings. No Terminal. The agents work while the app is open, with “hands”: their own Chrome (it uses the Google Chrome installed on your computer), their folder and skills in the `SKILL.md` format.
 2. **In your browser** (no install): open the website, paste your OpenRouter key in Settings. The agents work while the website is open on some device.
 3. **Fer Home** (`fer-home.mjs`, Node 18+): the same program as the app, run from the Terminal, for an always-on computer, an old phone or a rented server behind a secure tunnel. It speaks its building's language in the Terminal and on Telegram.
 
