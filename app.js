@@ -6,7 +6,7 @@
 // =====================================================================
 import { LOCALE, setLanguage, Building, ROLES, CAPABILITIES, SEATS, PER_POOL, MAX_OFFICES, MAX_POOLS, MAX_MEETING_SEATS, VERSION, JEV_MODEL, MODEL_TYPES, LEVELS, LEVEL_NAME,
   seating, cleanLook, heartbeatText, levelKey, modelType, variablePrice, fmt, fmtCap, explainError, PROVIDERS, filterApiModels, MAX_PERSONALITY, MAX_OBJECTIVE_LINES,
-  cleanObjectives, unitPrice, hearingPricePerSecond, noPublishedPrice, describedPrice, imageTokens, memoryNotesMd, cleanTopic, modelVersion, chooseModel, brainFolders, readBackupFile } from "./engine.js";
+  cleanObjectives, unitPrice, hearingPricePerSecond, noPublishedPrice, describedPrice, imageTokens, memoryNotesMd, cleanTopic, modelVersion, chooseModel, brainFolders, readBackupFile, emailServers } from "./engine.js";
 import { CHARACTERS } from "./characters.js";
 import { tr, trAlways, setNames, loadLanguage, translatePage, language, LANGUAGES, saveLanguage, savedLanguage } from "./languages.js";
 import { renderLanding } from "./landing.js";
@@ -226,7 +226,7 @@ function modelLabel(m) {
   const d = modelData(m);
   if (variablePrice(m)) return `${d.name} · ${tr("variable price (depends on the model it chooses)")}`;
   const level = levelKey(Object.assign({}, m, d));
-  if (level === "sinprecio") return `${d.name} · ${priceTxt(m)}`;
+  if (level === "no_price") return `${d.name} · ${priceTxt(m)}`;
   return `${d.name} · ${tr(LEVEL_NAME[level])} · ${priceTxt(m)}${d.sees && modelType(m) === "text" ? " · " + tr("sees") : ""}`;
 }
 // Model picker: the recommended ones per level on top; below, all of that type (and in «Brain», also «Others»).
@@ -486,7 +486,7 @@ function render() {
     namesUpToDate();
     renderTop(); renderCity(); renderAccent();
     if (chatId) { renderChatHeader(); renderChat(); }
-    if (tab === "profile") renderProfile(); if (tab === "actividad") renderLog();
+    if (tab === "profile") renderProfile(); if (tab === "activity") renderLog();
     if (screen === "month") renderMonth(); if (screen === "rooms") renderMeetingRooms(); if (screen === "inbox") renderInbox(); if (screen === "builtIn") renderBuiltIn();
     if (!$("drawer").hidden && drawerType === "spending") renderSpendingDrawer(true);
   });
@@ -684,7 +684,7 @@ function openFloor(id) {
     const r = seating(ed.e, id), who = (r.head_office || [])[0] || (r.center || [])[0] || (r.reception || [])[0] || ed.e.agents.find((a) => a.floor === id);
     if (who) { selection = who.id; if (window.innerWidth > 900) document.body.classList.add("with-panel"); }
   }
-  openFloorId = id; showTab(window.innerWidth <= 900 ? "building" : tab === "actividad" ? "actividad" : "profile"); render();
+  openFloorId = id; showTab(window.innerWidth <= 900 ? "building" : tab === "activity" ? "activity" : "profile"); render();
   const c = $("building").closest(".city"); if (c) c.scrollTop = 0;
   markNav();
 }
@@ -807,11 +807,11 @@ function showTab(p) {
   if (p === "building") { document.body.classList.add("show-building"); $("tabBuilding").setAttribute("aria-selected", "true"); for (const id of ["tabProfile", "tabActivity"]) $(id).setAttribute("aria-selected", "false"); return; }
   document.body.classList.remove("show-building"); $("tabBuilding").setAttribute("aria-selected", "false");
   tab = p;
-  for (const [id, v, n] of [["tabProfile", "profileView", "profile"], ["tabActivity", "activityView", "actividad"]]) {
+  for (const [id, v, n] of [["tabProfile", "profileView", "profile"], ["tabActivity", "activityView", "activity"]]) {
     $(id).setAttribute("aria-selected", String(p === n)); $(v).hidden = p !== n;
   }
   if (p === "profile") renderProfile(true);
-  if (p === "actividad") renderLog();
+  if (p === "activity") renderLog();
 }
 
 // ---------------- An agent's profile, in four tabs ----------------
@@ -1150,7 +1150,7 @@ function skillSettingsEditor(a, k, change) {
       const ta = h("textarea", { rows: String(Math.min(12, Math.max(4, (val[x.key] || []).length + 1))), onchange: (ev) => save(x.key, ev.target.value.split("\n").map((l) => l.trim()).filter(Boolean)) });
       ta.value = (val[x.key] || []).join("\n");
       box.append(field(x.name, ta, x.help || "One per line."));
-    } else if (x.type === "numero") {
+    } else if (x.type === "number") {
       box.append(field(x.name, h("input", { type: "number", min: String(x.min ?? 0), step: "1", value: val[x.key] ?? "", onchange: (ev) => save(x.key, Number(ev.target.value) || x.default) }), x.help));
     } else if (x.type === "yes_no") {
       box.append(h("label", { class: "cap" }, h("input", { type: "checkbox", checked: !!val[x.key], onchange: (ev) => save(x.key, ev.target.checked) }), h("span", {}, x.name, x.help ? h("small", {}, x.help) : null)));
@@ -1714,7 +1714,7 @@ let builtInSignature = "";
 function renderBuiltIn(force) {
   const v = $("builtInView");
   if (screen !== "builtIn") return;
-  const list = ed.builtInCatalog(), missingOnes = list.filter((x) => !x.installed);
+  const list = ed.builtInCatalog(), missingOnes = list.filter((x) => !x.installed && !x.extra);   // the extra ones (Email) aren't part of the recommended team
   const signature = list.map((x) => x.id + (x.installed ? 1 : 0) + x.currentName).join("|");
   if (!force && signature === builtInSignature) return;
   builtInSignature = signature;
@@ -2281,6 +2281,7 @@ function renderSettings() {
       h("small", { class: "note" }, "The keys live in Fer Home (data/config.json), not on this device. The PIN stops anyone else on your network using your credit.")));
   }
   c.append(otherApisBlock());
+  c.append(emailBlock());
   // the building's name and objectives
   const nom = h("input", { value: ed.e.name || "" });
   nom.onchange = () => saveSetting({}, { name: nom.value.trim() || "My building" });
@@ -2383,6 +2384,50 @@ function renderSettings() {
     h("div", { class: "row-c" }, template("empty", "Just the boss"), template("basic", "With the recommended team"))));
   c.append(h("p", { class: "note" }, `Fer Agent Building · version ${VERSION} · open source · prices and models come live from OpenRouter.`));
   c.scrollTop = sc;
+}
+// The mailbox in Settings (for the Email agent): in the app it's connected here; in Fer Home, from its Terminal; a website on its own can't
+function emailBlock() {
+  const box = h("div", { class: "block" }, h("h4", {}, "Email"));
+  const now = homeInfo.email || null, msg = h("small", { class: "note" });
+  const check = h("button", { class: "btn mini", type: "button", onclick: async () => {
+    check.disabled = true; msg.textContent = tr("Checking…");
+    try { const r = await callApp("/api/email/test", {}); msg.textContent = tr(`It works: it can read and send (${r.emails} emails in the inbox).`); }
+    catch (e) { msg.textContent = e.message; } finally { check.disabled = false; }
+  } }, "Check");
+  const agentNote = h("small", { class: "note" }, "The Email agent (Built-in agents) reads what comes in, summarises and sorts it and prepares the replies; each reply waits for your yes in the inbox. It never marks, moves or deletes anything in the mailbox.");
+  if (mode !== "home") {
+    box.append(h("p", { class: "note", style: { margin: 0 } }, "A website on its own can't connect to a mailbox. It's done in the desktop app or in Fer Home."), agentNote);
+    return box;
+  }
+  if (!isApp()) {
+    box.append(h("p", { class: "note", style: { margin: 0 } }, now ? tr(`Connected: ${now.address}`) : "No mailbox connected."),
+      h("small", { class: "note" }, "To connect or change it: on the Fer Home computer, node fer-home.mjs email"), now ? h("div", { class: "row-c" }, check, msg) : null, agentNote);
+    return box;
+  }
+  const v = Object.assign({ address: "", name: "", imapHost: "", imapPort: "", smtpHost: "", smtpPort: "" }, now || {});
+  const inp = (k, o) => { const x = h("input", Object.assign({ value: v[k] ?? "" }, o || {})); x.oninput = () => { v[k] = x.value.trim(); }; return x; };
+  const address = inp("address", { type: "email", placeholder: "name@yourdomain.com", autocomplete: "off" });
+  const password = h("input", { type: "password", autocomplete: "new-password", placeholder: now ? "••••••••••" : "" });
+  const imapHost = inp("imapHost", { placeholder: "imap.yourdomain.com" }), imapPort = inp("imapPort", { type: "number", placeholder: "993", style: { width: "90px" } });
+  const smtpHost = inp("smtpHost", { placeholder: "smtp.yourdomain.com" }), smtpPort = inp("smtpPort", { type: "number", placeholder: "465", style: { width: "90px" } });
+  const name = inp("name", { placeholder: "Your name, as it appears to whoever receives it" });
+  address.onchange = () => {   // the servers, guessed from the address (you can change them)
+    const g = emailServers(address.value.trim()); if (!g || (now && now.address === address.value.trim())) return;
+    imapHost.value = v.imapHost = g.imapHost; imapPort.value = v.imapPort = g.imapPort; smtpHost.value = v.smtpHost = g.smtpHost; smtpPort.value = v.smtpPort = g.smtpPort;
+  };
+  box.append(h("p", { class: "note", style: { margin: 0 } }, "The mailbox the Email agent reads and sends from. The password is only saved on this computer and only travels to your mailbox's servers. Many providers (Gmail, iCloud, Yahoo…) ask for an “app password”, created in your account's security settings, instead of your usual one."),
+    field("Address", address), field("Password", password), field("Name shown to whoever receives it", name),
+    h("div", { class: "row-c" }, field("Server to read (IMAP)", imapHost), field("Port", imapPort)),
+    h("div", { class: "row-c" }, field("Server to send (SMTP)", smtpHost), field("Port", smtpPort)),
+    h("div", { class: "row-c" }, h("button", { class: "btn primary mini", type: "button", onclick: async () => {
+      try {
+        await callApp("/api/conf/email", Object.assign({}, v, { address: address.value.trim(), password: password.value }));
+        await refreshHome(); toast("Mailbox saved. Press “Check” to try it."); renderSettings();
+      } catch (e) { warn(e); }
+    } }, "Save"), now ? check : null, now ? h("button", { class: "btn mini danger", type: "button", onclick: (ev) => confirm(ev.target, "Disconnect it? The password is deleted from this computer. Press again", async () => {
+      try { await callApp("/api/conf/email", { remove: true }); await refreshHome(); toast("Mailbox disconnected."); renderSettings(); } catch (e) { warn(e); }
+    }) }, "Disconnect") : null), msg, agentNote);
+  return box;
 }
 // The brain in Settings: where it lives, how to connect it and what the website sees
 function brainBlock() {
@@ -2756,10 +2801,10 @@ async function loadBackup(text) {
 // =====================================================================
 $("tabBuilding").onclick = () => showTab("building");
 $("closePanel").onclick = () => closePanel();
-$("openActivity").onclick = () => openPanel("actividad");
+$("openActivity").onclick = () => openPanel("activity");
 $("openBuiltIn").onclick = () => openScreen("builtIn");
 $("tabProfile").onclick = () => showTab("profile");
-$("tabActivity").onclick = () => showTab("actividad");
+$("tabActivity").onclick = () => showTab("activity");
 $("actAll").onclick = () => { activityView = "all"; renderLog(); };
 $("actJev").onclick = () => { activityView = "jev"; renderLog(); };
 $("openSettings").onclick = () => openDrawer("settings");

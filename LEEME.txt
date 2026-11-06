@@ -41,6 +41,25 @@ La aplicación de escritorio (Mac y Windows). Es el mismo edificio con Fer Home 
   - Los datos: en un Mac, ~/Library/Application Support/Fer Agent/data; en Windows,
     %APPDATA%\Fer Agent\data. Ahí queda también fer-agent.log, por si algo falla.
   - En el Mac, cerrar la ventana no apaga el edificio (sigue en el Dock); en Windows, sí.
+Todo en inglés por dentro; el español es una traducción (languages/es.js):
+  - Los nombres internos, los de los archivos y los de las carpetas van en inglés (fer-home.mjs,
+    hands.mjs, tests/, data/…). Lo que ya tenías (el edificio guardado en el navegador, la carpeta
+    «datos» de Fer Casa o de la aplicación, sus copias, imágenes y cerebro) se renombra solo la
+    primera vez que abres esta versión. No se borra nada: el edificio de antes queda aparte, tal cual.
+Memoria automática (Ajustes → Memoria automática):
+  - Cuando un chat lleva 10 minutos en silencio, Memory guarda lo importante: cada dato en su tema
+    (uno por persona o empresa y uno por proyecto) y con su origen, por ejemplo «(chat con Jefe)».
+  - Antes decide JEV si merece la pena: una charla sin nada útil, o algo que ya está en la memoria,
+    no se archiva y no gasta más. Lo paga, con un modelo barato, el agente con el que hablaste.
+  - Buscar sigue siendo por palabras clave: al cerebro solo le llegan los trozos que importan.
+Correo (en la aplicación y en Fer Casa; una web sola no puede conectarse a un buzón):
+  - Ajustes → Correo: dirección, contraseña (muchos proveedores piden una «contraseña de
+    aplicación») y servidores, que se rellenan solos a partir de la dirección. En Fer Casa:
+    node fer-home.mjs correo. La contraseña se queda solo en el ordenador.
+  - Agentes de serie → «Correo» (no forma parte del equipo recomendado): mira el buzón cada
+    10 minutos sin gastar; si entra correo nuevo, su cerebro lo resume, lo clasifica y prepara las
+    respuestas. Cada respuesta espera tu sí en la bandeja (o en Telegram). Nunca marca, mueve ni
+    borra nada del buzón.
 
 
 Versión 8.3
@@ -389,6 +408,7 @@ Pruebas (para quien quiera comprobarlo)
   node --test tests/engine82.test.mjs    el motor en inglés
   node --test tests/engine9.test.mjs     los edificios de versiones anteriores pasan a la 9 sin perder nada
   node --test tests/memory.test.mjs     la memoria automática: Memory archiva sola lo importante de cada conversación
+  node --test tests/email.test.mjs      el correo: lee lo que entra, prepara las respuestas y envía solo con tu sí
   python3 tests/web_test.py        la web, lo de la versión 6 (necesita Playwright)
   python3 tests/web7_test.py       la web, lo de la versión 7
   python3 tests/web8_test.py       la web, lo nuevo de la versión 8

@@ -14,6 +14,7 @@
 //   node fer-home.mjs folder        → where the brain lives (Library, Long-term memory and the backup)
 //   node fer-home.mjs telegram      → connect Telegram: the inbox and the alerts on your phone
 //   node fer-home.mjs login [web]   → open the agents' Chrome so you can sign in once yourself (for example, on X)
+//   node fer-home.mjs email         → connect a mailbox (for the Email agent: it reads what comes in and you approve each reply)
 // Fer Home speaks its building's language: in the Terminal, on Telegram and in its messages to the website.
 // =====================================================================
 import http from "node:http";
@@ -24,7 +25,7 @@ import os from "node:os";
 import crypto from "node:crypto";
 import readline from "node:readline/promises";
 import { fileURLToPath } from "node:url";
-import { Building, VERSION, fmt, memoryNotesMd, PROVIDERS, filterApiModels, brainFolders, translate, fillIn, setLanguage, LANGUAGE, LOCALE, migrateFromV8 } from "./engine.js";
+import { Building, VERSION, fmt, memoryNotesMd, PROVIDERS, filterApiModels, brainFolders, translate, fillIn, setLanguage, LANGUAGE, LOCALE, migrateFromV8, emailServers } from "./engine.js";
 import { createHands } from "./hands.mjs";
 
 // Environment variables: the names from before version 9 still work
@@ -59,7 +60,7 @@ for (const f of ["boy", "girl", "grandpa", "grandma"]) FILES["/img/character-" +
 // the translations in the languages/ folder (es.js…)
 try { for (const f of readdirSync(path.join(HERE, "languages"))) if (/^[a-z-]{2,8}\.js$/.test(f)) FILES["/languages/" + f] = "languages/" + f; } catch {}
 const TYPES = { ".html": "text/html; charset=utf-8", ".js": "text/javascript; charset=utf-8", ".webp": "image/webp", ".png": "image/png" };
-const COMMAND = ((c) => ({ claves: "keys", carpeta: "folder", entrar: "login" })[c] || c)((process.argv[2] || "").toLowerCase());   // the Spanish names work too
+const COMMAND = ((c) => ({ claves: "keys", carpeta: "folder", entrar: "login", correo: "email" })[c] || c)((process.argv[2] || "").toLowerCase());   // the Spanish names work too
 // Inside the desktop app (version 9): no Terminal. The app sets the PIN itself, the key is pasted in Settings
 // and the server can only be reached from this computer.
 const APP = process.env.FER_APP === "1";
@@ -110,7 +111,7 @@ async function configuration() {
   return conf;
 }
 async function saveConfig(conf) {
-  const clean = { key: conf.key, pin: conf.pin, keys: conf.keys || {}, brainFolder: conf.brainFolder || "", agentsFolder: conf.agentsFolder || "", telegram: conf.telegram || null, handsVisible: !!conf.handsVisible };
+  const clean = { key: conf.key, pin: conf.pin, keys: conf.keys || {}, brainFolder: conf.brainFolder || "", agentsFolder: conf.agentsFolder || "", telegram: conf.telegram || null, handsVisible: !!conf.handsVisible, email: conf.email || null };
   await fs.writeFile(CONFIG_FILE, JSON.stringify(clean, null, 1), { mode: 0o600 });
 }
 // Questions in the Terminal (keys, folder, Telegram)
@@ -144,6 +145,26 @@ async function folderCommand(conf) {
   if (v2) { mkdirSync(v2, { recursive: true }); conf.agentsFolder = path.resolve(v2); }
   await saveConfig(conf); console.log(L("Saved.") + "\n");
 }
+// The mailbox (for the Email agent): address, password and servers, saved only here (config.json)
+async function emailCommand(conf) {
+  const rl = readline.createInterface({ input: process.stdin, output: process.stdout });
+  const now = conf.email || {};
+  console.log("\n" + L("The mailbox the Email agent reads (and sends from, each email with your yes). It's only saved in {1}.", CONFIG_FILE));
+  console.log(L("Many providers (Gmail, iCloud, Yahoo…) ask for an “app password”, created in your account's security settings, instead of your usual one."));
+  const address = await askQuestion(L("Address [now: {1}] (or “delete” to disconnect): ", now.address || L("none")), rl);
+  if (DELETE_WORDS.includes(address)) { conf.email = null; rl.close(); await saveConfig(conf); console.log(L("Mailbox disconnected.") + "\n"); return; }
+  const a = address || now.address;
+  if (!a || !a.includes("@")) { rl.close(); console.log(L("No address: nothing changed.") + "\n"); return; }
+  const g = (a === now.address ? now : null) || emailServers(a);
+  const password = await askQuestion(L("Password{1}: ", now.password && a === now.address ? L(" [Enter leaves it as it is]") : ""), rl) || (a === now.address ? now.password : "");
+  const imapHost = await askQuestion(L("Server to read (IMAP) [{1}]: ", g.imapHost), rl) || g.imapHost;
+  const imapPort = Number(await askQuestion(L("Its port [{1}]: ", g.imapPort), rl)) || g.imapPort;
+  const smtpHost = await askQuestion(L("Server to send (SMTP) [{1}]: ", g.smtpHost), rl) || g.smtpHost;
+  const smtpPort = Number(await askQuestion(L("Its port [{1}]: ", g.smtpPort), rl)) || g.smtpPort;
+  rl.close();
+  conf.email = { address: a, password, imapHost, imapPort, smtpHost, smtpPort, name: now.name || "" };
+  await saveConfig(conf); console.log(L("Saved. Open Fer Home and, in Settings → Email, press “Check”.") + "\n");
+}
 // the saved building, to know its brain folder names before opening it
 function savedBuilding() { try { return migrateFromV8(JSON.parse(readFileSync(STATE_FILE, "utf8"))); } catch { return null; } }
 async function telegramCommand(conf) {
@@ -174,12 +195,13 @@ const conf = await configuration();
 if (COMMAND === "keys") { await keysCommand(conf); process.exit(0); }
 if (COMMAND === "folder") { await folderCommand(conf); process.exit(0); }
 if (COMMAND === "telegram") { await telegramCommand(conf); process.exit(0); }
+if (COMMAND === "email") { await emailCommand(conf); process.exit(0); }
 const BRAIN_FOLDER = conf.brainFolder || path.join(DATA, "brain");
 const AGENTS_FOLDER = conf.agentsFolder || path.join(DATA, "agent-files");
 const MEDIA = path.join(DATA, "media");
 mkdirSync(MEDIA, { recursive: true });
 // The hands: the agents' Chrome, their folder and the skills (Fer Agent's and yours in data/skills)
-const hands = createHands({ agentsFolder: AGENTS_FOLDER, chromeProfile: path.join(DATA, "agents-chrome"), skillsFolders: [path.join(HERE, "skills"), path.join(DATA, "skills")],
+const hands = createHands({ agentsFolder: AGENTS_FOLDER, chromeProfile: path.join(DATA, "agents-chrome"), skillsFolders: [path.join(HERE, "skills"), path.join(DATA, "skills")], email: () => conf.email,
   visible: !!conf.handsVisible || process.env.FER_HANDS_VISIBLE === "1", channel: process.env.FER_CHROME_CHANNEL || "chrome", log: (...a) => log(...a),
   locale: () => (typeof ed !== "undefined" && ed.e && ed.e.language === "en" ? "en-US" : "es-ES") });   // websites, in the building's language
 if (COMMAND === "login") {
@@ -491,7 +513,8 @@ const server = http.createServer(async (req, res) => {
       if (!validPin(req)) { await new Promise((r) => setTimeout(r, 400)); return json(res, 401, { error: L("Wrong PIN") }); }
       if (route === "/api/state" && req.method === "GET") return json(res, 200, { state: ed.e, busyIds: [...ed.busyIds], skills: hands.catalog(),
         home: { app: APP, key: !!conf.key, data: APP ? DATA : "", telegram: !!tg, keys: Object.fromEntries([...new Set([...Object.keys(PROVIDERS), ...ed.connections().map((c) => c.id)])].filter((k) => k !== "openrouter").map((k) => [k, !!(conf.keys || {})[k]])),
-          folder: { path: BRAIN_FOLDER, notes: brain.notes, library: brain.library, lastSync: brain.lastSync, error: brain.error }, agentsFolder: AGENTS_FOLDER } });
+          folder: { path: BRAIN_FOLDER, notes: brain.notes, library: brain.library, lastSync: brain.lastSync, error: brain.error }, agentsFolder: AGENTS_FOLDER,
+          email: conf.email && conf.email.address ? { address: conf.email.address, imapHost: conf.email.imapHost, imapPort: conf.email.imapPort, smtpHost: conf.email.smtpHost, smtpPort: conf.email.smtpPort, name: conf.email.name || "" } : null } });
       // saved images and music
       if (route.startsWith("/api/media/") && req.method === "GET") {
         const id = decodeURIComponent(route.slice("/api/media/".length));
@@ -532,6 +555,25 @@ const server = http.createServer(async (req, res) => {
         if (!/^https?:$/.test(u.protocol)) return json(res, 400, { error: L("Write the full address, for example https://mail.google.com") });
         try { await hands.openVisible(u.href); } catch (e) { return json(res, 400, { error: e.message }); }
         return json(res, 200, { ok: true });
+      }
+      // In the app: the mailbox for the Email agent (the password is only saved on this computer). In Fer Home: node fer-home.mjs email
+      if (APP && route === "/api/conf/email" && req.method === "POST") {
+        let d; try { d = JSON.parse((await readBody(req, 8192)).toString("utf8")); } catch { return json(res, 400, { error: L("Unreadable request.") }); }
+        if (d.remove) { conf.email = null; await saveConfig(conf); return json(res, 200, { ok: true }); }
+        const address = String(d.address || "").trim(), now = conf.email || {};
+        if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(address)) return json(res, 400, { error: L("That doesn't look like an email address.") });
+        const password = String(d.password || "") || (now.address === address ? now.password : "");
+        if (!password) return json(res, 400, { error: L("The mailbox's password is missing.") });
+        const g = emailServers(address), host = (x) => String(x || "").trim().replace(/^[a-z]+:\/\//i, "").replace(/[/:].*$/, "");
+        conf.email = { address, password, name: String(d.name || "").trim().slice(0, 80), imapHost: host(d.imapHost) || g.imapHost, imapPort: Number(d.imapPort) || g.imapPort,
+          smtpHost: host(d.smtpHost) || g.smtpHost, smtpPort: Number(d.smtpPort) || g.smtpPort };
+        await saveConfig(conf);
+        return json(res, 200, { ok: true });
+      }
+      // Settings → Email → «Check»: it signs in to read and to send, and changes nothing in the mailbox
+      if (route === "/api/email/test" && req.method === "POST") {
+        try { const r = await hands.testMailbox(); return json(res, 200, { ok: true, emails: r.emails }); }
+        catch (e) { return json(res, 400, { error: e.message || String(e) }); }
       }
       // the list of Claude's, OpenAI's or Grok's models with your key (the key doesn't leave Fer Home)
       if (route.startsWith("/api/models/") && req.method === "GET") {

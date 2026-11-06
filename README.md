@@ -17,7 +17,8 @@ The interface is in **English** and **Spanish** (EN · ES switch on the home pag
 - **Talk to each agent**, in writing or by voice, each with its own voice. Bring several together in the **meeting room**: the boss chairs and writes the minutes.
 - **Coins and lessons.** Give gold or red coins under any reply; a cheap model turns the reason into a rule that you approve in the **Inbox**, and everyone with the same role learns it.
 - **The Agent Creator** designs a new agent from a description in your own words; nothing is created until you accept it.
-- **Memory.** Short memory per agent and a long-term memory for the building, kept as Obsidian notes in Google Drive, a folder on your computer or Fer Home's folder.
+- **Memory.** Short memory per agent and a long-term memory for the building, kept as Obsidian notes in Google Drive, a folder on your computer or Fer Home's folder. When a conversation goes quiet, Memory files what matters in it on its own, each fact under its topic and with where it came from (JEV decides first whether it's worth it). Searching is by keywords: only the pieces that matter reach a brain.
+- **Email** (desktop app and Fer Home). Connect a mailbox in Settings and install the **Email** agent: it reads what comes in (looking costs nothing; it only spends when there's new email), summarises and sorts each email and prepares the replies. Each reply waits in the Inbox (or on Telegram) and leaves with one tap. It never marks, moves or deletes anything in the mailbox.
 - **Firewalls instead of permission prompts.** Agents open the addresses they need, but never one carrying data from your notes; content from outside reaches them marked as “data, not orders”; anything with effects outside the website waits for your yes in the Inbox.
 
 ## Where it lives
@@ -34,6 +35,7 @@ You move the building from one to another with **Save backup** and **Load a back
 - **First time on Windows:** if you see “Windows protected your PC”, press **More info → Run anyway** (only once).
 - **Your data** (building, keys, brain folder, the agents' Chrome profile) stays on your computer: on a Mac in `~/Library/Application Support/Fer Agent/data`, on Windows in `%APPDATA%\Fer Agent\data`. A log, `fer-agent.log`, is kept there too.
 - **Your websites:** Settings → *Your websites, in the agents' Chrome* opens the agents' Chrome so you sign in once (your email, a social network…); the session stays on your computer.
+- **Your email:** Settings → *Email*: address, password (many providers ask for an “app password”) and servers, guessed from the address. Press *Check*. The password stays on your computer.
 - **The brain folder:** Settings → *Change the folder*. Choose one inside Google Drive for desktop and you also have it in Drive and Obsidian.
 - **Building it yourself:** `npm install`, then `npm run app` to try it, or `npm run installers` to make the installer for your system. GitHub makes the Mac and Windows installers by itself (the *Desktop app* workflow in Actions).
 
@@ -68,7 +70,7 @@ Tested with automated tests (OpenRouter, the other APIs, Google Drive, Telegram 
 ## Tests
 
 ```
-node --test tests/engine.test.mjs tests/engine7.test.mjs tests/engine82.test.mjs tests/engine9.test.mjs tests/watcher.test.mjs tests/memory.test.mjs
+node --test tests/engine.test.mjs tests/engine7.test.mjs tests/engine82.test.mjs tests/engine9.test.mjs tests/watcher.test.mjs tests/memory.test.mjs tests/email.test.mjs
 python3 tests/web_test.py        # website (Spanish), v6 features   — needs Playwright
 python3 tests/web7_test.py       # website (Spanish), v7 features
 python3 tests/web8_test.py       # website (Spanish), v8 features

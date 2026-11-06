@@ -146,6 +146,32 @@ try:
         st2, c2, _ = ask("/api/conf/folder", "POST", {"path": another}, pin=PIN)
         conf = json.load(open(os.path.join(data, "config.json")))
         check(st1 == 400 and st2 == 200 and json.loads(c2).get("restart") and conf.get("brainFolder") == another, "choosing another folder: one that doesn't exist, no; the good one is saved (used when reopening)")
+        # ---------- v9: the mailbox for the Email agent, in Settings → Email (in the app the password is pasted here) ----------
+        mail = subprocess.Popen(["node", os.path.join(ROOT, "tests", "mail-servers.mjs")], env=dict(os.environ, FAKE_IMAP_PORT="9243", FAKE_SMTP_PORT="9625"),
+                                stdin=subprocess.PIPE, stdout=subprocess.PIPE, text=True)
+        try:
+            check(json.loads(mail.stdout.readline()).get("ready"), "a fake mailbox on this computer (IMAP and SMTP)")
+            em = page.locator("#drawerBody .block:has(h4:text-is('Email'))")
+            em.locator("input[type=email]").fill("office@acme.example"); em.locator("input[type=email]").press("Tab")
+            check(em.locator("input[placeholder='imap.yourdomain.com']").input_value() == "imap.acme.example" and em.locator("input[placeholder='smtp.yourdomain.com']").input_value() == "smtp.acme.example",
+                  "the servers are guessed from the address")
+            em.locator("input[type=password]").fill("app-password-1")
+            em.locator("input[placeholder='imap.yourdomain.com']").fill("127.0.0.1"); em.locator("input[placeholder='993']").fill("9243")
+            em.locator("input[placeholder='smtp.yourdomain.com']").fill("127.0.0.1"); em.locator("input[placeholder='465']").fill("9625")
+            em.locator("button:text-is('Save')").click(); page.wait_for_timeout(1000)
+            conf = json.load(open(os.path.join(data, "config.json")))
+            check((conf.get("email") or {}).get("address") == "office@acme.example" and conf["email"].get("password") == "app-password-1" and conf["email"].get("imapPort") == 9243 and conf["email"].get("smtpPort") == 9625,
+                  f"the mailbox is saved in config.json, only on this computer: {dict((k, v) for k, v in (conf.get('email') or {}).items() if k != 'password')}")
+            st, body, _ = ask("/api/state", pin=PIN)
+            body = body.decode() if isinstance(body, bytes) else body
+            check("app-password-1" not in body and (json.loads(body)["home"].get("email") or {}).get("address") == "office@acme.example", "the website only sees the address, never the password")
+            em.locator("button:text-is('Check')").click()
+            page.wait_for_function("() => [...document.querySelectorAll('#drawerBody .block small.note')].some((x) => /^(It works|The mailbox|The server|I couldn't|No mailbox)/.test(x.textContent))", timeout=20000)
+            result = [t for t in em.locator("small.note").all_inner_texts() if t.startswith(("It works", "The mailbox", "The server", "I couldn't", "No mailbox"))]
+            check(result == ["It works: it can read and send (1 emails in the inbox)."], f"«Check»: it signs in to read and to send: {result}")
+            page.screenshot(path=os.path.join(OUTPUT, "app9-email.png"))
+        finally:
+            mail.stdin.close(); mail.wait(timeout=10)
         check(not errors, f"no errors on the page: {errors[:3]}")
         b.close()
     # on closing, it saves

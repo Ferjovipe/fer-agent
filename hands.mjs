@@ -4,6 +4,7 @@
 //   · the agents' own Chrome (with its profile: you sign in once to X, to your new email…, and it stays saved);
 //   · a folder of their own for their files (they can't leave it);
 //   · skills: folders with a SKILL.md (the agentskills.io format used by Hermes and OpenClaw) and, if needed, its program.
+//   · the mailbox you connect in Settings (for the email skills: read what comes in and send, each email with your yes).
 // Anything with an effect outside the website («effect: external» in its SKILL.md) isn't done without your yes: it goes through the inbox.
 // The Chrome is driven by Playwright (open source, by Microsoft). It's installed once: npm install playwright-core
 // =====================================================================
@@ -148,9 +149,54 @@ export function createHands(op) {
     try { return await f(page); } finally { try { await page.close(); } catch {} }
   }
 
+  // ---------------- The mailbox (Settings → Email, in the app or in Fer Home) ----------------
+  // IMAP to read what comes in and SMTP to send, with the address and password saved only on this computer (config.json).
+  function mailboxSettings() {
+    const c = typeof o.email === "function" ? o.email() : o.email;
+    if (!c || !c.address || !c.password || !c.imapHost) throw Object.assign(new Error(L("No mailbox is connected. Connect one in Settings → Email (in the app or in Fer Home).")), { shown: true });
+    return c;
+  }
+  async function mailParts() {
+    try { return { ImapFlow: (await import("imapflow")).ImapFlow, simpleParser: (await import("mailparser")).simpleParser, nodemailer: (await import("nodemailer")).default }; }
+    catch { throw Object.assign(new Error(L("The email parts aren't installed. In the Fer Agent folder, type: npm install")), { shown: true }); }
+  }
+  // what went wrong, said plainly (the libraries' messages are technical)
+  function mailError(e, c, what) {
+    if (e && e.shown) return e;
+    const code = String((e && (e.code || e.responseCode)) || ""), host = what === "smtp" ? c.smtpHost || c.imapHost : c.imapHost;
+    const msg = e && (e.authenticationFailed || code === "EAUTH" || code === "535" || /AUTHENTICATIONFAILED|Invalid credentials|authentication failed/i.test(e.message || e.responseText || ""))
+      ? L("The mailbox didn't accept the address or the password. Many providers (Gmail, iCloud, Yahoo…) ask for an “app password” instead of your usual one.")
+      : code === "ENOTFOUND" || code === "EDNS" ? L("The server {1} doesn't exist. Check its name in Settings → Email.", host)
+      : code === "ECONNREFUSED" || code === "ETIMEDOUT" || code === "ECONNECTION" || code === "ESOCKET" ? L("I couldn't connect to {1}. Check the server and its port in Settings → Email.", host)
+      : L("The mailbox answered with an error: {1}", (e && (e.responseText || e.message)) || String(e));
+    return Object.assign(new Error(msg), { shown: true });
+  }
+  async function withMailbox(f) {
+    const c = mailboxSettings(), { ImapFlow } = await mailParts();
+    const port = Number(c.imapPort) || 993;
+    const client = new ImapFlow({ host: c.imapHost, port, secure: port === 993, auth: { user: c.user || c.address, pass: c.password }, logger: false });
+    client.on("error", () => {});
+    try { await client.connect(); } catch (e) { throw mailError(e, c, "imap"); }
+    try { return await f(client); } finally { try { await client.logout(); } catch { try { client.close(); } catch {} } }
+  }
+  async function sendMail(m) {
+    const c = mailboxSettings(), { nodemailer } = await mailParts();
+    const port = Number(c.smtpPort) || 465;
+    const t = nodemailer.createTransport({ host: c.smtpHost || c.imapHost, port, secure: port === 465, requireTLS: port === 587, auth: { user: c.user || c.address, pass: c.password } });
+    try { return await t.sendMail(Object.assign({ from: c.name ? { name: c.name, address: c.address } : c.address }, m)); } catch (e) { throw mailError(e, c, "smtp"); }
+  }
+  async function testMailbox() {   // Settings → Email → «Check»: it signs in to read and to send, and changes nothing
+    const n = await withMailbox(async (c) => { const lock = await c.getMailboxLock("INBOX"); try { return c.mailbox.exists || 0; } finally { lock.release(); } });
+    const c = mailboxSettings(), { nodemailer } = await mailParts(), port = Number(c.smtpPort) || 465;
+    try { await nodemailer.createTransport({ host: c.smtpHost || c.imapHost, port, secure: port === 465, requireTLS: port === 587, auth: { user: c.user || c.address, pass: c.password } }).verify(); }
+    catch (e) { throw mailError(e, c, "smtp"); }
+    return { emails: n };
+  }
+
   // What the skills' programs receive
   const toolDefs = {
     withPage, browser, isPublicAddress, internetOnly,
+    mailbox: withMailbox, sendMail, mailParser: async () => (await mailParts()).simpleParser,
     folder: o.agentsFolder,
     path: (r) => insideOf(o.agentsFolder, r),
     log: (...a) => o.log(...a),
@@ -196,6 +242,7 @@ export function createHands(op) {
       await page.goto(url || "about:blank").catch(() => {});
       return ctx;
     },
+    testMailbox,
     close: closeChrome
   };
 }
