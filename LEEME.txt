@@ -61,7 +61,8 @@ Segunda tanda (lo de fondo):
   - Salas de bucle: la sala de reuniones puede ser un debate (como antes) o un bucle. «Mejorar»: cada
     uno coge la versión entera del anterior y la mejora, ronda tras ronda, por orden. «Continuar»:
     cada uno sigue el texto donde lo dejó el anterior. Se pasa siempre el texto entero, se guardan
-    todas las versiones y el acta lleva el resultado tal cual, más un resumen del jefe.
+    todas las versiones y el acta lleva el resultado tal cual, más un resumen del jefe. El orden del
+    día admite hasta 60.000 caracteres también en los debates (antes se cortaba en 2.000).
   - Si un agente falla en una reunión (bucle o debate), se le reintenta una vez; si vuelve a fallar,
     se salta su turno, queda anotado por qué y la reunión sigue (en un bucle, con la última versión
     buena). Solo se para si fallan todos seguidos. Una reunión interrumpida tiene el botón «Reanudar»:

@@ -127,6 +127,17 @@ test("the meeting room: no word limit for each one, and everyone reads everythin
   assert.ok(lastOf(turns.at(-1)).includes(long), "the whole of what was said before, not cut at 700 letters");
 });
 
+test("a debate's agenda can carry a whole document to review (before, it was cut at 2,000 letters: «Su den…»)", async () => {
+  const { ed, calls } = create((b) => ok({ content: /minutes in Markdown/.test(lastOf(b)) ? "## Conclusions\n- ok\n## Decisions\n- none" : "Reviewed." }));
+  const g = await withGemma(ed);
+  const doc = "Review these minutes:\n" + "The platyrrhines came from Africa. ".repeat(220) + "THE END OF THE MINUTES.";
+  assert.ok(doc.length > 7000);
+  const r = ed.callMeeting({ title: "Review", agenda: doc, participants: [g.id], rounds: 1 }, "you");
+  assert.equal(r.agenda.length, doc.length, "kept whole");
+  await ed.holdMeeting(r.id);
+  assert.ok(calls.filter((b) => /Your turn/.test(lastOf(b))).every((b) => sysOf(b).includes("THE END OF THE MINUTES.")), "each one reads it to the end");
+});
+
 // ---------------- Second round (tanda B): agents that carry on by themselves ----------------
 const jevAnswer = (choice, probs) => ({ ok: true, status: 200, headers: { get: () => null }, json: async () => ({ answers: { decision: { choice, probabilities: probs || { [choice]: 0.8 } } }, usage: { cost: 0.00001 } }) });
 function team(answer, { jev } = {}) {

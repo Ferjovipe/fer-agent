@@ -2345,7 +2345,8 @@ export class Building {
     const agendaText = String(f.agenda || "").trim().replace(/^\**\s*(orden del d[ií]a|agenda)\s*\**\s*[:.\-–]?\s*/i, "");   // without repeating the title
     if (!agendaText) throw Object.assign(new Error(this.L("The meeting needs an agenda.")), { shown: true });
     const loop = ["improve", "continue"].includes(f.mode);
-    const r = { id: uid("re_"), created: this.now(), title: String(f.title || this.L("Meeting")).slice(0, 80), agenda: agendaText.slice(0, loop ? 60000 : 2000), participants: ids,
+    // the agenda can carry a whole document to review: 60,000 letters, in a debate as in a loop (before 9.1, a debate's was cut at 2,000)
+    const r = { id: uid("re_"), created: this.now(), title: String(f.title || this.L("Meeting")).slice(0, 80), agenda: agendaText.slice(0, 60000), participants: ids,
       rounds: Math.max(1, Math.round(Number(f.rounds) || 2)), calledBy: calledBy || "you", state: calledBy === "boss" ? "proposed" : "ready",
       mode: MEETING_MODES.includes(f.mode) ? f.mode : "debate", followUp: f.followUp && f.followUp.by ? f.followUp : null,
       contributions: [], minutes: "", cost: 0, reason: "" };
