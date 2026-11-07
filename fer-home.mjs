@@ -55,7 +55,7 @@ const HEARTBEAT_SEC = Math.max(1, Number(process.env.FER_HEARTBEAT_SEC || 20));
 const FILES = { "/": "index.html", "/index.html": "index.html", "/app.js": "app.js", "/engine.js": "engine.js", "/characters.js": "characters.js", "/languages.js": "languages.js", "/landing.js": "landing.js" };
 // the building's and the characters' pictures (only these: no other file in the folder is served)
 for (const f of ["landing", "dome", "dome2x", "storey", "storey2x", "lobby", "lobby2x", "character-boy", "character-girl", "character-grandpa", "character-grandma",
-  "character-purple", "character-green", "character-coral", "character-blue", "character-teal", "character-shirt"]) FILES["/img/" + f + ".webp"] = "img/" + f + ".webp";
+  "character-purple", "character-green", "character-coral", "character-blue", "character-teal", "character-shirt", "logo", "mark"]) FILES["/img/" + f + ".webp"] = "img/" + f + ".webp";   // logo and mark: 9.1
 for (const f of ["boy", "girl", "grandpa", "grandma"]) FILES["/img/character-" + f + "-zones.png"] = "img/character-" + f + "-zones.png";
 // the translations in the languages/ folder (es.js…)
 try { for (const f of readdirSync(path.join(HERE, "languages"))) if (/^[a-z-]{2,8}\.js$/.test(f)) FILES["/languages/" + f] = "languages/" + f; } catch {}

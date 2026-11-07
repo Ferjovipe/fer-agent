@@ -64,6 +64,11 @@ try:
         time.sleep(0.2)
     check(any("encendido" in l for l in output), "Fer Home starts and shows its addresses")
     s, b, _ = ask("/api/hello"); check(s == 200 and json.loads(b)["ferHome"], "the website can recognise Fer Home")
+    # every picture the page uses is served (9.1: the new logo wasn't, and the app showed a broken image)
+    import re as _re
+    pics = sorted(set(_re.findall(r"img/[\w-]+\.(?:webp|png)", open(os.path.join(ROOT, "index.html")).read() + open(os.path.join(ROOT, "app.js")).read() + open(os.path.join(ROOT, "landing.js")).read())))
+    missing = [x for x in pics if "${" not in x and ask("/" + x)[0] != 200]
+    check(pics and not missing, f"Fer Home serves every picture the page uses ({len(pics)}): missing {missing}")
     s, b, _ = ask("/api/state"); check(s == 401, "without a PIN nothing can be seen")
     s, b, _ = ask("/api/state", pin="0000"); check(s == 401, "with a wrong PIN neither")
     for _ in range(6): ask("/api/state")
