@@ -39,7 +39,10 @@ def chat91(b):
     if "Creador de agentes" in sys0 and "crea un redactor" in ut.lower(): return resp("", ("design_agent", {"request": "Un escritor de ficción llamado Redactor 1, solo cuando se lo pidan."}))
     if "Gemma" in sys0: return resp("¡Hola! Que tengas un día precioso.", cost=0.0001)
     return chat(b)
+FAIL = {"Brunos": False}   # the «Brunos» loop: while True, every brain call fails (as with the timeout Fer saw)
 def router91(route, request):
+    if request.url == "https://openrouter.ai/api/v1/chat/completions" and request.method == "POST" and FAIL["Brunos"] and "«Brunos»" in request.post_data:
+        return route.fulfill(status=500, content_type="application/json", headers=CORS, body=json.dumps({"error": {"message": "The operation was aborted due to timeout"}}))
     if request.url == "https://openrouter.ai/api/v1/images" and request.method == "POST" and "pure green background" in request.post_data:
         calls.append({"image": json.loads(request.post_data)})
         return route.fulfill(status=200, content_type="application/json", headers=CORS, body=json.dumps({"data": [{"b64_json": GREEN, "media_type": "image/png"}], "usage": {"cost": 0.04}}))
@@ -189,6 +192,26 @@ try:
         check("v1 de Gemma + Redactor 1 + Gemma + Redactor 1" in mins and "Cómo se llegó aquí" in mins, f"the minutes: the last version, whole, and how it got there: «{mins[:120]}»")
         check(page.is_visible(".room .minutes .copy-btn") and "versión 4" in page.inner_text(".room .transcript"), "every version is kept, and the result can be copied")
         photo(page, "6-loop-room")
+        # ---------- a loop where everyone fails: it stops (not before trying each one), says why and can be resumed ----------
+        FAIL["Brunos"] = True
+        page.click(".rooms-list .btn.primary:has-text('Nueva reunión')"); page.wait_for_selector("#roomsView .form-dark")
+        page.fill(".form-dark input >> nth=0", "Brunos")
+        page.click(".room-mode:has-text('Bucle: mejorar') input"); page.wait_for_timeout(300)
+        page.fill(".form-dark textarea", "¿De dónde vinieron los monos de América?")
+        page.click(".choose-attendees label:has-text('Gemma') input"); page.click(".choose-attendees label:has-text('Redactor 1') input")
+        page.fill(".form-dark input[type=number]", "1")
+        page.click(".form-dark .btn.primary"); page.wait_for_selector(".room .btn.primary")
+        page.click(".room .btn.primary")
+        page.wait_for_function("JSON.parse(localStorage.getItem('ferAgent.state')).meetings.some(r => r.title === 'Brunos' && r.state === 'interrupted')", timeout=40000)
+        page.wait_for_selector(".room button:text-is('Reanudar')", timeout=10000)
+        said = page.inner_text(".room .transcript")
+        check(said.count("no pudo hacer su turno") == 2 and "nadie pudo hacer su turno" in page.inner_text(".room"), f"each one was tried, it says why it stopped and offers «Reanudar»: «{said[:160]}»")
+        photo(page, "7-loop-resume")
+        FAIL["Brunos"] = False
+        page.click(".room button:text-is('Reanudar')")
+        page.wait_for_function("JSON.parse(localStorage.getItem('ferAgent.state')).meetings.some(r => r.title === 'Brunos' && r.state === 'finished')", timeout=30000)
+        page.wait_for_selector(".room .minutes", timeout=10000)
+        check("v1 de Gemma + Redactor 1" in page.inner_text(".room .minutes") and "no pudo" not in page.inner_text(".room .transcript"), "resumed: the failed turns are done again and the minutes come out")
         page.click("#roomsView .back-btn")
         # ---------- its own look, made with AI ----------
         profile(page, "Gemma", "Identidad")

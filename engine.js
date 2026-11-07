@@ -413,9 +413,12 @@ export const MAX_MEETING_SEATS = 10;   // seats at the table of a meeting room
 // 9.1: a meeting room can be a debate (as before) or a loop: «improve» (each one takes the previous one's whole version and improves it)
 // or «continue» (each one goes on where the previous one left off). In a loop the text is passed whole and every version is kept.
 export const MEETING_MODES = ["debate", "improve", "continue"];
-const RETRY_BUSY_MS = 2 * 60e3;
+const RETRY_BUSY_MS = 2 * 60e3;        // an overloaded model (too many requests): try again in 2 minutes
+// 9.1: in a meeting, a turn that fails is tried once more (after 20 s if the model was overloaded, 3 s otherwise); if it fails again,
+// that agent's turn is skipped and the meeting carries on. It only stops if nobody at the table manages a turn (then «Resume»).
+const MEETING_RETRY_BUSY_MS = 20e3, MEETING_RETRY_MS = 3e3;
 // The style of the building's characters, for an agent's own look made with AI (in English: image models understand it best)
-const LOOK_STYLE = "A full-body character in a glossy 3D cartoon style, like a friendly animated-film mascot: big head, big expressive eyes, warm smile, standing upright and facing the viewer, arms relaxed at the sides, the whole body visible from the top of the head to the shoes, centred, nothing cut off. Plain flat pure green background (#00FF00) all around, no shadow on the floor, no other objects, no text, no frame. The character: ";        // an overloaded model (too many requests): try again in 2 minutes
+const LOOK_STYLE = "A full-body character in a glossy 3D cartoon style, like a friendly animated-film mascot: big head, big expressive eyes, warm smile, standing upright and facing the viewer, arms relaxed at the sides, the whole body visible from the top of the head to the shoes, centred, nothing cut off. Plain flat pure green background (#00FF00) all around, no shadow on the floor, no other objects, no text, no frame. The character: ";
 const MEETING_TRANSCRIPT = 120000;     // letters of the transcript each one reads, at most (about 30,000 tokens)
 
 // If «id» starts reporting to «jefe», is there a loop? (going up from «jefe» you reach «id»)
@@ -2358,17 +2361,50 @@ export class Building {
     const t = this.assignTask(by, this.F("The meeting “{1}” has finished. Its minutes:\n<<<\n{2}\n>>>\nWhat you said you'd do next: {3}", r.title, String(r.minutes).slice(0, 40000), f.note || this.L("carry on")), f.parentFrom || "", true, 44000);
     t.wokenBy = "meeting:" + r.id;
   }
+  // One agent's turn in a meeting: if it fails, it's tried once more (an overloaded model, after a short wait). If it fails again, the error goes up
+  // and whoever called records that agent's turn as failed: the meeting carries on with the next one.
+  async meetingTurn(ask) {
+    try { return await ask(); }
+    catch (err) {
+      await this.wait(err.status === 429 ? MEETING_RETRY_BUSY_MS : MEETING_RETRY_MS);
+      return await ask();
+    }
+  }
+  wait(ms) { return this.o.wait ? this.o.wait(ms) : new Promise((ok) => setTimeout(ok, ms)); }
+  // Where an interrupted meeting carries on: the turn after the last one recorded (each turn leaves its contribution, even a failed one).
+  // «order» is the order of the turns in each round.
+  resumePoint(r, order) {
+    const lastC = r.contributions.at(-1);
+    if (!lastC) return { round: 1, i: 0 };
+    let round = lastC.round || 1, i = order.findIndex((a) => a.id === lastC.agent) + 1;
+    if (i >= order.length) { round++; i = 0; }
+    return { round, i };
+  }
+  // A failed turn: it's written down where it happened and in the agent's activity. If every one at the table has failed in a row, there's
+  // no point carrying on: the meeting stops (interrupted) and can be resumed from there when it's sorted out.
+  failedTurn(r, a, round, err, chairs, inARow, speakers) {
+    const why = String(err.message || err).replace(/[.\s]+$/, "");   // without its final full stop: it goes inside a sentence
+    r.contributions.push({ ts: this.now(), agent: a.id, name: a.name, round, chairs: !!chairs, absent: true, failed: true, cost: 0,
+      text: r.mode === "debate" || !r.mode ? this.F("(couldn't speak: {1})", why) : this.F("(couldn't do its turn: {1}. The work carries on with the last good version.)", why) });
+    this.logActivity(a, this.F("couldn't do its turn in “{1}”: {2}", r.title, why), 0);
+    if (inARow >= Math.max(1, speakers)) throw Object.assign(new Error(this.F("nobody could do their turn ({1}). When it's sorted out, press «Resume».", why)), { shown: true });
+  }
   // A loop room: the participants, in order, round after round. «improve»: each one receives the whole latest version and returns it
   // improved, whole. «continue»: each one receives the whole text so far and writes only what comes next. Every version is kept;
   // at the end the result goes into the minutes as it is (it isn't rewritten) and the boss only sums up how it got there.
+  // If one agent fails, its turn is skipped and the next one works on the last good version. Resumed, it carries on where it stopped.
   async holdLoop(r, j) {
     const workers = r.participants.map((id) => this.agent(id)).filter((a) => a && a !== j);
-    let current = "", last = "";
+    const good = r.contributions.filter((x) => !x.absent && x.text);   // what's already done (when it's resumed)
+    let current = r.mode === "improve" ? ((good.at(-1) || {}).text || "") : good.map((x) => x.text).join("\n\n"), last = (good.at(-1) || {}).name || "";
     const forModel = (t) => (t.length > MEETING_TRANSCRIPT ? "…" + t.slice(-MEETING_TRANSCRIPT) : t);
+    const start = this.resumePoint(r, workers), speakers = workers.filter((a) => a.brain).length;
+    let inARow = 0;
     try {
-      for (let round = 1; round <= r.rounds; round++) {
+      for (let round = start.round; round <= r.rounds; round++) {
         r.currentRound = round;
-        for (const a of workers) {
+        for (let i = round === start.round ? start.i : 0; i < workers.length; i++) {
+          const a = workers[i];
           if (!a.brain) { if (round === 1) r.contributions.push({ ts: this.now(), agent: a.id, name: a.name, text: this.L("(doesn't speak: it works with fixed rules, without a brain)"), round, absent: true, cost: 0 }); continue; }
           if (!this.canWork(a)) { r.contributions.push({ ts: this.now(), agent: a.id, name: a.name, text: this.F("(doesn't speak: it's {1}{2})", a.state, a.statusReason ? ", " + a.statusReason : ""), round, absent: true, cost: 0 }); continue; }
           const asked = r.mode === "improve"
@@ -2379,13 +2415,14 @@ export class Building {
           const alreadyTaken = this.busyIds.has(a.id);
           if (!alreadyTaken) this.busyIds.add(a.id); this.notice("state");
           try {
-            const res = await this.call(a, [{ role: "system", content: this.systemMessages(a, this.F("You're in the loop room “{1}”: each one takes the work from the previous one and passes it on. Deliver only the work, without greetings or comments.", r.title)) },
-              { role: "user", content: asked }], { concept: this.F("loop “{1}”", r.title) });
+            const res = await this.meetingTurn(() => this.call(a, [{ role: "system", content: this.systemMessages(a, this.F("You're in the loop room “{1}”: each one takes the work from the previous one and passes it on. Deliver only the work, without greetings or comments.", r.title)) },
+              { role: "user", content: asked }], { concept: this.F("loop “{1}”", r.title) }));
             const text = String(res.msg.content || "").trim();
-            r.cost += res.cost;
+            r.cost += res.cost; inARow = 0;
             r.contributions.push({ ts: this.now(), agent: a.id, name: a.name, text, round, cost: res.cost, version: r.contributions.filter((x) => !x.absent).length + 1 });
             if (text) { current = r.mode === "improve" ? text : (current ? current + "\n\n" + text : text); last = a.name; }
-          } finally { if (!alreadyTaken) this.busyIds.delete(a.id); }
+          } catch (err) { this.failedTurn(r, a, round, err, false, ++inARow, speakers); }
+          finally { if (!alreadyTaken) this.busyIds.delete(a.id); }
           await this.save();
         }
       }
@@ -2429,13 +2466,19 @@ export class Building {
     const cost = r.rounds * others.reduce((s, a) => s + price(a), 0) + (r.rounds + 1) * (j ? price(j) : 0);
     return { calls, cost };
   }
-  async holdMeeting(id) {
+  // «resume»: an interrupted meeting carries on from the turn where it stopped (nothing already said is lost)
+  async holdMeeting(id, resume) {
     const r = this.e.meetings.find((x) => x.id === id);
-    if (!r || !["ready", "proposed"].includes(r.state)) throw Object.assign(new Error(this.L("That meeting can't be started.")), { shown: true });
+    if (!r || !(resume ? r.state === "interrupted" : ["ready", "proposed"].includes(r.state))) throw Object.assign(new Error(this.L("That meeting can't be started.")), { shown: true });
     if (this._reunion) throw Object.assign(new Error(this.L("There's already a meeting going on. Wait for it to finish.")), { shown: true });
     const j = this.boss();
     if (!j) throw new Error(this.L("Without a boss there's nobody to chair."));
-    this._reunion = r.id; r.state = "in_progress"; r.startedAt = this.now();
+    this._reunion = r.id; r.state = "in_progress";
+    if (resume) {   // the turns that failed just before it stopped are tried again (their failure stays in each agent's activity)
+      while (r.contributions.length && r.contributions.at(-1).failed) r.contributions.pop();
+      r.resumedAt = this.now(); r.reason = ""; this.logActivity(j, this.F("resumes the meeting “{1}” where it stopped", r.title), 0);
+    }
+    else r.startedAt = this.now();
     if (["improve", "continue"].includes(r.mode)) return await this.holdLoop(r, j);
     // the whole transcript, without cutting what each one said (before 9.1: the last 14 contributions, 700 letters each);
     // only if it got enormous, the oldest part goes (MEETING_TRANSCRIPT letters at most)
@@ -2452,22 +2495,29 @@ export class Building {
       } finally { if (!alreadyTaken) this.busyIds.delete(a.id); }
       await this.save();
     };
+    // each round: the boss opens it, then the rest in order. If one fails, its turn is skipped and the next one speaks.
+    const order = [j, ...r.participants.map((pid) => this.agent(pid)).filter((a) => a && a !== j)];
+    const start = this.resumePoint(r, order), speakers = order.filter((a) => a.brain && a.role !== "jev").length;
+    let inARow = 0;
+    const turn = async (a, requested, chairs, round) => {
+      try { await this.meetingTurn(() => say(a, requested, chairs)); inARow = 0; }
+      catch (err) { this.failedTurn(r, a, round, err, chairs, ++inARow, speakers); await this.save(); }
+    };
     try {
-      for (let round = 1; round <= r.rounds; round++) {
+      for (let round = start.round; round <= r.rounds; round++) {
         r.currentRound = round;
-        await say(j, round === 1 ? this.L("Open the meeting: present the agenda and what you expect from each person, briefly.") : this.F("Start round {1} of {2}: sum up what has been said in two sentences and say what's left to decide.", round, r.rounds), true);
-        for (const pid of r.participants) {
-          const a = this.agent(pid);
-          if (!a || a === j) continue;
+        for (let i = round === start.round ? start.i : 0; i < order.length; i++) {
+          const a = order[i];
+          if (a === j) { await turn(j, round === 1 ? this.L("Open the meeting: present the agenda and what you expect from each person, briefly.") : this.F("Start round {1} of {2}: sum up what has been said in two sentences and say what's left to decide.", round, r.rounds), true, round); continue; }
           if (!a.brain || a.role === "jev") { if (round === 1) r.contributions.push({ ts: this.now(), agent: a.id, name: a.name, text: a.role === "jev" ? this.L("(doesn't speak: JEV only decides before spending)") : this.L("(doesn't speak: it works with fixed rules, without a brain)"), round, absent: true, cost: 0 }); continue; }
           if (!this.canWork(a)) { r.contributions.push({ ts: this.now(), agent: a.id, name: a.name, text: this.F("(doesn't speak: it's {1}{2})", a.state, a.statusReason ? ", " + a.statusReason : ""), round, absent: true, cost: 0 }); continue; }
-          await say(a, this.F("Round {1} of {2}. Your turn: contribute your part.", round, r.rounds));
+          await turn(a, this.F("Round {1} of {2}. Your turn: contribute your part.", round, r.rounds), false, round);
         }
       }
       r.currentRound = 0;
-      const res = await this.call(j, [{ role: "system", content: this.systemMessages(j, this.F("You chair the meeting “{1}”. Agenda:\n{2}", r.title, r.agenda)) },
+      const res = await this.meetingTurn(() => this.call(j, [{ role: "system", content: this.systemMessages(j, this.F("You chair the meeting “{1}”. Agenda:\n{2}", r.title, r.agenda)) },
         { role: "user", content: this.L("Transcript:\n") + transcript() + this.L("\n\nWrite the minutes in Markdown with exactly two sections: “## Conclusions” and “## Decisions”, as short lists. If nothing was decided, say so.") }],
-        { concept: this.F("minutes of “{1}”", r.title) });
+        { concept: this.F("minutes of “{1}”", r.title) }));
       r.cost += res.cost; r.minutes = String(res.msg.content || "").trim(); r.state = "finished"; r.finished = this.now();
       this.rememberShort(j, this.F("Minutes of the meeting “{1}”: {2}", r.title, r.minutes.slice(0, 500)), "meeting");
       this.e.conversation.push({ role: "report", agent: j.id, name: this.L("Meeting room"), content: this.F("Minutes of “{1}”\n\n{2}", r.title, r.minutes), ts: this.now(), meeting: r.id });
@@ -2930,6 +2980,14 @@ export class Building {
         if (r.state !== "ready") throw Object.assign(new Error(this.L("That meeting has already been held or was cancelled.")), { shown: true });
         if (this._reunion) throw Object.assign(new Error(this.L("There's already a meeting going on. Wait for it to finish.")), { shown: true });
         setTimeout(() => { this.holdMeeting(r.id).then(() => this.notice("state")).catch(() => {}); }, 0);
+        return { ok: true };
+      }
+      case "meeting.resume": {   // an interrupted meeting carries on from the turn where it stopped
+        const r = e.meetings.find((x) => x.id === acc.meeting);
+        if (!r) throw new Error(this.L("That meeting doesn't exist."));
+        if (r.state !== "interrupted") throw Object.assign(new Error(this.L("Only an interrupted meeting can be resumed.")), { shown: true });
+        if (this._reunion) throw Object.assign(new Error(this.L("There's already a meeting going on. Wait for it to finish.")), { shown: true });
+        setTimeout(() => { this.holdMeeting(r.id, true).then(() => this.notice("state")).catch(() => {}); }, 0);
         return { ok: true };
       }
       case "meeting.cancel": { const r = e.meetings.find((x) => x.id === acc.meeting); if (r && ["ready", "proposed"].includes(r.state)) r.state = "cancelled"; await this.save(); return { ok: true }; }

@@ -266,6 +266,127 @@ test("loop room «continue»: each one continues where the previous one left off
   assert.match(lastOf(third), /\[part by Writer 1\]\n\n\[part by Writer 2\]/, "the third one receives the whole text so far");
 });
 
+// ---------------- 7-nov: a turn that fails doesn't kill the meeting; an interrupted meeting can be resumed ----------------
+const timeout = () => { throw Object.assign(new Error("The operation was aborted due to timeout"), { name: "TimeoutError" }); };
+const busy429 = () => ({ ok: false, status: 429, headers: { get: () => null }, json: async () => ({ error: { message: "Rate limit exceeded" } }) });
+
+test("loop: if one agent fails (twice), its turn is skipped and the next one works on the last good version; the loop finishes", async () => {
+  const waits = [];
+  const { ed } = team((b) => {
+    const last = lastOf(b);
+    if (/The loop has finished/.test(last)) return ok({ content: "Lupe 2 couldn't; the rest did." });
+    if (isAgent(b, "Lupe 2")) return timeout();
+    const n = (last.match(/The latest version, by [^:]+:\n<<<\n([\s\S]*?)\n>>>/) || [])[1];
+    const who = (sysOf(b).match(/You are (Lupe \d)\./) || [])[1];
+    return ok({ content: n ? `${n} + ${who}` : `v1 by ${who}` });
+  });
+  ed.o.wait = async (ms) => { waits.push(ms); };
+  await ed.start("basic", "en");
+  const l1 = await hire(ed, "Lupe 1"), l2 = await hire(ed, "Lupe 2"), l3 = await hire(ed, "Lupe 3");
+  const r = ed.callMeeting({ title: "Lupes", agenda: "Monkeys of America?", participants: [l1.id, l2.id, l3.id], rounds: 2, mode: "improve" }, "you");
+  await ed.holdMeeting(r.id);
+  assert.equal(r.state, "finished", "one agent failing doesn't stop the others");
+  assert.deepEqual(r.contributions.map((x) => x.name), ["Lupe 1", "Lupe 2", "Lupe 3", "Lupe 1", "Lupe 2", "Lupe 3"]);
+  const failed = r.contributions.filter((x) => x.failed);
+  assert.equal(failed.length, 2); assert.ok(failed.every((x) => x.name === "Lupe 2" && /couldn't do its turn: The operation was aborted due to timeout/.test(x.text)));
+  assert.equal(r.contributions[2].text, "v1 by Lupe 1 + Lupe 3", "Lupe 3 works on Lupe 1's version, the last good one");
+  assert.match(r.minutes, /## Result\n\nv1 by Lupe 1 \+ Lupe 3 \+ Lupe 1 \+ Lupe 3/);
+  assert.deepEqual(waits, [3000, 3000], "Lupe 2 was tried twice each round");
+  assert.ok(ed.e.log.some((x) => x.agent === l2.id && /couldn't do its turn/.test(x.text)), "it's in Lupe 2's activity");
+});
+
+test("loop: an overloaded model (429) is tried again after a short wait and, if it answers, nothing is lost", async () => {
+  let first = true;
+  const waits = [];
+  const { ed } = team((b) => {
+    if (/The loop has finished/.test(lastOf(b))) return ok({ content: "Fine." });
+    if (isAgent(b, "Lupe 1") && first) { first = false; return busy429(); }
+    return ok({ content: "v by " + (sysOf(b).match(/You are (Lupe \d)\./) || [])[1] });
+  });
+  ed.o.wait = async (ms) => { waits.push(ms); };
+  await ed.start("basic", "en");
+  const l1 = await hire(ed, "Lupe 1"), l2 = await hire(ed, "Lupe 2");
+  const r = ed.callMeeting({ title: "Lupes", agenda: "Q?", participants: [l1.id, l2.id], rounds: 1, mode: "improve" }, "you");
+  await ed.holdMeeting(r.id);
+  assert.equal(r.state, "finished");
+  assert.deepEqual(waits, [20000], "20 seconds when the model was overloaded");
+  assert.ok(!r.contributions.some((x) => x.failed));
+});
+
+test("if nobody at the table manages a turn (no credit, say), it stops; «Resume» carries on from the turn where it stopped, with the last good version", async () => {
+  let broke = false, brokeOnce = false;
+  const { ed } = team((b) => {
+    const last = lastOf(b);
+    if (/The loop has finished/.test(last)) return ok({ content: "Done." });
+    if (broke) return { ok: false, status: 402, headers: { get: () => null }, json: async () => ({ error: { message: "Insufficient credits" } }) };
+    const n = (last.match(/The latest version, by [^:]+:\n<<<\n([\s\S]*?)\n>>>/) || [])[1];
+    const who = (sysOf(b).match(/You are (Lupe \d)\./) || [])[1];
+    if (who === "Lupe 1" && n && !brokeOnce) broke = brokeOnce = true;   // in round 2 the money runs out, before Lupe 1 answers
+    if (broke) return { ok: false, status: 402, headers: { get: () => null }, json: async () => ({ error: { message: "Insufficient credits" } }) };
+    return ok({ content: n ? `${n} + ${who}` : `v1 by ${who}` });
+  });
+  ed.o.wait = async () => {};
+  await ed.start("basic", "en");
+  const l1 = await hire(ed, "Lupe 1"), l2 = await hire(ed, "Lupe 2");
+  const r = ed.callMeeting({ title: "Lupes", agenda: "Q?", participants: [l1.id, l2.id], rounds: 2, mode: "improve" }, "you");
+  await ed.holdMeeting(r.id);
+  assert.equal(r.state, "interrupted", "both failed in a row: it stops instead of going on failing");
+  assert.match(r.reason, /nobody could do their turn/);
+  assert.deepEqual(r.contributions.map((x) => [x.name, !!x.failed]), [["Lupe 1", false], ["Lupe 2", false], ["Lupe 1", true], ["Lupe 2", true]]);
+  broke = false;   // the credit is topped up
+  await ed.run({ type: "meeting.resume", meeting: r.id });
+  for (let i = 0; i < 40 && r.state !== "finished"; i++) await new Promise((ok) => setTimeout(ok, 5));
+  assert.equal(r.state, "finished");
+  assert.equal(r.reason, "");
+  assert.deepEqual(r.contributions.map((x) => [x.name, !!x.failed]), [["Lupe 1", false], ["Lupe 2", false], ["Lupe 1", false], ["Lupe 2", false]], "the turns that failed are done again; the ones done aren't repeated");
+  assert.equal(r.result, "v1 by Lupe 1 + Lupe 2 + Lupe 1 + Lupe 2");
+});
+
+test("a loop cut off when the app closed carries on with «Resume» from the next turn, with the work done so far", async () => {
+  const { ed } = team((b) => {
+    const last = lastOf(b);
+    if (/The loop has finished/.test(last)) return ok({ content: "Done." });
+    const n = (last.match(/The latest version, by [^:]+:\n<<<\n([\s\S]*?)\n>>>/) || [])[1];
+    const who = (sysOf(b).match(/You are (Lupe \d)\./) || [])[1];
+    return ok({ content: n ? `${n} + ${who}` : `v1 by ${who}` });
+  });
+  await ed.start("basic", "en");
+  const l1 = await hire(ed, "Lupe 1"), l2 = await hire(ed, "Lupe 2");
+  const r = ed.callMeeting({ title: "Lupes", agenda: "Q?", participants: [l1.id, l2.id], rounds: 2, mode: "improve" }, "you");
+  // as Fer's: Lupe 1 had spoken and it was cut off (before this version, the whole meeting died)
+  r.state = "interrupted"; r.reason = "The operation was aborted due to timeout";
+  r.contributions.push({ ts: 1, agent: l1.id, name: "Lupe 1", text: "v1 by Lupe 1", round: 1, cost: 0, version: 1 });
+  await assert.rejects(ed.run({ type: "meeting.resume", meeting: "nope" }));
+  await ed.holdMeeting(r.id, true);
+  assert.equal(r.state, "finished");
+  assert.deepEqual(r.contributions.map((x) => x.name), ["Lupe 1", "Lupe 2", "Lupe 1", "Lupe 2"]);
+  assert.equal(r.result, "v1 by Lupe 1 + Lupe 2 + Lupe 1 + Lupe 2", "Lupe 2 started from Lupe 1's version");
+  await assert.rejects(ed.run({ type: "meeting.resume", meeting: r.id }), /Only an interrupted meeting/);
+});
+
+test("debate: an agent that fails doesn't stop the meeting; if the minutes fail, «Resume» tries the failed turn again and writes the minutes", async () => {
+  let minutesFail = true;
+  const { ed } = team((b) => {
+    const last = lastOf(b);
+    if (/minutes in Markdown/.test(last)) return minutesFail ? timeout() : ok({ content: "## Conclusions\n- ok\n## Decisions\n- none" });
+    if (isAgent(b, "Lupe 2") && minutesFail) return timeout();
+    return ok({ content: "My view." });
+  });
+  ed.o.wait = async () => {};
+  await ed.start("basic", "en");
+  const l1 = await hire(ed, "Lupe 1"), l2 = await hire(ed, "Lupe 2");
+  const r = ed.callMeeting({ title: "Talk", agenda: "What next?", participants: [l1.id, l2.id], rounds: 1 }, "you");
+  await ed.holdMeeting(r.id);
+  assert.equal(r.state, "interrupted", "the minutes failed twice");
+  assert.deepEqual(r.contributions.map((x) => [x.name, !!x.failed]), [[ed.boss().name, false], ["Lupe 1", false], ["Lupe 2", true]]);
+  assert.match(r.contributions[2].text, /couldn't speak: The operation was aborted due to timeout/);
+  minutesFail = false;
+  await ed.holdMeeting(r.id, true);
+  assert.equal(r.state, "finished");
+  assert.deepEqual(r.contributions.map((x) => [x.name, !!x.failed]), [[ed.boss().name, false], ["Lupe 1", false], ["Lupe 2", false]], "only Lupe 2 speaks again, then the minutes");
+  assert.match(r.minutes, /## Conclusions/);
+});
+
 test("the boss calls a loop with follow_up: when it finishes, it's woken up with the minutes and carries on", async () => {
   const { ed, clock } = team((b) => {
     const last = lastOf(b), boss = /building's boss/i.test(sysOf(b));

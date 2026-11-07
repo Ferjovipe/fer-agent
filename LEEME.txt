@@ -62,6 +62,10 @@ Segunda tanda (lo de fondo):
     uno coge la versión entera del anterior y la mejora, ronda tras ronda, por orden. «Continuar»:
     cada uno sigue el texto donde lo dejó el anterior. Se pasa siempre el texto entero, se guardan
     todas las versiones y el acta lleva el resultado tal cual, más un resumen del jefe.
+  - Si un agente falla en una reunión (bucle o debate), se le reintenta una vez; si vuelve a fallar,
+    se salta su turno, queda anotado por qué y la reunión sigue (en un bucle, con la última versión
+    buena). Solo se para si fallan todos seguidos. Una reunión interrumpida tiene el botón «Reanudar»:
+    sigue desde el turno donde se paró, repitiendo los turnos que fallaron justo antes.
   - JEV elige la mejor de varias respuestas (choose_best). Las lee dos veces, en orden contrario,
     porque los modelos que juzgan tienden a preferir la primera o la más larga; si cambia de opinión,
     dice que no hay una ganadora clara.

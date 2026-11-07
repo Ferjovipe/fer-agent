@@ -2109,6 +2109,9 @@ function meetingView(r) {
   if (r.state === "in_progress") box.append(h("p", { class: "note-dark" }, "The meeting is going on: each contribution appears here when it's finished."));
   if (r.minutes) { const mn = h("div", { html: markdown(r.minutes) }); box.append(h("div", { class: "minutes" }, h("h2", {}, "Minutes"), mn, h("div", { class: "meta" }, copyButton(() => mn)))); }
   if (r.reason && r.state === "interrupted") box.append(h("p", { class: "note-dark" }, tr("It was interrupted:") + " ", raw(r.reason)));
+  if (r.state === "interrupted") box.append(h("div", { class: "row-c" },   // 9.1: it carries on from the turn where it stopped
+    h("button", { class: "btn primary", disabled: !hasAccess(), onclick: () => Motor.run({ type: "meeting.resume", meeting: r.id }).then(() => { renderMeetingRooms(true); setTimeout(render, 300); }).catch(warn) }, "Resume"),
+    h("small", { class: "note-dark" }, "It carries on from the turn where it stopped; nothing already said is lost.")));
   if (r.state !== "in_progress") box.append(h("div", {}, h("button", { class: "btn mini", onclick: (ev) => confirm(ev.target, "Delete it? Press again", () => Motor.run({ type: "meeting.delete", meeting: r.id }).then(() => { selectedRoom = ""; renderMeetingRooms(true); }).catch(warn)) }, "Delete the meeting")));
   return box;
 }

@@ -1947,5 +1947,13 @@ export default {
   "That picture can't be read.": "Esa imagen no se puede leer.",
   "Let {1} write it": "Que lo redacte {1}",
   "Written by {1}: read it and change whatever you like.": "Redactado por {1}: léelo y cambia lo que quieras.",
-  "Up to 6,000 characters (about 1,000 words). Say it in your own words and, if you like, let the Agent Creator write it.": "Hasta 6.000 caracteres (unas 1.000 palabras). Dilo con tus palabras y, si quieres, que lo redacte el Creador de agentes."
+  "Up to 6,000 characters (about 1,000 words). Say it in your own words and, if you like, let the Agent Creator write it.": "Hasta 6.000 caracteres (unas 1.000 palabras). Dilo con tus palabras y, si quieres, que lo redacte el Creador de agentes.",
+  "(couldn't speak: {1})": "(no pudo hablar: {1})",
+  "(couldn't do its turn: {1}. The work carries on with the last good version.)": "(no pudo hacer su turno: {1}. El trabajo sigue con la última versión buena.)",
+  "couldn't do its turn in “{1}”: {2}": "no pudo hacer su turno en «{1}»: {2}",
+  "nobody could do their turn ({1}). When it's sorted out, press «Resume».": "nadie pudo hacer su turno ({1}). Cuando esté resuelto, pulsa «Reanudar».",
+  "resumes the meeting “{1}” where it stopped": "reanuda la reunión «{1}» donde se paró",
+  "Only an interrupted meeting can be resumed.": "Solo se puede reanudar una reunión interrumpida.",
+  "Resume": "Reanudar",
+  "It carries on from the turn where it stopped; nothing already said is lost.": "Sigue desde el turno donde se paró; no se pierde nada de lo ya dicho."
 };
