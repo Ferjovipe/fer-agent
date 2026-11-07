@@ -5,7 +5,7 @@
 // OpenRouter's brains and records the spending. The website and Fer Home use it the same way.
 // =====================================================================
 
-export const VERSION = "9.0";
+export const VERSION = "9.1";
 
 // ---------------- Language ----------------
 // The engine is written in English. A building in another language (for now «es») uses the same dictionary as the website
@@ -50,17 +50,19 @@ await loadDictionary("es");
 export const UNITS = { min: 60e3, h: 3600e3, d: 86400e3 };
 export const UNIT_NAME = { min: "min", h: "h", d: "days", on_request: "on request" };
 
+// Priority: 1 is the most important, 5 the least (from 9.1; before, it was the other way round and old buildings are turned round when loaded).
+// When spending gets close to the cap, the least important are frozen first.
 export const ROLES = {
-  boss:         { name: "Boss",               priority: 5 },
-  sage:        { name: "Sage",              priority: 4 },
-  section_head: { name: "Section head",    priority: 4 },
+  boss:         { name: "Boss",               priority: 1 },
+  sage:        { name: "Sage",              priority: 2 },
+  section_head: { name: "Section head",    priority: 2 },
   subagent:    { name: "Sub-agent",          priority: 3 },
-  techie:        { name: "Technician",            priority: 5 },
+  techie:        { name: "Technician",            priority: 1 },
   improvement:       { name: "Continuous improvement",    priority: 3 },
-  creator:      { name: "Agent Creator", priority: 4 },
-  controller:  { name: "Controller",        priority: 5 },
-  jev:          { name: "JEV",                priority: 5 },
-  memory:       { name: "Memory",             priority: 5 }
+  creator:      { name: "Agent Creator", priority: 2 },
+  controller:  { name: "Controller",        priority: 1 },
+  jev:          { name: "JEV",                priority: 1 },
+  memory:       { name: "Memory",             priority: 1 }
 };
 export const ROLES_CONTROL = ["controller", "jev", "memory"];
 const OLD_ROLE = { team_head: "section_head", worker: "subagent" };
@@ -407,6 +409,8 @@ export function cleanConnection(x) {
 // The rule against making things up (it goes in every call, short)
 export const NO_MAKING_UP_RULE = "Rule: don't make up data, tools, sub-agents or results. If your task or objective needs tools or data you don't have, don't go ahead on your own: start your reply with “MISSING:” and say in one or two lines what you're missing.";
 export const MAX_MEETING_SEATS = 10;   // seats at the table of a meeting room
+const RETRY_BUSY_MS = 2 * 60e3;        // an overloaded model (too many requests): try again in 2 minutes
+const MEETING_TRANSCRIPT = 120000;     // letters of the transcript each one reads, at most (about 30,000 tokens)
 
 // If «id» starts reporting to «jefe», is there a loop? (going up from «jefe» you reach «id»)
 export function hasLoop(agents, id, boss) {
@@ -659,7 +663,7 @@ export function createTemplate(name, models, language = "es") {
   settings.brainFolders = clone(BRAIN_FOLDERS[language === "en" ? "en" : "es"]);
   return { version: VERSION, name: I("My building"), template: name || "basic", createdAt: Date.now(), settings, floors, agents: ag,
     longMemory: [], conversation: [], log: [], proposals: [], reportDay: "", objectives: "",
-    coins: [], lessons: [], meetings: [], jevQueries: [], modelProposals: [], seenModels: [], approvals: [], v7: true, v8: true, language: ENGINE_LANGUAGES[language] ? language : "es" };
+    coins: [], lessons: [], meetings: [], jevQueries: [], modelProposals: [], seenModels: [], approvals: [], v7: true, v8: true, priorityOneFirst: true, language: ENGINE_LANGUAGES[language] ? language : "es" };
 }
 // The built-in texts in a language: name, instructions and objective of each built-in agent; name and job of each built-in floor;
 // the building's name. Whatever matches one of them (in any language, or in an earlier version) is «built-in» and changes with the language;
@@ -871,7 +875,8 @@ export class Building {
       const dest = n.agents.find((b) => b.id === a.id && ["boss", "sage", "controller", "jev", "memory"].includes(b.role) && (OLD_ROLE[a.role] || a.role) === b.role);
       if (!dest) continue;
       used.add(a);
-      for (const k of ["spending", "shortMemory", "dailyCap", "off", "priority", "last"]) if (a[k] !== undefined) dest[k] = a[k];
+      for (const k of ["spending", "shortMemory", "dailyCap", "off", "last"]) if (a[k] !== undefined) dest[k] = a[k];
+      if (Number(a.priority) >= 1 && Number(a.priority) <= 5) dest.priority = 6 - Math.round(Number(a.priority));   // version 4 counted the other way round (5 = most important)
       if (a.brain) dest.brain = a.brain;
       if (a.instructions && a.instructions !== INSTRUCTIONS_BOSS_V4 && !V4_INSTRUCTIONS.has(a.instructions)) dest.instructions = a.instructions;   // instructions you changed
       if (dest.role === "boss") { for (const k of ["name", "heartbeat", "capabilities", "objective", "tasks", "onWake"]) if (a[k]) dest[k] = a[k]; }
@@ -938,6 +943,8 @@ export class Building {
     }
     // v8: a boss with the earlier built-in name («Fer») becomes «Jefe» (names set by hand are respected)
     if (!e.v8) { for (const a of e.agents) if (a && a.role === "boss" && a.name === "Fer") a.name = translate(e.language, "Boss"); e.v8 = true; }
+    // 9.1: priority 1 is the most important (before, 5 was): each agent keeps its place, only the number is turned round
+    if (!e.priorityOneFirst) { for (const a of e.agents) if (a && Number(a.priority) >= 1 && Number(a.priority) <= 5) a.priority = 6 - Math.round(Number(a.priority)); e.priorityOneFirst = true; }
     e.settings.pause = e.settings.pause !== false;
     if (typeof e.name !== "string" || !e.name.trim()) e.name = translate(e.language, "My building");
     // floors: the dome on top, the lobby at the bottom, the floors in between
@@ -1159,10 +1166,10 @@ export class Building {
     const usage = this.budgetUsage();
     const since = Math.min(0.99, Math.max(0.1, Number(this.e.settings.freezeFrom) || 0.8));
     const mid = (since + 1) / 2;
-    let threshold = 0, phase = "normal";        // those with priority <= threshold are frozen
-    if (usage >= 1) { threshold = 99; phase = "cap"; }
-    else if (usage >= mid) { threshold = 4; phase = "freeze2"; }
-    else if (usage >= since) { threshold = 2; phase = "freeze1"; }
+    let threshold = 99, phase = "normal";        // those with priority >= threshold are frozen (1 is the most important)
+    if (usage >= 1) { threshold = 0; phase = "cap"; }
+    else if (usage >= mid) { threshold = 2; phase = "freeze2"; }
+    else if (usage >= since) { threshold = 4; phase = "freeze1"; }
     const changes = [];
     for (const a of this.e.agents) {
       const control = ROLES_CONTROL.includes(a.role);
@@ -1170,7 +1177,7 @@ export class Building {
       if (a.off) { fresh = "off"; reason = this.L("turned off by you"); }
       else if (num(a.dailyCap) && this.agentSpending(a, "today") >= num(a.dailyCap)) { fresh = "frozen"; reason = this.L("reached its daily cap"); ownCap = true; }
       else if (phase === "cap" && !(control && a.role !== "jev")) { fresh = "frozen"; reason = this.L("the building reached its cap"); }
-      else if (!control && a.priority <= threshold) { fresh = "frozen"; reason = this.F("spending at {1} % of the cap", Math.round(usage * 100)); }
+      else if (!control && a.priority >= threshold) { fresh = "frozen"; reason = this.F("spending at {1} % of the cap", Math.round(usage * 100)); }
       else fresh = a.state === "frozen" || a.state === "off" ? "idle" : a.state;
       if (fresh !== a.state || reason !== a.statusReason) {
         changes.push({ id: a.id, from: a.state, a: fresh, reason }); a.state = fresh; a.statusReason = reason;
@@ -1178,8 +1185,8 @@ export class Building {
       }
     }
     if (this.e.phase !== phase) {
-      const texts = { normal: this.L("Normal spending: everyone works."), freeze1: this.L("Spending close to the cap: I'm freezing priority 1 and 2."),
-        freeze2: this.L("Spending very close to the cap: only priority 5 works."), cap: this.L("Cap reached: the whole building is frozen until tomorrow or until you raise the cap.") };
+      const texts = { normal: this.L("Normal spending: everyone works."), freeze1: this.L("Spending close to the cap: I'm freezing priority 4 and 5."),
+        freeze2: this.L("Spending very close to the cap: only priority 1 works."), cap: this.L("Cap reached: the whole building is frozen until tomorrow or until you raise the cap.") };
       if (this.e.phase !== undefined) this.logActivity(this.agent("controller") || { id: "controller", name: "Controller" }, texts[phase], 0);
       this.e.phase = phase;
     }
@@ -1385,7 +1392,8 @@ export class Building {
   }
   unfiled(a) {
     const upTo = Number(a.memoryUpTo) || 0;
-    return this.chatOf(a).filter((m) => m && ["user", "assistant", "report"].includes(m.role) && (Number(m.ts) || 0) > upTo && String(m.content || "").trim());
+    // what an agent did on its own also reaches whoever it reports to: it's filed from there, not twice
+    return this.chatOf(a).filter((m) => m && ["user", "assistant", "report"].includes(m.role) && !m.own && (Number(m.ts) || 0) > upTo && String(m.content || "").trim());
   }
   async autoMemory() {
     if (!this.e.settings.autoMemory || !this.o.key() || !this.memoryModel()) return null;
@@ -1401,7 +1409,8 @@ export class Building {
     return null;
   }
   async fileConversation(a, news) {
-    const payer = [a, this.boss()].find((x) => x && this.canWork(x));
+    // Memory pays for its own work (before 9.1 the agent you talked to paid, and it looked as if it had woken up by itself)
+    const payer = [this.byRoleList("memory")[0], a, this.boss()].find((x) => x && this.canWork(x));
     if (!payer) return null;   // frozen or off: it waits, nothing is lost (it's filed when they can spend again)
     try { this.checkCap(payer); } catch { return null; }
     const last = Math.max(...news.map((m) => Number(m.ts) || 0));
@@ -1427,7 +1436,7 @@ export class Building {
           this.L("Reply ONLY with a JSON object, nothing else: {\"facts\": [{\"topic\": \"...\", \"text\": \"...\", \"tags\": [\"...\"]}]}. If nothing is worth keeping: {\"facts\": []}.")].join(" ") },
         { role: "user", content: this.F("Topics there already are: {1}\n\nAlready in the memory:\n{2}\n\nConversation with {3} ({4}):\n{5}",
           topics.join(", ") || this.L("(none yet)"), known.length ? this.memoryText(known) : this.L("(nothing)"), a.name, dayOf(last), text) }
-      ], { concept: this.L("memory: filing the conversation"), max_tokens: 1500 });
+      ], { concept: this.F("memory: filing the chat with {1}", a.name), max_tokens: 1500 });
     } catch (err) {
       this._memoryRetry[a.id] = this.now() + MEMORY_QUIET_MS;   // it tries again later
       this.logActivity(mem || payer, this.F("couldn't file the chat with {1}: {2}", a.name, err.message), 0);
@@ -1622,7 +1631,7 @@ export class Building {
       const iv = intervalMs(a.heartbeat);
       if (iv === null) return pending;           // «on request»: it works as soon as it has a task
       return now >= (a.next || 0);
-    }).sort((x, y) => (x.next || 0) - (y.next || 0) || y.priority - x.priority);
+    }).sort((x, y) => (x.next || 0) - (y.next || 0) || x.priority - y.priority);
     for (const a of due.slice(0, maxAgents)) doneItems.push(await this.wakeUp(a.id, "heartbeat"));
     if (due.length) await this.save();
     // automatic memory: the end of a conversation you had (it isn't an agent waking up, so it also works with the general pause on)
@@ -1642,7 +1651,7 @@ export class Building {
     this.e.reportDay = today;
   }
 
-  async wakeUp(id, reason) {
+  async wakeUp(id, reason, op = {}) {
     const a = this.agent(id);
     if (!a) return { id, outcome: "not_found" };
     const iv = intervalMs(a.heartbeat);
@@ -1671,15 +1680,25 @@ export class Building {
     let reintento = false;
     if (!task) { const failed = a.tasks.find((t) => t.state === "error" && (t.attempts || 0) < 2 && !t.noRetry); if (failed) { task = failed; reintento = true; } }
     // Rule against making things up: if it said it's missing something for its objective, it doesn't go ahead on its own until you sort it out (inbox or its profile)
-    if (!task && a.onWake === "objective" && a.objective && a.role !== "sage" && a.missing) { schedule(); this.logActivity(a, this.L("heartbeat: waiting; it said it's missing: ") + String(a.missing.text).slice(0, 120), 0); await this.save(); return { id, outcome: "wait" }; }
-    if (!task && a.onWake === "objective" && a.objective && a.role !== "sage") task = { id: "objective", text: this.L("Take one step towards your objective: ") + a.objective, implicit: true, from: a.reportsTo };
+    const towardsObjective = (a.onWake === "objective" || op.byHand) && a.objective && a.role !== "sage";   // woken by hand: with no tasks, a step towards its objective
+    if (!task && towardsObjective && a.missing) { schedule(); this.logActivity(a, this.L("heartbeat: waiting; it said it's missing: ") + String(a.missing.text).slice(0, 120), 0); await this.save(); return { id, outcome: "wait" }; }
+    if (!task && towardsObjective) task = { id: "objective", text: this.L("Take one step towards your objective: ") + a.objective, implicit: true, from: a.reportsTo };
     if (!task) { schedule(); this.logActivity(a, this.L("heartbeat: nothing pending"), 0); await this.save(); return { id, outcome: "nothing" }; }
     this.busyIds.add(a.id); a.state = "working"; this.notice("state");
     try {
       const r = await this.work(a, task, { reintento });
-      schedule();
+      schedule(); delete a.busySince;
       return Object.assign({ id }, r);
     } catch (err) {
+      // the model is overloaded («too many requests», very common with the free ones): it isn't the task's fault. It tries again by itself
+      // in a couple of minutes, without counting it as a failure or filling the activity with errors
+      if (err.status === 429 && !/credit|quota|balance|billing|insufficient/i.test(err.detail || "")) {
+        schedule(); a.next = Math.max(a.next || 0, this.now() + RETRY_BUSY_MS);
+        const last = a.busySince && this.now() - a.busySince < 30 * 60e3;
+        if (!last) { a.busySince = this.now(); this.logActivity(a, this.L("its brain is overloaded (too many requests): it tries again by itself in a couple of minutes"), 0); }
+        this.closeQuery(this._queries.get(a.id), { did: this.L("its brain was overloaded: it will try again") });
+        return { id, outcome: "busy_model", error: err.message };
+      }
       if (!task.implicit) { task.state = "error"; task.result = err.message; task.attempts = (task.attempts || 0) + 1; }
       this.logActivity(a, this.L("error: ") + err.message, 0);
       this.closeQuery(this._queries.get(a.id), { did: this.L("it tried and failed: ") + err.message });
@@ -1850,6 +1869,11 @@ export class Building {
       this.rememberShort(target, this.F("Report from {1}: {2}", a.name, final.slice(0, 600)), "report");
       if (target.role === "boss") { const media = [...images.map((i) => ({ id: i.id, type: "image", text: i.text })), ...audios.map((x) => ({ id: x.id, type: "audio", text: x.text }))].filter((m) => m.id);
         this.e.conversation.push({ role: "report", agent: a.id, name: a.name, content: final, ts: this.now(), images: images.map((i) => i.text), audios: audios.map((x) => x.text), media: media.length ? media : undefined }); }
+    }
+    // and in its own chat too: what it did on waking up can be seen where you talk to it (before 9.1, only in the chat of whoever it reports to)
+    if (a.role !== "boss" && (!target || target.id !== a.id)) {
+      const media = [...images.map((i) => ({ id: i.id, type: "image", text: i.text })), ...audios.map((x) => ({ id: x.id, type: "audio", text: x.text }))].filter((m) => m.id);
+      (a.chat || (a.chat = [])).push({ role: "report", agent: a.id, name: a.name, content: final, ts: this.now(), task: task.implicit ? undefined : task.text.slice(0, 300), media: media.length ? media : undefined, own: true });
     }
     if (images.length || audios.length) this.notice("media", { agent: a.id, images, audios });
     return { outcome: "done", cost, text: final, images, audios };
@@ -2205,9 +2229,9 @@ export class Building {
     this.logActivity(j || { id: "", name: "" }, (r.calledBy === "boss" ? this.F("proposes the meeting “{1}” ({2} at the table; rounds: {3})", r.title, ids.length, r.rounds) : this.F("called the meeting “{1}” ({2} at the table; rounds: {3})", r.title, ids.length, r.rounds)), 0);
     return r;
   }
-  estimateMeeting(r) {   // ASSUMPTION: about 1,500 input tokens and 250 output tokens per contribution
+  estimateMeeting(r) {   // ASSUMPTION: about 3,000 input tokens and 600 output tokens per contribution (no word limit since 9.1)
     const ags = r.participants.map((id) => this.agent(id)).filter(Boolean);
-    const price = (a) => { const m = this.model(a.brain); return m ? 1500 * m.inPrice + 250 * m.outPrice : 0; };
+    const price = (a) => { const m = this.model(a.brain); return m ? 3000 * m.inPrice + 600 * m.outPrice : 0; };
     const j = ags.find((a) => a.role === "boss"), others = ags.filter((a) => a !== j && a.brain && a.role !== "jev");
     const calls = r.rounds * others.length + r.rounds + 1;
     const cost = r.rounds * others.reduce((s, a) => s + price(a), 0) + (r.rounds + 1) * (j ? price(j) : 0);
@@ -2220,14 +2244,16 @@ export class Building {
     const j = this.boss();
     if (!j) throw new Error(this.L("Without a boss there's nobody to chair."));
     this._reunion = r.id; r.state = "in_progress"; r.startedAt = this.now();
-    const transcript = () => r.contributions.slice(-14).map((x) => `${x.name}${x.chairs ? this.L(" (chairs)") : ""}: ${String(x.text).slice(0, 700)}`).join("\n\n");
+    // the whole transcript, without cutting what each one said (before 9.1: the last 14 contributions, 700 letters each);
+    // only if it got enormous, the oldest part goes (MEETING_TRANSCRIPT letters at most)
+    const transcript = () => { let t = r.contributions.filter((x) => !x.absent).map((x) => `${x.name}${x.chairs ? this.L(" (chairs)") : ""}: ${String(x.text)}`).join("\n\n"); if (t.length > MEETING_TRANSCRIPT) t = "…" + t.slice(-MEETING_TRANSCRIPT); return t; };
     const say = async (a, requested, chairs) => {
       const alreadyTaken = this.busyIds.has(a.id);
       if (!alreadyTaken) this.busyIds.add(a.id); this.notice("state");
       try {
         const res = await this.call(a, [
           { role: "system", content: this.systemMessages(a, this.F("You're in the meeting room “{1}”. Agenda:\n{2}\n\nSpeak in the first person, in English, without repeating what's already been said.", r.title, r.agenda)) },
-          { role: "user", content: (r.contributions.length ? this.L("What has been said so far:\n") + transcript() + "\n\n" : "") + requested }], { concept: this.F("meeting “{1}”", r.title), max_tokens: 500 });
+          { role: "user", content: (r.contributions.length ? this.L("What has been said so far:\n") + transcript() + "\n\n" : "") + requested }], { concept: this.F("meeting “{1}”", r.title) });
         r.cost += res.cost;
         r.contributions.push({ ts: this.now(), agent: a.id, name: a.name, text: String(res.msg.content || "").trim(), round: r.currentRound || 0, chairs: !!chairs, cost: res.cost });
       } finally { if (!alreadyTaken) this.busyIds.delete(a.id); }
@@ -2236,19 +2262,19 @@ export class Building {
     try {
       for (let round = 1; round <= r.rounds; round++) {
         r.currentRound = round;
-        await say(j, round === 1 ? this.L("Open the meeting: present the agenda and what you expect from each person, in 80 words at most.") : this.F("Start round {1} of {2}: sum up what has been said in two sentences and say what's left to decide.", round, r.rounds), true);
+        await say(j, round === 1 ? this.L("Open the meeting: present the agenda and what you expect from each person, briefly.") : this.F("Start round {1} of {2}: sum up what has been said in two sentences and say what's left to decide.", round, r.rounds), true);
         for (const pid of r.participants) {
           const a = this.agent(pid);
           if (!a || a === j) continue;
           if (!a.brain || a.role === "jev") { if (round === 1) r.contributions.push({ ts: this.now(), agent: a.id, name: a.name, text: a.role === "jev" ? this.L("(doesn't speak: JEV only decides before spending)") : this.L("(doesn't speak: it works with fixed rules, without a brain)"), round, absent: true, cost: 0 }); continue; }
           if (!this.canWork(a)) { r.contributions.push({ ts: this.now(), agent: a.id, name: a.name, text: this.F("(doesn't speak: it's {1}{2})", a.state, a.statusReason ? ", " + a.statusReason : ""), round, absent: true, cost: 0 }); continue; }
-          await say(a, this.F("Round {1} of {2}. Your turn: contribute your part in 120 words at most.", round, r.rounds));
+          await say(a, this.F("Round {1} of {2}. Your turn: contribute your part.", round, r.rounds));
         }
       }
       r.currentRound = 0;
       const res = await this.call(j, [{ role: "system", content: this.systemMessages(j, this.F("You chair the meeting “{1}”. Agenda:\n{2}", r.title, r.agenda)) },
         { role: "user", content: this.L("Transcript:\n") + transcript() + this.L("\n\nWrite the minutes in Markdown with exactly two sections: “## Conclusions” and “## Decisions”, as short lists. If nothing was decided, say so.") }],
-        { concept: this.F("minutes of “{1}”", r.title), max_tokens: 700 });
+        { concept: this.F("minutes of “{1}”", r.title) });
       r.cost += res.cost; r.minutes = String(res.msg.content || "").trim(); r.state = "finished"; r.finished = this.now();
       this.rememberShort(j, this.F("Minutes of the meeting “{1}”: {2}", r.title, r.minutes.slice(0, 500)), "meeting");
       this.e.conversation.push({ role: "report", agent: j.id, name: this.L("Meeting room"), content: this.F("Minutes of “{1}”\n\n{2}", r.title, r.minutes), ts: this.now(), meeting: r.id });
@@ -2502,7 +2528,8 @@ export class Building {
     let sageQueries = 0;
     const audios = [];
     const ownOnes = this.workerTools(j, images, audios);
-    const toolDefs = !isBoss ? ownOnes.h : [
+    const designed = [];   // agents the Creator designs in this conversation (they're shown with their buttons)
+    const toolDefs = !isBoss ? [...ownOnes.h] : [
       { name: "assign_task", description: this.L("Gives a task to an agent in the building by name."), parameters: { type: "object", properties: { agent: { type: "string" }, task: { type: "string" }, now: { type: "boolean" } }, required: ["agent", "task"] } },
       { name: "consult_sages", description: this.L("Consults the council of sages on a decision of the utmost importance. It's expensive."), parameters: { type: "object", properties: { question: { type: "string" } }, required: ["question"] } },
       { name: "search_memory", description: this.L("Searches the long-term memory by keywords."), parameters: { type: "object", properties: { words: { type: "string" } }, required: ["words"] } },
@@ -2512,7 +2539,16 @@ export class Building {
     if (isBoss && j.capabilities.includes("create_music")) toolDefs.push(ownOnes.h.find((x) => x.name === "create_music"));
     if (isBoss && j.capabilities.includes("create_images")) toolDefs.push({ name: "create_image", description: this.L("Creates an image from a detailed description."), parameters: { type: "object", properties: { description: { type: "string" } }, required: ["description"] } });
     if (isBoss) { const us = ownOnes.h.find((x) => x.name === "use_skill"); if (us) toolDefs.push(us); toolDefs.find((x) => x.name === "save_memory").parameters.properties.topic = { type: "string" }; }
+    // the Creator, in its chat, designs the agent you ask it for (before 9.1 it could only from «Create agent» or through the boss)
+    if (j.role === "creator") toolDefs.push({ name: "design_agent", description: this.L("Designs a new agent from what your owner asks for: its profile is proposed to your owner, who creates it with one tap. Use it whenever they ask you to create or design an agent; put in the request everything they said (name, floor, what it does, brain, heartbeat, personality)."), parameters: { type: "object", properties: { request: { type: "string" } }, required: ["request"] } });
     const run = async (name, x) => {
+      if (name === "design_agent" && j.role === "creator") {
+        const r = await this.proposeAgent(x.request || "", { from: "" });
+        const f = r.proposal.profile, where = f.floor ? (this.floor(f.floor) || {}).name : this.F("a new floor, “{1}”", (f.newFloor || {}).name);
+        designed.push({ id: r.proposal.id, text: this.F("I propose creating {1} ({2}) on {3}, {4}. {5}", f.name, this.L(ROLES[f.role].name).toLowerCase(), where, this.seatName(f.seat), f.why).trim() + "\n\n" + spendingSummary(f, this.models) });
+        events.push(this.L("agent designed"));
+        return this.F("Proposal ready: {1} on {2}. Your owner sees it under your reply with buttons to create it, tweak it or dismiss it: it isn't created until they accept it. Don't repeat the whole profile.", f.name, where);
+      }
       if (!isBoss) { const r = await ownOnes.run(name, x); if (name === "create_image") events.push(this.L("image created")); if (name === "create_music") events.push(this.L("music created")); return r; }
       if (name === "create_music") { const r = await ownOnes.run(name, x); events.push(this.L("music created")); return r; }
       if (name === "call_meeting") {
@@ -2572,9 +2608,10 @@ export class Building {
       if (markedUp) this.busyIds.delete(j.id);
     }
     const reply = res.text || this.L("(no answer)");
-    if (res.noTools) events.push(this.L("the boss's brain doesn't use tools: it can't share out work; choose another brain"));
+    if (res.noTools) events.push(isBoss ? this.L("the boss's brain doesn't use tools: it can't share out work; choose another brain") : this.L("this brain doesn't use tools: it can't search the memory or use its hands; choose another brain in its profile"));
     const media = [...images.map((i) => ({ id: i.id, type: "image", text: i.text })), ...audios.map((x) => ({ id: x.id, type: "audio", text: x.text }))].filter((m) => m.id);
     chat.push({ role: "assistant", content: reply, ts: this.now(), cost: res.cost, model: res.model, provider: res.provider && res.provider !== "openrouter" ? res.provider : undefined, subscription: res.provider && res.provider !== "openrouter" ? (res.subscription || 0) : undefined, events, images: images.map((i) => i.text), audios: audios.map((x) => x.text), media: media.length ? media : undefined, meeting: proposedMeeting || undefined });
+    for (const d of designed) chat.push({ role: "report", agent: j.id, name: j.name, content: d.text, ts: this.now(), proposal: d.id, own: true });
     if (!isBoss) { const spare = chat.length - MAX_CONVERSATION; if (spare > 0) chat.splice(0, spare); }
     this.rememberShort(j, this.F("Conversation: “{1}” → {2}", String(text).slice(0, 80), reply.slice(0, 200)), "chat");
     this.applyBudget();
@@ -2803,7 +2840,7 @@ export class Building {
         if (acc.now) setTimeout(() => { this.wakeUp(ag.id, this.L("by hand")).catch(() => {}); }, 0);
         return { ok: true };
       }
-      case "wakeUp": { if (!ag) throw new Error(this.L("There is no such agent.")); return await this.wakeUp(ag.id, this.L("by hand")); }
+      case "wakeUp": { if (!ag) throw new Error(this.L("There is no such agent.")); return await this.wakeUp(ag.id, this.L("by hand"), { byHand: true }); }
       case "settings": { Object.assign(e.settings, acc.changes || {}); if (acc.name) e.name = String(acc.name).trim().slice(0, 60) || e.name;
         e.settings.pause = e.settings.pause !== false;
         if ("lessonsPerRole" in (acc.changes || {})) { e.settings.lessonsPerRole = Math.max(1, Math.round(Number(e.settings.lessonsPerRole) || 5)); this.pruneLessons(); } this.applyBudget(); await this.save(); return { ok: true }; }
@@ -2821,7 +2858,7 @@ export class Building {
         this.applyBudget(); await this.save(); return { ok: true };
       }
       case "externalSpending": { const x = ag || this.boss(); this.recordSpending(x, acc.cost, acc.concept || "voice", !!acc.estimated); this.applyBudget(); await this.save(); return { ok: true }; }
-      case "conversation.new": { if (ag && ag.role !== "boss") ag.chat = []; else e.conversation = []; await this.save(); return { ok: true }; }
+      case "conversation.new": { if (ag && ag.role !== "boss") { ag.chat = []; if (acc.alsoShort) ag.shortMemory = []; ag.memoryUpTo = this.now(); } else e.conversation = []; await this.save(); return { ok: true }; }
       case "tick": return { ok: true, doneItems: await this.tick() };
       default: throw new Error(this.L("Unknown action: ") + t);
     }

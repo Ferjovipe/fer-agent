@@ -262,9 +262,16 @@ try:
         page.click("#closeDrawer")
         profile(page, "Jefe", "Cerebro y gasto")
         groups = page.eval_on_selector_all("#profile .field:has(> span:text-is('Cerebro')) optgroup", "gs => gs.map(g => g.label + ': ' + [...g.children].map(o => o.value).join(','))")
-        high = next((g for g in groups if g.startswith("Recomendados · Alto")), "")
-        vang = next((g for g in groups if g.startswith("Recomendados · Vanguardia")), "")
-        check("claude-opus-5.5" in vang and "claude-opus-4.1" not in vang, f"at each price level, the newest version from each maker: Opus 5.5, not Opus 4.1 ({vang[:90]})")
+        # 9.1: no recommended ones (they go out of date in a week): all of OpenRouter's, from cheapest to most expensive
+        check(not any(g.startswith("Recomendados") for g in groups), f"no recommended groups: {[g[:40] for g in groups]}")
+        todos = next((g for g in groups if g.startswith("Todos")), "")
+        ids = todos.split(": ", 1)[1].split(",") if ": " in todos else []
+        labels = page.eval_on_selector_all("#profile .field:has(> span:text-is('Cerebro')) optgroup[label^='Todos'] option", "os => os.map(o => o.textContent)")
+        def price(t):
+            m = re.search(r"([\d.,]+) / ([\d.,]+) \$", t)
+            return float(m.group(1).replace(".", "").replace(",", ".")) + float(m.group(2).replace(".", "").replace(",", ".")) if m else 0
+        ps = [price(t) for t in labels]
+        check(len(ps) > 3 and ps == sorted(ps), f"all of them, from cheapest to most expensive ({[round(x, 2) for x in ps]})")
         # ---------- 9. Voice: sentence by sentence, “Parar” and interrupting it by talking ----------
         page.click("#talkToBoss"); page.wait_for_selector("#chatView:not([hidden])")
         page.click("#speaker")

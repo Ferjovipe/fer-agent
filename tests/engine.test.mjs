@@ -250,7 +250,7 @@ test("Controller: freezing by bands and cap", async () => {
   const { ed } = create(() => resp("x"));
   await withTeam(ed);
   ed.e.settings.dailyCap = 1; ed.e.settings.monthlyCap = 100;
-  const red = ed.agent("Redactor"); red.priority = 2;
+  const red = ed.agent("Redactor"); red.priority = 4;       // 9.1: 1 is the most important, 5 the least
   const searchBox = ed.agent("Buscador"); searchBox.priority = 3;
   ed.recordSpending(ed.boss(), 0.85);
   ed.applyBudget();
@@ -260,7 +260,7 @@ test("Controller: freezing by bands and cap", async () => {
   ed.recordSpending(ed.boss(), 0.06);   // 91 %
   ed.applyBudget();
   assert.equal(searchBox.state, "frozen");
-  assert.ok(ed.byRoleList("sage").every((s) => s.state === "frozen"), "the sages (priority 4) freeze before the cap");
+  assert.ok(ed.byRoleList("sage").every((s) => s.state === "frozen"), "the sages (priority 2) freeze before the cap");
   assert.equal(ed.boss().state, "idle");
   ed.recordSpending(ed.boss(), 0.1);    // 101 %
   ed.applyBudget();
@@ -764,4 +764,22 @@ test("v6 review: a variable price (-1) is never “free” or recommended; music
 // v9: the engine is written in English; everything it said in these Spanish buildings was in languages/es.js
 test("v9: everything the engine said in Spanish was in the dictionary", () => {
   assert.deepEqual([...UNTRANSLATED].filter((x) => !["min", "h"].includes(x)), []);
+});
+
+test("9.1: priority 1 is the most important; a building from before is turned round when loaded, each agent keeping its place", async () => {
+  const first = create(() => resp("x"));
+  await withTeam(first.ed);
+  assert.equal(first.ed.boss().priority, 1, "the boss: the most important");
+  const old = JSON.parse(JSON.stringify(first.ed.e));
+  delete old.priorityOneFirst;
+  for (const a of old.agents) a.priority = a.role === "boss" ? 5 : a.name === "Redactor" ? 2 : 3;   // as 9.0 saved them (5 = most important)
+  const load = (json) => { const b = new Building({ load: async () => json, save: async () => {}, key: () => "sk-or-test", fetch: async () => ({ ok: true, status: 200, headers: { get: () => null }, json: async () => ({}) }) }); b.setModels(MODELS); return b; };
+  const ed = load(JSON.stringify(old));
+  await ed.start();
+  assert.equal(ed.boss().priority, 1);
+  assert.equal(ed.agent("Redactor").priority, 4);
+  assert.equal(ed.e.priorityOneFirst, true);
+  const ed2 = load(JSON.stringify(ed.e));
+  await ed2.start();
+  assert.equal(ed2.agent("Redactor").priority, 4, "only once");
 });

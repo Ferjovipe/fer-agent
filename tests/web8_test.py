@@ -127,8 +127,9 @@ try:
         groups = page.eval_on_selector_all(sel + " optgroup", "gs => gs.map(g => [g.label, g.children.length])")
         n_rec = sum(n for g, n in groups if g.startswith("Recomendados"))
         all_groups = [(g, n) for g, n in groups if g.startswith("Todos")]
-        check(groups[0][0].startswith("Recomendados") and 1 <= n_rec <= 15, f"in the drop-down, the recommended ones per level on top (≤15): {n_rec}")
-        check(all_groups == [(f"Todos · Texto ({len(TEXT)})", len(TEXT))] and any(g.startswith("Otros") for g, _ in groups), f"and below, in the same drop-down, ALL of OpenRouter's text ones (and “Otros”): {[g for g, _ in groups]}")
+        check(n_rec == 0, f"9.1: no recommended ones in the drop-down (they go out of date in a week): {n_rec}")
+        check(all_groups == [(f"Todos · Texto ({len(TEXT)}) · del más barato al más caro", len(TEXT))] and any(g.startswith("Otros") for g, _ in groups), f"ALL of OpenRouter's text ones, cheapest first (and “Otros”): {[g for g, _ in groups]}")
+        check(page.is_visible("#profile a[href*='order=most-popular']"), "and a link to OpenRouter's most popular ones")
         page.select_option(sel, "zeta/zeta-7"); page.wait_for_timeout(400)
         check(agent(page, "Tecno")["brain"] == "zeta/zeta-7", "any one can be chosen directly in the drop-down")
         button = "#profile .field:has(> span:text-is('Cerebro')) .search-model"
@@ -188,7 +189,7 @@ try:
         photo(page, "10-reports-to")
         # ---------- Photo and name: the name here and the 6 new characters ----------
         profile(page, "Tecno", "Identidad")
-        page.click("#profile button:text-is('Cambiar su foto y su nombre')"); page.wait_for_selector("#drawerBody .pick4")
+        page.click("#profile button:text-is('Cambiar su aspecto')"); page.wait_for_selector("#drawerBody .pick4")
         check(page.inner_text("#drawerTitle") == "Foto y nombre de Tecno", "“Foto y nombre de Tecno”")
         pjs = page.eval_on_selector_all("#drawerBody .pick4 button img", "is => is.map(i => i.getAttribute('src'))")
         new_items = ["purple", "green", "coral", "blue", "teal", "shirt"]   # the picture files' names

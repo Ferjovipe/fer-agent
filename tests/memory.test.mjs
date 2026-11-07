@@ -54,7 +54,7 @@ test("a conversation that goes quiet is filed: each fact under its topic, with w
     ["Acme", "Acme wants the proposal by Friday 14 November 2026. (chat with Boss)"],
     ["Ana Ruiz", "Ana Ruiz is the contact at Acme (ana@acme.example). (chat with Boss)"]]);
   assert.ok(ed.e.longMemory.every((n) => n.author === (mem ? mem.id : "")), "written by Memory");
-  assert.ok(ed.e.log.some((l) => l.agent === boss.id && /memory: filing the conversation/.test(l.text) && l.cost === 0.0001), "the boss, who was talked to, pays for it");
+  assert.ok(ed.e.log.some((l) => l.agent === boss.id && /memory: filing the chat with Boss/.test(l.text) && l.cost === 0.0001), "without a Memory agent, the boss, who was talked to, pays for it");
   assert.equal(boss.memoryUpTo, ed.e.conversation.at(-1).ts);
   clock.t += 30 * MIN; await ed.tick();
   assert.equal(memoryCalls.length, 1, "what's filed isn't filed again");
@@ -139,4 +139,6 @@ test("with JEV in the building, JEV decides first: small talk isn't filed and co
   assert.doesNotMatch(memoryCalls[0].messages[1].content, /Hello! How are you/, "what JEV turned down isn't sent again");
   assert.equal(ed.e.longMemory.at(-1).topic, "Hierros Norte");
   assert.equal(ed.e.jevQueries.at(-1).did, "filed 1 fact");
+  assert.ok(ed.e.log.some((l) => l.agent === "memory" && /memory: filing the chat with Boss/.test(l.text) && l.cost === 0.0001), "9.1: Memory pays for its own work");
+  assert.ok(!ed.e.log.some((l) => l.agent === ed.boss().id && /memory: filing/.test(l.text)), "and it isn't charged to the agent you talked to");
 });

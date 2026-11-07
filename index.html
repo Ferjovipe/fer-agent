@@ -6,6 +6,7 @@
 <title>Fer Agent · Building</title>
 <meta name="theme-color" content="#CFE0F5" media="(prefers-color-scheme: light)">
 <meta name="theme-color" content="#0E1326" media="(prefers-color-scheme: dark)">
+<link rel="icon" href="img/mark.webp" type="image/webp">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Fredoka:wght@500;600&family=Figtree:wght@400;500;600&display=swap" rel="stylesheet">
@@ -199,7 +200,7 @@
   .legend { display: flex; flex-wrap: wrap; gap: 14px; justify-content: center; font-size: 12.5px; color: #B9C4F0; padding: 16px 12px 26px; }
   .legend i { display: inline-block; width: 10px; height: 10px; border-radius: 50%; vertical-align: 0; margin-right: 5px; }
   .l-working { background: var(--gold); box-shadow: 0 0 6px var(--gold); } .l-pending { background: var(--coral); } .l-frozen { background: var(--ice-c); } .l-off { background: var(--off-c); }
-  @media (prefers-reduced-motion: reduce) { .beacon.beat, .fig.working img { animation: none; } .fig img { transition: none; } }
+  @media (prefers-reduced-motion: reduce) { .beacon.beat, .heart.beat, .fig.working img { animation: none; } .fig img { transition: none; } }
 
   .other-tab { position: fixed; inset: 0; z-index: 40; background: rgba(2, 11, 51, .92); display: grid; place-items: center; padding: 24px; color: #FFE7B8; text-align: center; }
   .other-tab > div { max-width: 30em; display: grid; gap: 10px; }
@@ -280,12 +281,19 @@
   .badge { display: inline-grid; place-items: center; min-width: 18px; height: 18px; border-radius: 999px; background: #D8432F; color: #fff; font-size: 11px; font-weight: 700; margin-left: 6px; padding: 0 5px; }
 
   /* ---------- v7: logo, master switch, backup, inbox, stop, coins ---------- */
-  button.brand { border: 0; background: transparent; padding: 0; color: inherit; text-align: left; }
+  button.brand { border: 0; background: transparent; padding: 0; color: inherit; text-align: left; display: inline-flex; align-items: center; white-space: nowrap; }
+  .brand-mark { width: 34px; height: 34px; margin-right: 8px; flex: none; }
+  .landing-logo { display: block; width: min(360px, 72vw); height: auto; margin: 0 0 6px -6px; }
   button.brand:hover { color: var(--accent); }
   .spending-group { display: inline-flex; align-items: stretch; gap: 6px; }
   .pause-btn { display: inline-flex; align-items: center; gap: 9px; border: 1px solid var(--line); border-radius: 12px; padding: 5px 12px 5px 10px; background: var(--paper2); text-align: left; }
   .pause-txt { display: grid; line-height: 1.15; }
   .pause-txt b { font-size: 13px; } .pause-txt small { font-size: 11.5px; color: var(--soft); }
+  /* the building's heart: grey and still on pause; red and beating each time the building checks who has to wake up */
+  .heart { font-size: 17px; line-height: 1; color: color-mix(in srgb, var(--ink) 30%, transparent); flex: none; transition: color .2s; }
+  .pause-btn[aria-pressed="false"] .heart { color: #E5484D; }
+  .heart.beat { animation: heartPulse .9s ease-out; }
+  @keyframes heartPulse { 0% { transform: scale(1); } 14% { transform: scale(1.32); } 28% { transform: scale(1); } 42% { transform: scale(1.18); } 70%, 100% { transform: scale(1); } }
   .pause-icon { width: 32px; height: 18px; border-radius: 999px; background: color-mix(in srgb, var(--ink) 22%, transparent); position: relative; flex: none; transition: background .2s; }
   .pause-icon::after { content: ""; position: absolute; top: 2px; left: 2px; width: 14px; height: 14px; border-radius: 50%; background: #fff; box-shadow: 0 1px 2px rgba(0, 0, 0, .3); transition: left .2s; }
   .pause-btn[aria-pressed="false"] .pause-icon { background: var(--ok); }
@@ -299,6 +307,9 @@
   @media (min-width: 901px) and (max-width: 1400px) {
     .pause-txt small, .brand small { display: none; }
     .meter { min-width: 140px; }
+    .brand-mark { width: 26px; height: 26px; margin-right: 6px; }
+    .pause-btn { gap: 6px; padding: 5px 10px 5px 9px; }
+    .meter .row, .pause-txt b { white-space: nowrap; }
   }
   .back-landing { background: transparent !important; color: #DCE3FF !important; border-color: rgba(220, 227, 255, .35) !important; }
   .fig .coins-fig { position: absolute; left: 50%; bottom: -2%; transform: translateX(-50%); display: flex; gap: 2px; pointer-events: none; z-index: 2; }
@@ -591,6 +602,19 @@
   .cap { display: flex; gap: 8px; align-items: flex-start; font-size: 14px; }
   .cap input { width: 18px; height: 18px; margin: 2px 0 0; accent-color: var(--accent); flex: none; }
   .cap small { display: block; color: var(--soft); font-size: 12px; }
+  /* how it works (only when asked / wakes up by itself / off): the same cards as the capabilities, one choice */
+  .work-mode .cap { border: 1px solid var(--line); border-radius: 12px; padding: 9px 11px; background: var(--paper); cursor: pointer; }
+  .work-mode .cap:has(input:checked) { border-color: color-mix(in srgb, var(--accent) 70%, transparent); background: color-mix(in srgb, var(--accent) 9%, var(--paper)); }
+  .work-mode .cap span { font-weight: 600; }
+  .work-mode .cap small { font-weight: 400; }
+  .how-it-works-link { justify-self: start; border: 0; background: none; padding: 0; font-size: 13px; color: color-mix(in srgb, var(--accent) 80%, var(--ink)); text-decoration: underline; text-underline-offset: 2px; cursor: pointer; text-align: left; }
+  .warn-note { margin: 6px 0 0; padding: 8px 10px; border-radius: 10px; font-size: 13px; line-height: 1.4; border: 1px solid color-mix(in srgb, var(--warning) 55%, transparent); background: color-mix(in srgb, var(--warning) 11%, var(--paper)); }
+  .warn-note.row-c { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+  .brain-warnings { display: grid; gap: 4px; }
+  .fresh-start { border-color: color-mix(in srgb, var(--accent) 55%, transparent); background: color-mix(in srgb, var(--accent) 7%, var(--paper)); }
+  .why-or { margin: 0 0 10px; font-size: 13.5px; line-height: 1.5; display: grid; gap: 8px; }
+  .why-or p { margin: 0; }
+  .copy-btn.done { border-color: var(--ok); color: var(--ok); }
   .cap.adv { opacity: .75; }
   .cap .plug { font-size: 11px; padding: 0 7px; border-radius: 999px; border: 1px dashed var(--soft); color: var(--soft); margin-left: 6px; white-space: nowrap; }
   .list { display: grid; gap: 8px; }
@@ -714,7 +738,7 @@
 <div class="landing-page" id="landingPage"><div id="landing"></div></div>
 
 <header class="top">
-  <button class="brand" id="toLanding" type="button" title="Go to the home page">Fer Agent<small id="buildingName">My building</small></button>
+  <button class="brand" id="toLanding" type="button" title="Go to the home page"><img class="brand-mark" src="img/mark.webp" alt="" width="256" height="256">Fer Agent<small id="buildingName">My building</small></button>
   <span class="mode" id="mode">In this browser</span>
   <span class="grow"></span>
   <button class="btn primary" id="talkToBoss">Talk to the boss</button>
@@ -727,7 +751,7 @@
       <span class="bar"><i id="meterBar"></i></span>
     </button>
     <button class="pause-btn" id="pause" type="button" aria-pressed="true" title="Master switch for everything automatic">
-      <span class="pause-icon" aria-hidden="true"></span><span class="pause-txt"><b id="pauseTxt">Paused</b><small id="pauseSub">nothing spends on its own</small></span>
+      <span class="heart" id="heart" aria-hidden="true">♥</span><span class="pause-icon" aria-hidden="true"></span><span class="pause-txt"><b id="pauseTxt">Paused</b><small id="pauseSub">nothing spends on its own</small></span>
     </button>
   </span>
   <button class="btn icon backup-btn" id="quickBackup" type="button" title="Save a backup of the whole building now" aria-label="Save backup"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 3h11l3 3v13a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2zm2 0v5h8V3M7 21v-7h10v7" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/></svg><i class="backup-dot" aria-hidden="true"></i><small id="backupWhen" class="sr-only">never</small></button>

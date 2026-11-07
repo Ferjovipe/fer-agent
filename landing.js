@@ -25,7 +25,7 @@ export function renderLanding(cont, { h, enter, figure, languages, language, cha
       languages ? h("div", { class: "landing-languages", role: "group", "aria-label": "Language" }, Object.entries(languages).map(([k, t]) =>
         h("button", { type: "button", lang: k, "aria-pressed": String(k === language), onclick: () => { if (k !== language) changeLanguage(k); } }, k.toUpperCase() + " · " + t))) : null,
       h("div", { class: "hero-txt" },
-        h("span", { class: "landing-brand" }, "Fer Agent"),
+        h("img", { class: "landing-logo", src: "img/logo.webp", alt: "Fer Agent", width: "1200", height: "324" }),
         h("h1", {}, "You have an agentic company at your service."),
         h("p", {}, "We lay the foundations. You decide the org chart and what each agent does."),
         h("div", { class: "hero-buttons" },

@@ -1,4 +1,4 @@
-FER AGENT · EL EDIFICIO (versión 9.0)
+FER AGENT · EL EDIFICIO (versión 9.1)
 =====================================
 
 Tienes una empresa agéntica a tu servicio. Nosotros ponemos la base; tú decides el organigrama
@@ -20,6 +20,36 @@ fer-home.mjs              Fer Casa: el mismo edificio encendido las 24 horas en 
 hands.mjs, skills/        Las manos de los agentes (solo con Fer Casa): su Chrome, su carpeta y las skills.
 tests/                    Las pruebas automáticas (no hacen falta para usarlo).
 
+
+Versión 9.1
+-----------
+La primera tanda de la lista de Fer tras probar la aplicación en su Mac:
+  - Logo nuevo: la cúpula con tres personas es el icono de la aplicación y de la pestaña; el logo
+    completo, en la portada. Junto a la pausa, el corazón del edificio: gris y quieto en pausa; rojo
+    y latiendo cada vez que el edificio mira a quién le toca despertarse.
+  - La pantalla ya no tiembla: el edificio y cada planta solo se vuelven a dibujar cuando cambia algo
+    que se ve (antes, en cada comprobación, cada 5 segundos en la aplicación).
+  - OpenRouter: en Ajustes, por qué es la base de todo y un botón directo para sacar la clave. Los
+    selectores de cerebro ya no recomiendan modelos (caducan en una semana): todos los de OpenRouter,
+    del más barato al más caro, y un enlace a los más populares de OpenRouter.
+  - «Cuándo trabaja», en una sola elección (como las capacidades): «Solo cuando se lo piden», «Se
+    despierta solo» (cada cuánto y qué hace al despertar) o «Apagado». Debajo del nombre se ve cómo
+    está. Si el edificio está en pausa general, la ficha lo dice y tiene el botón «Quitar la pausa».
+  - «Despertar ahora» siempre dice qué ha pasado; si no tiene tareas, da un paso hacia su objetivo.
+  - Lo que un agente hace al despertar se ve también en su propio chat («Al despertar»). Cada mensaje
+    de un agente tiene el botón «Copiar» (copia el texto entero, tal como se ve).
+  - Al cambiar quién es un agente (instrucciones, personalidad, objetivo), ofrece «Empezar de cero»:
+    borra su conversación y su memoria corta, para que no se confunda con lo de antes.
+  - Avisos al elegir el cerebro: si no usa herramientas, o si es gratis con un latido muy seguido.
+    Si un cerebro está saturado («demasiadas peticiones», típico de los gratis), el agente lo vuelve
+    a intentar solo en dos minutos, sin contarlo como fallo.
+  - La Creadora diseña el agente también desde su chat: la propuesta sale con sus botones.
+    «Crear agente» pregunta la personalidad una sola vez.
+  - Prioridad: 1 es la más importante y 5 la que menos (los edificios de antes se convierten solos).
+  - La memoria automática la paga Memory (antes, el agente con el que hablaste, y parecía que se
+    había despertado solo).
+  - La sala de reuniones, sin tope de palabras: cada uno dice lo que haga falta y todos leen todo.
+  - En la ficha, «Cambiar su aspecto»; las tareas, explicadas.
 
 Versión 9.0
 -----------
@@ -409,6 +439,7 @@ Pruebas (para quien quiera comprobarlo)
   node --test tests/engine.test.mjs tests/engine7.test.mjs tests/watcher.test.mjs     el motor y el Vigía
   node --test tests/engine82.test.mjs    el motor en inglés
   node --test tests/engine9.test.mjs     los edificios de versiones anteriores pasan a la 9 sin perder nada
+  node --test tests/engine91.test.mjs    9.1: lo del latido en su chat, «Despertar ahora», cerebro saturado, empezar de cero, la Creadora y la sala
   node --test tests/memory.test.mjs     la memoria automática: Memory archiva sola lo importante de cada conversación
   node --test tests/email.test.mjs      el correo: lee lo que entra, prepara las respuestas y envía solo con tu sí
   python3 tests/web_test.py        la web, lo de la versión 6 (necesita Playwright)
@@ -416,6 +447,7 @@ Pruebas (para quien quiera comprobarlo)
   python3 tests/web8_test.py       la web, lo nuevo de la versión 8
   python3 tests/web82_test.py      la web en inglés: ninguna pantalla con restos de español
   python3 tests/web9_storage_test.py     un navegador que usó una versión anterior conserva su edificio, sus imágenes y su Biblioteca
+  python3 tests/web91_test.py            9.1: cuándo trabaja, su propio chat, «Copiar», la Creadora en su chat, modelos por precio, el logo
   python3 tests/home_test.py       Fer Casa
   python3 tests/home7_test.py      Fer Casa con manos, Telegram, carpeta del cerebro y otra API
   (home_test y home7_test arrancan Fer Casa con el equipo recomendado: FER_TEMPLATE=basic; home_test usa los nombres

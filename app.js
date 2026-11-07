@@ -94,6 +94,11 @@ const idb = {
 // A safe element builder: text always goes as text.
 // What people or an agent write (messages, tasks, notes, reasons, titles) goes as it is: it doesn't go through the dictionary
 const raw = (t) => document.createTextNode(String(t ?? ""));
+// Why OpenRouter: it's what the agents think with. A direct link to get the key.
+const OR_KEYS = "https://openrouter.ai/keys";
+const whyOpenRouter = () => h("div", { class: "why-or" },
+  h("p", {}, h("b", {}, "Why OpenRouter? "), "It's what your agents think with. With a single key and a single balance you have hundreds of brains —Claude, GPT, Gemini, DeepSeek, Grok, Llama and many more— and each agent can think with a different one. You see what each one costs and you change it whenever you like. You only pay what your agents use, at OpenRouter's prices: Fer Agent doesn't add anything on top. Without the key, the agents can't think."),
+  h("div", { class: "row-c" }, h("a", { class: "btn mini primary", href: OR_KEYS, target: "_blank", rel: "noopener" }, "Get my key at OpenRouter"), h("a", { class: "btn mini", href: "https://openrouter.ai", target: "_blank", rel: "noopener" }, "What is OpenRouter")));
 // For whoever has never used OpenRouter: how to get the key
 const howToGetKey = () => h("div", { class: "how-key" }, h("b", {}, "No key yet? You can get one in a few minutes:"),
   h("ol", {},
@@ -168,7 +173,11 @@ async function refreshHome() {
     const r = await fetch("./api/state", { headers: { "X-Fer-Pin": pin }, cache: "no-store" });
     if (r.status === 401) { pinRejected = true; askPin(); return; }
     if (!r.ok) return;
-    const d = await r.json();
+    const raw = await r.text();
+    // if nothing changed since the last look (every 5 seconds), nothing is redrawn: before 9.1 the whole screen flickered each time
+    if (raw === refreshHome.last && ed.e) return;
+    refreshHome.last = raw;
+    const d = JSON.parse(raw);
     ed.e = d.state; ed.busyIds = new Set(d.busyIds || []);
     homeSkills = Array.isArray(d.skills) ? d.skills : []; homeInfo = d.home || {};
     if (Array.isArray(d.library)) ed.library = d.library;
@@ -229,36 +238,28 @@ function modelLabel(m) {
   if (level === "no_price") return `${d.name} · ${priceTxt(m)}`;
   return `${d.name} · ${tr(LEVEL_NAME[level])} · ${priceTxt(m)}${d.sees && modelType(m) === "text" ? " · " + tr("sees") : ""}`;
 }
-// Model picker: the recommended ones per level on top; below, all of that type (and in «Brain», also «Others»).
-// v8: in the drop-down, only the recommended ones (15 at most) and the current one; the rest, with the search box next to it
-const MAX_RECOMMENDED = 15;
+// Model picker: ALL of OpenRouter's models of that type, from cheapest to most expensive (and in «Brain», also «Others»).
+// We don't recommend models: a recommendation goes out of date within a week. The list is OpenRouter's, as it is today.
+const SEARCH_FROM = 15;   // with more than this, a search box next to the drop-down
+const POPULAR_MODELS = "https://openrouter.ai/models?output_modalities=text&order=most-popular";
 function modelPicker(type, current, { empty, extra, onChange, filter } = {}) {
   const sel = h("select", {});
   const list = (byType[type] || []).filter(filter || (() => true)).sort((a, b) => (n0(a.pricing && a.pricing.prompt) + n0(a.pricing && a.pricing.completion)) - (n0(b.pricing && b.pricing.prompt) + n0(b.pricing && b.pricing.completion)) || a.id.localeCompare(b.id));
   const allModels = type === "text" && !filter ? [...list, ...byType.others] : list;
   const byId = new Map(allModels.map((m) => [m.id, m]));
-  const rec = ((ed && ed.e && ed.e.settings.recommended) || {})[type] || {};
   const fillIn = (value) => {
     sel.replaceChildren();
     if (empty) sel.append(h("option", { value: "" }, empty));
     for (const x of extra || []) sel.append(h("option", { value: x[0] }, x[1]));
-    const seats = new Set();   // on top, at most 15 recommended per price level
-    for (const level of LEVELS) {
-      if (seats.size >= MAX_RECOMMENDED) break;
-      const ids = (rec[level] || []).filter((id) => byId.has(id) && !seats.has(id)).slice(0, MAX_RECOMMENDED - seats.size);
-      if (!ids.length) continue;
-      ids.forEach((id) => seats.add(id));
-      sel.append(h("optgroup", { label: tr("Recommended") + " · " + tr(LEVEL_NAME[level]) }, ids.map((id) => h("option", { value: id }, modelLabel(byId.get(id))))));
-    }
-    // below, ALL OpenRouter's of this type (hundreds), as in version 7; and the «Others», just in case
-    sel.append(h("optgroup", { label: tr("All") + " · " + tr(MODEL_TYPES[type]) + ` (${list.length})` }, list.map((m) => h("option", { value: m.id }, modelLabel(m)))));
+    // ALL OpenRouter's of this type (hundreds), cheapest first; and the «Others», just in case
+    sel.append(h("optgroup", { label: tr("All") + " · " + tr(MODEL_TYPES[type]) + ` (${list.length}) · ` + tr("from cheapest to most expensive") }, list.map((m) => h("option", { value: m.id }, modelLabel(m)))));
     if (type === "text" && !filter && byType.others.length) sel.append(h("optgroup", { label: tr("Others (may not work here)") }, byType.others.map((m) => h("option", { value: m.id }, modelLabel(m) + " · " + ((m.architecture && m.architecture.output_modalities) || []).join("+")))));
     if (value && ![...sel.options].some((o) => o.value === value)) sel.prepend(h("option", { value: value }, byId.has(value) ? modelLabel(byId.get(value)) : value + (value === JEV_MODEL ? "" : " " + tr("(not in the list)"))));
     sel.value = value || "";
   };
   fillIn(current || "");
   if (onChange) sel.addEventListener("change", () => onChange(sel.value));
-  if (allModels.length > MAX_RECOMMENDED) {
+  if (allModels.length > SEARCH_FROM) {
     // also, «Search all»: you type part of the name and choose (the same as finding it in the drop-down, but faster)
     const button = h("button", { type: "button", class: "btn mini search-model" }, tr(`Search all (${allModels.length})`));
     let box = null;
@@ -279,6 +280,18 @@ function modelPicker(type, current, { empty, extra, onChange, filter } = {}) {
     requestAnimationFrame(() => { if (sel.isConnected && sel.nextElementSibling !== button) sel.after(button); });
   }
   return sel;
+}
+// Not sure which brain? OpenRouter's own ranking of what people use most (live, not ours)
+const popularNote = () => h("small", { class: "note" }, "Not sure which brain to give it? ", h("a", { href: POPULAR_MODELS, target: "_blank", rel: "noopener" }, "Look at the most popular ones on OpenRouter"), ".");
+// Warnings about the brain it has, said when you choose it (not later, in the middle of a chat)
+function brainWarnings(a) {
+  const m = (models || []).find((x) => x.id === a.brain), out = [];
+  if (!m) return null;
+  const params = Array.isArray(m.supported_parameters) ? m.supported_parameters : null;
+  if (params && !params.includes("tools")) out.push(a.role === "boss" ? "This brain doesn't use tools: the boss won't be able to share out work, call meetings or search the memory. Choose another one." : "This brain doesn't use tools: it won't be able to search the memory or use its hands. Choose another one if it needs them.");
+  const free = /:free$/.test(m.id) || (n0(m.pricing && m.pricing.prompt) === 0 && n0(m.pricing && m.pricing.completion) === 0);
+  if (free && a.heartbeat && a.heartbeat.unit === "min" && !a.off) out.push("Free models get overloaded often: with a heartbeat this frequent, many of its wake-ups will fail (it tries again by itself). For frequent heartbeats, a paid one: the cheap ones cost very little.");
+  return out.length ? h("div", { class: "brain-warnings" }, out.map((t) => h("p", { class: "warn-note" }, t))) : null;
 }
 // What Artie proposes for this type of model (you decide)
 function proposalsFor(type) {
@@ -596,7 +609,7 @@ function buildingView() {
   if (v === "drawing" || v === "strips") return v;
   return ed.e.agents.length > AUTO_AGENTS || ed.e.floors.filter((p) => p.type === "storey").length > AUTO_STOREYS ? "strips" : "drawing";
 }
-let tower = null, dirCab = null, dirList = null, floorBefore = "";
+let tower = null, dirCab = null, dirList = null, floorBefore = "", towerSign = "", floorSign = "";
 function renderCity() {
   const cont = $("building");
   if (openFloorId && !ed.e.floors.some((p) => p.id === openFloorId)) openFloorId = "";
@@ -610,8 +623,11 @@ function renderCity() {
   if (!tower) { tower = h("div", { class: "tower" }); dirList = h("div", { class: "dir-list" }); directoryHeader(); }
   // the directory, only in «Strips» (in the drawing you already see everyone)
   const withDir = v === "strips";
-  if (cont.children[0] !== tower || (cont.children.length > 1) !== withDir) cont.replaceChildren(...(withDir ? [tower, dirCab, dirList] : [tower]));   // the search box isn't rebuilt: it doesn't lose what was typed
-  tower.replaceChildren(...ed.e.floors.map((p) => (v === "strips" && p.type === "storey" ? storeyStrip(p) : buildingSection(p))), h("div", { class: "street" }));
+  if (cont.children[0] !== tower || (cont.children.length > 1) !== withDir) { cont.replaceChildren(...(withDir ? [tower, dirCab, dirList] : [tower])); towerSign = ""; }   // the search box isn't rebuilt: it doesn't lose what was typed
+  // only redrawn when something you see in it changes (before 9.1 it was redrawn on every check and the whole screen shook)
+  const sign = JSON.stringify([v, language, selection, panelOpen(), window.innerWidth <= 900, (ed.e.coins || []).length, (ed.e.coins || []).filter((m) => m.state === "confirmed").length, ed.e.floors.map((p) => [p.id, p.name, p.job, p.type, p.offices, p.pools, fmt(floorSpending(p))]),
+    ed.e.agents.map((a) => [a.id, a.name, a.floor, a.seat, a.look, visibleState(a), a.statusReason, a.role])]);
+  if (sign !== towerSign) { towerSign = sign; tower.replaceChildren(...ed.e.floors.map((p) => (v === "strips" && p.type === "storey" ? storeyStrip(p) : buildingSection(p))), h("div", { class: "street" })); }
   if (withDir) renderDirectory();
 }
 function buildingSection(p) {
@@ -693,6 +709,11 @@ function openFloor(id) {
 function renderFloor(cont, p) {
   const focus = document.activeElement;
   if (cont.contains(focus) && (focus.tagName === "INPUT" || focus.tagName === "TEXTAREA")) return;
+  // only redrawn when something on this floor changes (before 9.1 it was redrawn on every check and it shook)
+  const fsign = JSON.stringify([p.id, p.name, p.job, p.type, p.offices, p.pools, language, selection, panelOpen(), window.innerWidth <= 900, (ed.e.coins || []).length,
+    ed.e.agents.filter((a) => a.floor === p.id).map((a) => [a.id, a.name, a.seat, a.look, a.role, visibleState(a), a.statusReason, fmt(ed.agentSpending(a, "today"))])]);
+  if (fsign === floorSign && cont.querySelector(".floor-head")) return;
+  floorSign = fsign;
   const scrollStrip = (cont.querySelector(".rail") || {}).scrollLeft || 0;
   cont.innerHTML = "";
   const T = SECTION[p.type], r = seating(ed.e, p.id), ags = ed.e.agents.filter((a) => a.floor === p.id);
@@ -789,7 +810,10 @@ function storeyModules(p, r, T, big) {
   out.push(mod("end", f0, f1));
   return out;
 }
-function beatAntenna() { const l = $("antennaLight"); if (!l) return; l.classList.remove("beat"); void l.offsetWidth; l.classList.add("beat"); }
+function beatAntenna() {
+  const l = $("antennaLight"); if (l) { l.classList.remove("beat"); void l.offsetWidth; l.classList.add("beat"); }
+  const hb = $("heart"); if (hb && ed && ed.e && ed.e.settings.pause === false) { hb.classList.remove("beat"); void hb.offsetWidth; hb.classList.add("beat"); }   // the heart only beats when it isn't on pause
+}
 // Errors: in the chat if it's open; if not, a notice at the bottom that goes away by itself.
 function warn(err) {
   const t = err && err.shown ? err.message : `Something went wrong: ${(err && err.message) || err}`;
@@ -836,19 +860,27 @@ function renderProfile(force) {
   selection = a.id;
   const sc = box.scrollTop;
   box.innerHTML = "";
-  const change = (changes) => Motor.run({ type: "editAgent", id: a.id, changes }).then(render).catch(warn);
+  // after a change it's redrawn; also when what you used was a drop-down (before 9.1 it stayed as it was until you clicked elsewhere)
+  const change = (changes) => Motor.run({ type: "editAgent", id: a.id, changes }).then(() => {
+    render();
+    // once the focus has settled: redrawn unless you're typing in another box of the profile (it would lose what you type)
+    setTimeout(() => {
+      const f = document.activeElement, typing = f && box.contains(f) && (f.tagName === "TEXTAREA" || (f.tagName === "INPUT" && !["checkbox", "radio", "button"].includes(f.type)));
+      if (!typing) { if (f && f.tagName === "SELECT" && box.contains(f)) f.blur(); renderProfile(true); }
+    }, 0);
+  }).catch(warn);
   const est = visibleState(a), brainless = a.role === "controller" || a.role === "memory";
   const pl = ed.e.floors.find((x) => x.id === a.floor);
   // header: figure, name, state and the essentials
   box.append(h("div", { class: "profile-head" },
-    h("button", { class: "profile-frame", type: "button", title: "Change their photo and name", onclick: () => openDrawer("look", { id: a.id }) }, h("img", { src: figure(a.look), alt: "" })),
+    h("button", { class: "profile-frame", type: "button", title: "Change their look", onclick: () => openDrawer("look", { id: a.id }) }, h("img", { src: figure(a.look), alt: "" })),
     h("div", { style: { flex: 1, minWidth: 0, display: "grid", gap: "4px" } }, h("h3", { class: "profile-name" }, a.name),
       h("div", { class: "row-c" }, h("span", { class: "state-pill " + est }, tr(STATUS_TXT[est]) + (a.statusReason ? " · " + a.statusReason : "")),
-        h("span", { class: "note" }, `${roleTxt(a)} · ${pl ? pl.name : ""}`)))));
+        h("span", { class: "note" }, `${roleTxt(a)} · ${pl ? pl.name : ""}`)),
+      h("button", { class: "how-it-works-link", type: "button", title: "Change when it works", onclick: () => { profileTab = "work"; renderProfile(true); } }, workModeTxt(a)))));
   box.append(h("div", { class: "row-c", style: { marginTop: "12px" } },
     converses(a) ? h("button", { class: "btn primary mini", onclick: () => openChat(a.id) }, `Talk to ${a.name}`) : null,
-    brainless || a.role === "jev" ? null : h("button", { class: "btn mini", onclick: () => { Motor.run({ type: "wakeUp", id: a.id }).then(render).catch(warn); render(); } }, "Wake up now"),
-    h("button", { class: "btn mini", onclick: () => change({ off: !a.off }) }, a.off ? "Turn on" : "Turn off"),
+    brainless || a.role === "jev" || a.off ? null : h("button", { class: "btn mini", title: "It wakes up once, now: it does its pending tasks or, if it has none, takes a step towards its objective", onclick: (ev) => wakeUpNow(a, ev.target) }, "Wake up now"),
     pl ? h("button", { class: "btn mini", onclick: () => openFloor(pl.id) }, "See their floor") : null,
     a.role === "boss" ? null : h("button", { class: "btn mini danger", onclick: (ev) => confirm(ev.target, "Delete? Press again", () => Motor.run({ type: "deleteAgent", id: a.id }).then(() => { selection = "boss"; render(); showTab("profile"); }).catch(warn)) }, "Delete")));
   if (WHAT_IT_DOES[a.role]) box.append(h("p", { class: "what-it-does" }, WHAT_IT_DOES[a.role]));
@@ -885,7 +917,7 @@ function profileIdentity(box, a, change, { pl }) {
   selRole.value = a.role;
   box.append(h("div", { class: "block" },
     field("Name", name),
-    h("div", { class: "field" }, h("span", {}, "Appearance"), h("div", { class: "row-c" }, h("img", { class: "mini-fig", src: figure(a.look), alt: "" }), h("button", { class: "btn mini", onclick: () => openDrawer("look", { id: a.id }) }, "Change their photo and name"))),
+    h("div", { class: "field" }, h("span", {}, "Appearance"), h("div", { class: "row-c" }, h("img", { class: "mini-fig", src: figure(a.look), alt: "" }), h("button", { class: "btn mini", onclick: () => openDrawer("look", { id: a.id }) }, "Change their look"))),
     h("div", { class: "two" }, changeable ? field("Role", selRole) : h("div", { class: "field" }, h("span", {}, "Role"), h("span", { class: "note" }, roleTxt(a))),
       a.role === "boss" ? null : field("Reports to", selBoss)),
     h("div", { class: "two" }, field("Floor", selFloor), field("Spot", selSeat))));
@@ -931,16 +963,100 @@ function proposedCoinRow(m) {
     h("button", { class: "btn mini primary", onclick: () => Motor.run({ type: "coin.confirm", coin: m.id }).then(render).catch(warn) }, "Confirm"),
     h("button", { class: "btn mini", onclick: () => Motor.run({ type: "coin.discard", coin: m.id }).then(render).catch(warn) }, "Dismiss"));
 }
-// Work: instructions, objective, lessons, heartbeat, tasks and short memory
+// How it works, in one choice: only when asked, it wakes up by itself every so often, or off.
+// (Before 9.1 this was three separate things: «Turn off», the heartbeat «on request only» and «When it wakes up».)
+const TASK_STATE = { pending: "pending", done: "done", error: "failed" };
+const HEARTBEAT_UNITS = [["min", "minutes"], ["h", "hours"], ["d", "days"]];
+const doesNotWake = (a) => a.role === "jev" || a.role === "memory";
+function workMode(a) { return a.off ? "off" : doesNotWake(a) || a.heartbeat.unit === "on_request" ? "request" : "alone"; }
+function workModeTxt(a) {
+  const m = workMode(a);
+  if (m === "off") return tr("Off: it doesn't work or spend");
+  if (m === "request") return tr(doesNotWake(a) ? "Turned on" : "Only when asked");
+  const u = { min: "min", h: "h", d: "days" }[a.heartbeat.unit] || a.heartbeat.unit;
+  return tr(`Wakes up by itself every ${a.heartbeat.every} ${u}`) + (ed.e.settings.pause && ed.spendsOnWake(Object.assign({}, a, { off: false })) ? " · " + tr("paused") : "");
+}
+function workModeBlock(a, change) {
+  const mode = workMode(a), noWake = doesNotWake(a);
+  const set = (m) => {
+    if (m === mode) return;
+    if (m === "off") return change({ off: true });
+    if (m === "request") return change(noWake ? { off: false } : { off: false, heartbeat: { every: a.heartbeat.every || 1, unit: "on_request" } });
+    return change({ off: false, heartbeat: a.heartbeat.unit === "on_request" ? { every: a.heartbeat.every || 1, unit: "h" } : a.heartbeat });
+  };
+  const options = noWake ? [["request", "Turned on", "It does its job whenever it's needed."], ["off", "Turned off", "It doesn't work at all."]]
+    : [["request", "Only when asked", "It doesn't wake up by itself: it works when you talk to it or someone gives it a task. While it waits, it doesn't spend."],
+      ["alone", "Wakes up by itself", "Every so often it wakes up, looks at what it has to do and does it, without anyone asking."],
+      ["off", "Turned off", "It doesn't work or spend at all, not even if it's given a task (the task waits until you turn it back on)."]];
+  const name = "workmode-" + a.id;
+  const choices = h("div", { class: "caps work-mode" }, options.map(([v, t, txt]) => h("label", { class: "cap" + (v === mode ? " chosen" : "") },
+    h("input", { type: "radio", name, value: v, checked: v === mode, onchange: () => set(v) }), h("span", {}, t, h("small", {}, txt)))));
+  const block = h("div", { class: "block" }, h("h4", {}, "When it works"), choices);
+  if (mode === "alone") {
+    const num = h("input", { type: "number", min: "1", step: "1", value: a.heartbeat.every });
+    const uni = h("select", {}, HEARTBEAT_UNITS.map(([v, t]) => h("option", { value: v }, t)));
+    uni.value = a.heartbeat.unit;
+    const save = () => change({ heartbeat: { every: Math.max(1, parseInt(num.value, 10) || 1), unit: uni.value } });
+    num.onchange = save; uni.onchange = save;
+    const selOnWake = h("select", { onchange: (ev) => change({ onWake: ev.target.value }) }, h("option", { value: "tasks" }, "Does its pending tasks (if it has none, it goes back to sleep without spending)"), h("option", { value: "objective" }, "Does its tasks and, if it has none, takes a step towards its objective (spends)"));
+    selOnWake.value = a.onWake || "tasks";
+    const upcoming = a.next && a.next < 9e14 ? date(a.next, { weekday: "short", hour: "2-digit", minute: "2-digit" }) : "—";
+    block.append(h("div", { class: "field" }, h("span", {}, "It wakes up"), h("div", { class: "row-c" }, h("span", {}, "every"), num, uni)),
+      a.role === "sage" ? null : field("When it wakes up", selOnWake),
+      h("small", { class: "note" }, `Next heartbeat: ${upcoming}. Last: ${a.last ? date(a.last) : "never"}.`));
+    if (a.onWake !== "objective" && a.objective && a.role !== "sage" && !a.fixedSkill) block.append(h("p", { class: "warn-note" }, "It has an objective, but on waking up it only does its pending tasks: if you want it to work on its objective by itself, choose “Does its tasks and… takes a step towards its objective”."));
+    if (ed.e.settings.pause && ed.spendsOnWake(a)) block.append(h("div", { class: "warn-note row-c" }, h("span", { class: "grow" }, "The building is on a general pause: it won't wake up by itself until you lift it."),
+      h("button", { class: "btn mini primary", type: "button", onclick: () => Motor.run({ type: "pause", pause: false }).then(() => { toast("Automatic work running: heartbeats are working again."); render(); renderProfile(true); }).catch(warn) }, "Lift the pause")));
+  }
+  return block;
+}
+// «Wake up now»: it always says what happened (before, if it had nothing to do, it looked as if the button did nothing)
+async function wakeUpNow(a, btn) {
+  if (btn) { btn.disabled = true; btn.textContent = tr("Waking up…"); }
+  render();
+  try {
+    const r = await Motor.run({ type: "wakeUp", id: a.id });
+    const o = (r && r.outcome) || "";
+    const txt = o === "done" ? `${a.name} has finished: you'll see it in its chat.`
+      : o === "nothing" ? `${a.name} woke up: it had nothing pending.` + (a.objective ? "" : " " + tr("Give it a task or an objective."))
+      : o === "busy" ? `${a.name} is already working.`
+      : o === "wait" ? `${a.name} is waiting: it said it's missing something (see its profile).`
+      : o === "error" ? `${a.name} couldn't: ${r.error || ""}`
+      : o === "off" ? `${a.name} is off.` : o === "frozen" ? `${a.name} is frozen by spending.`
+      : `${a.name} woke up.`;
+    toast(txt);
+  } catch (err) { warn(err); }
+  render(); renderProfile(true);
+}
+// When you change who it is, its old conversation can confuse it: you're offered to start it from scratch
+let freshStartFor = "";
+// Work: how it works, instructions, objective, lessons, tasks and short memory
+function freshStartBlock(a) {
+  return h("div", { class: "block fresh-start" },
+    h("p", { style: { margin: 0 } }, "You've changed who it is. What it remembers from before (its conversation and its short memory) can confuse it."),
+    h("div", { class: "row-c" }, h("button", { class: "btn mini primary", type: "button", onclick: () => Motor.run({ type: "conversation.new", id: a.id, alsoShort: true }).then(() => { freshStartFor = ""; toast(`${a.name} starts from scratch.`); render(); renderProfile(true); }).catch(warn) }, "Start it from scratch"),
+      h("button", { class: "btn mini", type: "button", onclick: () => { freshStartFor = ""; renderProfile(true); } }, "Keep it as it is")),
+    h("small", { class: "note" }, "It deletes its conversation and its short memory. The building's long-term memory isn't touched."));
+}
 function profileWork(box, a, change, { brainless }) {
+  const mode = workModeBlock(a, change);
+  box.append(mode);
+  // after changing who it is, the offer appears at once (without redrawing the box you may be typing in)
+  const changedWho = (changes) => {
+    if (a.role === "boss" || !((a.chat || []).length || (a.shortMemory || []).length)) return change(changes);
+    freshStartFor = a.id;
+    if (!box.querySelector(".fresh-start")) mode.after(freshStartBlock(a));
+    return change(changes);
+  };
+  if (freshStartFor === a.id && a.role !== "boss") box.append(freshStartBlock(a));
   if (!brainless) {
-    const per = h("textarea", { rows: "2", maxlength: String(MAX_PERSONALITY), placeholder: "Its tone, its humour and whether it gets to the point. For example: “Friendly and funny, but brief and to the point.”", onchange: (ev) => change({ personality: ev.target.value.trim() }) }, a.personality || "");
+    const per = h("textarea", { rows: "2", maxlength: String(MAX_PERSONALITY), placeholder: "Its tone, its humour and whether it gets to the point. For example: “Friendly and funny, but brief and to the point.”", onchange: (ev) => changedWho({ personality: ev.target.value.trim() }) }, a.personality || "");
     const tally = h("span", { class: "counter" }, `${(a.personality || "").length}/${MAX_PERSONALITY}`);
     per.oninput = () => { tally.textContent = `${per.value.length}/${MAX_PERSONALITY}`; };
     box.append(h("div", { class: "block" },
-      field("Instructions (who it is and how it works)", h("textarea", { rows: "6", onchange: (ev) => change({ instructions: ev.target.value }) }, a.instructions)),
+      field("Instructions (who it is and how it works)", h("textarea", { rows: "6", maxlength: "6000", onchange: (ev) => changedWho({ instructions: ev.target.value }) }, a.instructions), "Up to 6,000 characters (about 1,000 words)."),
       a.role === "jev" ? null : field("Personality", per, "Sent with every call: that way its character doesn't depend on the brain you give it."), a.role === "jev" ? null : tally,
-      a.role === "jev" ? null : field("Objective", h("textarea", { rows: "2", onchange: (ev) => change({ objective: ev.target.value }) }, a.objective))));
+      a.role === "jev" ? null : field("Objective", h("textarea", { rows: "2", maxlength: "1000", onchange: (ev) => changedWho({ objective: ev.target.value }) }, a.objective))));
   }
   // lessons of its role (they come from the coins); new ones wait for your yes in the inbox
   const pendLecc = (ed.e.lessons || []).filter((l) => l.role === a.role && l.state === "proposed");
@@ -953,28 +1069,16 @@ function profileWork(box, a, change, { brainless }) {
       : h("p", { class: "note", style: { margin: 0 } }, "None yet. They come from coins: a cheap model turns the reason into a rule and you approve it in the inbox."),
     pendLecc.length ? h("div", { class: "row-c" }, h("span", { class: "note" }, pendLecc.length === 1 ? "1 new lesson is waiting for your yes." : `${pendLecc.length} new lessons are waiting for your yes.`), h("button", { class: "btn mini", type: "button", onclick: () => openScreen("inbox") }, "Go to the inbox")) : null,
     h("small", { class: "note" }, `Everyone with this role learns them. ${max} are kept per role (change it in Settings); when a new one comes in, the oldest goes, except pinned ones.`)));
-  // heartbeat
-  const num = h("input", { type: "number", min: "1", step: "1", value: a.heartbeat.every, disabled: a.heartbeat.unit === "on_request" });
-  const uni = h("select", {}, [["min", "minutes"], ["h", "hours"], ["d", "days"], ["on_request", "on request only"]].map(([v, t]) => h("option", { value: v }, t)));
-  uni.value = a.heartbeat.unit;
-  const saveHeartbeat = () => change({ heartbeat: { every: Math.max(1, parseInt(num.value, 10) || 1), unit: uni.value } });
-  num.onchange = saveHeartbeat; uni.onchange = saveHeartbeat;
-  const selOnWake = h("select", { onchange: (ev) => change({ onWake: ev.target.value }) }, h("option", { value: "tasks" }, "Does its pending tasks (if there are none, it doesn't spend)"), h("option", { value: "objective" }, "Does its tasks and, if there are none, works on its objective (spends)"));
-  selOnWake.value = a.onWake || "tasks";
-  const upcoming = a.next && a.next < 9e14 ? date(a.next, { weekday: "short", hour: "2-digit", minute: "2-digit" }) : "—";
-  box.append(h("div", { class: "block" }, h("h4", {}, "Heartbeat"),
-    h("div", { class: "field" }, h("span", {}, "Resting, it wakes up"), h("div", { class: "row-c" }, h("span", {}, "every"), num, uni)),
-    brainless || a.role === "sage" || a.role === "jev" ? null : field("When it wakes up", selOnWake),
-    h("small", { class: "note" }, a.heartbeat.unit === "on_request" ? "Only works when someone gives it a job." : `Next heartbeat: ${upcoming}. Last: ${a.last ? date(a.last) : "never"}.`)));
   // tasks
   if (!brainless && a.role !== "jev") {
     const txt = h("input", { placeholder: "Give it a job…" }), now = h("input", { type: "checkbox" });
     const list = h("div", { class: "list" });
     for (const t of a.tasks.slice().reverse().slice(0, 15)) {
-      list.append(h("div", { class: "item" }, h("div", { class: "head" }, h("span", {}, date(t.created) + " · " + (t.from ? tr(`from ${(ed.exactAgent(t.from) || {}).name || t.from}`) : tr("from you"))), h("span", { class: "status " + t.state }, t.state)),
+      list.append(h("div", { class: "item" }, h("div", { class: "head" }, h("span", {}, date(t.created) + " · " + (t.from ? tr(`from ${(ed.exactAgent(t.from) || {}).name || t.from}`) : tr("from you"))), h("span", { class: "status " + t.state }, TASK_STATE[t.state] || t.state)),
         h("div", { class: "txt" }, raw(t.text)), t.result ? h("details", {}, h("summary", {}, "Result"), h("div", { class: "txt", html: markdown(t.result) })) : null));
     }
     box.append(h("div", { class: "block" }, h("h4", {}, "Tasks"),
+      h("p", { class: "note", style: { margin: 0 } }, "A task is a job it does on its own, without you being there: for example, “find me 10 suppliers and leave me the list”. It does it when it wakes up (at once if you tick “now”) and leaves the result here and in the chat of whoever it reports to. To get an answer right now, talk to it in its chat."),
       h("div", { class: "row-c" }, txt, h("label", { class: "row-c note" }, now, "now"), h("button", { class: "btn mini", onclick: () => { if (!txt.value.trim()) return; Motor.run({ type: "assignTask", id: a.id, text: txt.value.trim(), now: now.checked }).then(() => { txt.value = ""; render(); }).catch(warn); } }, "Assign")),
       a.tasks.length ? list : h("p", { class: "note", style: { margin: 0 } }, "No tasks.")));
   }
@@ -1013,8 +1117,8 @@ function profileBrain(box, a, change, { brainless }) {
     const block = h("div", { class: "block" }, h("h4", {}, "Brain"), field("Thinks with", selProv));
     if (!conx.length) block.append(h("small", { class: "note" }, "Do you have a subscription that includes API access (for example, Claude or ChatGPT credits, Gemini or a model on your computer)? Add it in Settings → Other APIs and you'll be able to pick it here. Anything paid separately is better through OpenRouter."));
     if (prov === "openrouter") {
-      block.append(field("Brain", modelPicker("text", a.brain, { onChange: (v) => change({ brain: v }) }), "At the top, the recommended ones by price level (not quality); below, all of OpenRouter's text models. Or type the name with “Search all”. Prices in dollars per million tokens (input / output). “sees” = can look at images."),
-        proposalsFor("text"));
+      block.append(field("Brain", modelPicker("text", a.brain, { onChange: (v) => change({ brain: v }) }), "All of OpenRouter's text models, from cheapest to most expensive. Or type the name with “Search all”. Prices in dollars per million tokens (input / output). “sees” = can look at images."),
+        popularNote(), brainWarnings(a), proposalsFor("text"));
     } else {
       const P = ed.provider(prov) || { short: prov };
       block.append(directPicker(prov, a.brain, (v) => change({ brain: v })),
@@ -1038,7 +1142,7 @@ function profileBrain(box, a, change, { brainless }) {
   }
   box.append(h("div", { class: "block" }, h("h4", {}, "Priority"),
     h("div", { class: "priority" }, [1, 2, 3, 4, 5].map((n) => h("button", { "aria-pressed": String(a.priority === n), onclick: () => change({ priority: n }) }, n))),
-    h("small", { class: "note" }, "When spending gets close to the cap, low-priority agents are frozen first: at 80 % those with 1 and 2; at 90 %, everyone except those with 5.")));
+    h("small", { class: "note" }, "1 is the most important and 5 the least. When spending gets close to the cap, the least important are frozen first: at 80 % those with 4 and 5; at 90 %, everyone except those with 1.")));
   box.append(h("div", { class: "block" }, h("h4", {}, "Spending"),
     h("div", { class: "spending3" }, ["today", "week", "month"].map((p) => h("div", {}, h("b", {}, ed.agentSpending(a, p) > 0 ? fmt(ed.agentSpending(a, p)) : "—"), h("small", {}, { today: "today", week: "7 days", month: "this month" }[p])))),
     brainless ? null : field("Own daily cap (USD)", h("input", { type: "number", min: "0", step: "0.05", value: a.dailyCap || "", placeholder: "no own cap", onchange: (ev) => change({ dailyCap: Math.max(0, parseFloat(ev.target.value) || 0) }) }), "If it goes over, it's frozen until tomorrow. The building's cap applies too (Spending)."),
@@ -1254,15 +1358,17 @@ function renderChat(force) {
   m.append(h("div", { class: "msg bot greeting" }, h("div", { class: "bubble" }, greetingOf(a))));
   if (converses(a) && !hasAccess()) m.append(h("div", { class: "msg bot greeting" }, h("div", { class: "bubble" },
     h("p", {}, isApp() ? "So I can answer you, paste your OpenRouter key in Settings. It stays only on this computer." : mode === "home" ? "So I can reply, enter in Settings the PIN you set when you started Fer Home." : "So I can reply, paste your OpenRouter key in Settings. It stays only in this browser."),
-    h("button", { class: "btn mini", onclick: () => openDrawer("settings") }, "Open Settings"))));
+    h("div", { class: "row-c" }, h("button", { class: "btn mini", onclick: () => openDrawer("settings") }, "Open Settings"), mode === "home" && !isApp() ? null : h("a", { class: "btn mini", href: OR_KEYS, target: "_blank", rel: "noopener" }, "Get my key at OpenRouter")))));
   const speaks = a.capabilities.includes("speak");
   for (const x of conv) {
     if (x.role === "user") m.append(h("div", { class: "msg me" }, h("div", { class: "bubble" }, raw(x.content)), x.voice ? h("div", { class: "meta" }, x.voice) : null));
     else if (x.role === "assistant") {
       const meta = h("div", { class: "meta" }, h("span", {}, x.provider ? tr(`${x.model || ""} · ${((ed.provider(x.provider) || {}).short) || x.provider}: your subscription`) + (x.subscription ? ` (≈${fmt(x.subscription)})` : "") : `${x.model || ""} · ${fmt(x.cost || 0)}`),
         speaks ? h("button", { onclick: (ev) => { unlockAudio(); speakText(x.content, ev.target.parentElement, a); } }, "▶ Listen") : null,
+        copyButton(() => bubble),
         h("span", { class: "coins-msg" }, coinButton(a, "gold"), coinButton(a, "red")));
-      m.append(h("div", { class: "msg bot" }, h("div", { class: "bubble", html: markdown(x.content) }, media(x)),
+      const bubble = h("div", { class: "bubble", html: markdown(x.content) }, media(x));
+      m.append(h("div", { class: "msg bot" }, bubble,
         (x.events || []).length ? h("div", { class: "chips" }, x.events.map((e) => h("span", { class: "chip" }, e))) : null,
         x.meeting ? meetingCard(x.meeting) : null, meta));
     } else if (x.role === "report") {
@@ -1273,14 +1379,30 @@ function renderChat(force) {
         h("button", { class: "btn mini", onclick: () => openDrawer("agent", { profile: Object.assign({}, pr.profile, { floor: pr.profile.floor || "new", newFloor: pr.profile.newFloor || { name: "", job: "" } }), proposal: pr.id }) }, "See it and tweak it"),
         h("button", { class: "btn mini", onclick: () => Motor.run({ type: "discardProposal", proposal: pr.id }).then(() => renderChat(true)).catch(warn) }, "Dismiss"))
         : h("div", { class: "meta" }, pr.state === "created" ? "Created." : "Dismissed.")) : null;
-      m.append(h("div", { class: "msg report" }, h("span", { class: "who" }, tr(`Report from ${x.name}`)), h("div", { class: "bubble", html: markdown(x.content) }, media(x)), buttons,
-        x.meeting ? h("div", { class: "meta" }, h("button", { onclick: () => openMeetingRooms(x.meeting) }, "See the meeting")) : null,
-        author && author.role !== "boss" && !x.meeting ? h("div", { class: "meta" }, h("span", { class: "coins-msg" }, coinButton(author, "gold"), coinButton(author, "red"))) : null));
+      const bubble = h("div", { class: "bubble", html: markdown(x.content) }, media(x));
+      m.append(h("div", { class: "msg report" }, h("span", { class: "who" }, x.own && !x.proposal ? tr(x.task ? "Task done" : "On waking up") : tr(`Report from ${x.name}`)), bubble, buttons,
+        x.meeting ? h("div", { class: "meta" }, h("button", { onclick: () => openMeetingRooms(x.meeting) }, "See the meeting"), copyButton(() => bubble)) : null,
+        author && !x.meeting ? h("div", { class: "meta" }, x.ts ? h("span", {}, date(x.ts)) : null, copyButton(() => bubble), author.role !== "boss" ? h("span", { class: "coins-msg" }, coinButton(author, "gold"), coinButton(author, "red")) : null) : null));
     }
   }
   for (const e of pendingErrors) m.append(h("div", { class: "msg error" }, h("div", { class: "bubble" }, e)));
   if (thinking) m.append(h("div", { class: "msg bot typing" }, writing ? h("div", { class: "bubble", html: markdown(writing) }) : h("div", { class: "bubble" }, h("span", { class: "thinking", "aria-label": "Thinking" }, h("i"), h("i"), h("i")))));
   $("chat").scrollTop = $("chat").scrollHeight;
+}
+// «Copy»: the whole message, as you see it (without the asterisks and other format marks), ready to paste anywhere
+async function copyText(t) {
+  try { await navigator.clipboard.writeText(t); return true; } catch {}
+  try { const ta = h("textarea", { style: { position: "fixed", opacity: "0", left: "-9999px" } }); ta.value = t; document.body.append(ta); ta.select(); const ok = document.execCommand("copy"); ta.remove(); return ok; } catch { return false; }
+}
+function copyButton(getBubble) {
+  const b = h("button", { type: "button", class: "copy-btn", title: "Copy the whole text" }, "Copy");
+  b.onclick = async () => {
+    const el = getBubble(), txt = el ? (el.innerText || el.textContent || "").replace(/\n{3,}/g, "\n\n").trim() : "";
+    const ok = txt && await copyText(txt);
+    b.textContent = tr(ok ? "Copied" : "Couldn't copy"); b.classList.toggle("done", !!ok);
+    setTimeout(() => { b.textContent = tr("Copy"); b.classList.remove("done"); }, 1800);
+  };
+  return b;
 }
 // Images and music: saved apart (in this browser, IndexedDB; in Fer Home, its «data/media» folder), so they aren't lost on reload
 const mediaCache = new Map();
@@ -2034,21 +2156,19 @@ function renderCreateAgent(fresh) {
   c.innerHTML = "";
   // 1. the Creator
   const creator = ed.e.agents.find((x) => x.role === "creator");
-  const requested = h("textarea", { rows: "3", placeholder: "For example: I want one that every Monday prepares the week's menu and the shopping list for me", value: b.requested });
+  const requested = h("textarea", { rows: "3", placeholder: "For example: I want one that every Monday prepares the week's menu and the shopping list for me; friendly and to the point", value: b.requested });
   requested.value = b.requested || "";
   requested.oninput = () => { b.requested = requested.value; };
   const who = creator ? (["Agent Creator", "Creador de agentes"].includes(creator.name) || !creator.name.trim() ? "the Creator" : creator.name) : "";
-  const requestedPersonality = h("input", { maxlength: String(MAX_PERSONALITY), placeholder: "For example: friendly, funny and to the point", value: b.requestedPersonalityText || "" });
-  requestedPersonality.oninput = () => { b.requestedPersonalityText = requestedPersonality.value; };
   const button = h("button", { class: "btn primary mini" }, `Let ${who} design it`);
   button.onclick = async () => {
     if (!requested.value.trim()) { requested.focus(); return; }
     if (!hasAccess()) { openDrawer("settings"); return; }
     button.disabled = true; button.textContent = tr("Designing…");
     try {
-      const r = await Motor.run({ type: "proposeAgent", text: requested.value.trim(), personality: requestedPersonality.value.trim() });
+      const r = await Motor.run({ type: "proposeAgent", text: requested.value.trim() });   // the personality: in your words, if you say it; and once in the profile below
       const f = r.proposal.profile;
-      draft = Object.assign(newDraft({}), f, { floor: f.floor || "new", newFloor: f.newFloor || { name: "", job: "" }, proposal: r.proposal.id, why: f.why, requested: requested.value, requestedPersonalityText: requestedPersonality.value, cost: r.cost });
+      draft = Object.assign(newDraft({}), f, { floor: f.floor || "new", newFloor: f.newFloor || { name: "", job: "" }, proposal: r.proposal.id, why: f.why, requested: requested.value, cost: r.cost });
       renderCreateAgent(false);
     } catch (err) { button.disabled = false; button.textContent = tr("Try again"); c.querySelector(".creator-error")?.remove(); button.after(h("p", { class: "creator-error" }, err.shown ? err.message : `It couldn't be done: ${err.message}`)); }
   };
@@ -2056,7 +2176,6 @@ function renderCreateAgent(fresh) {
     creator ? h("p", { class: "note", style: { margin: 0 } }, `${who[0].toUpperCase() + who.slice(1)} fills in the profile for you. Then you review it and change it if you like. It costs one call to its brain (a few cents).`)
       : h("p", { class: "note", style: { margin: 0 } }, "You don't have an Agent Creator. Fill in the profile by hand or install it from “Built-in agents”."),
     creator ? requested : null,
-    creator ? h("label", { class: "field" }, h("span", {}, "What personality do you want it to have? (its tone, its humour and whether it gets to the point)"), requestedPersonality, h("small", {}, "If you leave it blank, the Creator proposes one and you can change it below.")) : null,
     creator ? h("div", {}, button) : null,
     b.proposal ? h("p", { class: "why" }, tr(b.why || "Profile filled in by the Creator.") + (b.cost ? " " + tr(`Designing it cost ${fmt(b.cost)}.`) : "")) : null));
   // 2. the profile
@@ -2077,11 +2196,19 @@ function renderCreateAgent(fresh) {
   const objective = h("textarea", { rows: "2", placeholder: "What it should achieve (optional)", oninput: (ev) => { b.objective = ev.target.value; } }); objective.value = b.objective;
   const personality = h("textarea", { rows: "2", maxlength: String(MAX_PERSONALITY), placeholder: "Its tone, its humour and whether it gets to the point", oninput: (ev) => { b.personality = ev.target.value; } }); personality.value = b.personality || "";
   const selBrain = modelPicker("text", b.brain, { empty: "The cheapest that will do (the building picks it)", onChange: (v) => { b.brain = v; } });
-  const num = h("input", { type: "number", min: "1", step: "1", value: b.heartbeat.every, disabled: b.heartbeat.unit === "on_request", onchange: (ev) => { b.heartbeat.every = Math.max(1, parseInt(ev.target.value, 10) || 1); } });
-  const uni = h("select", { onchange: (ev) => { b.heartbeat.unit = ev.target.value; num.disabled = b.heartbeat.unit === "on_request"; } }, [["min", "minutes"], ["h", "hours"], ["d", "days"], ["on_request", "on request only"]].map(([v, t]) => h("option", { value: v }, t)));
-  uni.value = b.heartbeat.unit;
-  const selOnWake = h("select", { onchange: (ev) => { b.onWake = ev.target.value; } }, h("option", { value: "tasks" }, "Does its pending tasks (if there are none, it doesn't spend)"), h("option", { value: "objective" }, "Does its tasks and, if there are none, works on its objective (spends)"));
+  // how it works: only when asked, or it wakes up by itself every so often (the same choice as in its profile)
+  const alone = () => b.heartbeat.unit !== "on_request";
+  const num = h("input", { type: "number", min: "1", step: "1", value: b.heartbeat.every, onchange: (ev) => { b.heartbeat.every = Math.max(1, parseInt(ev.target.value, 10) || 1); } });
+  const uni = h("select", { onchange: (ev) => { b.heartbeat.unit = ev.target.value; } }, HEARTBEAT_UNITS.map(([v, t]) => h("option", { value: v }, t)));
+  uni.value = alone() ? b.heartbeat.unit : "h";
+  const selOnWake = h("select", { onchange: (ev) => { b.onWake = ev.target.value; } }, h("option", { value: "tasks" }, "Does its pending tasks (if it has none, it goes back to sleep without spending)"), h("option", { value: "objective" }, "Does its tasks and, if it has none, takes a step towards its objective (spends)"));
   selOnWake.value = b.onWake;
+  const aloneRow = h("div", { class: "alone-row", hidden: !alone() }, h("div", { class: "field" }, h("span", {}, "It wakes up"), h("div", { class: "row-c" }, h("span", {}, "every"), num, uni)), b.role === "sage" ? null : field("When it wakes up", selOnWake));
+  const modeName = "newmode-" + Math.random().toString(36).slice(2);
+  const modeChoice = h("div", { class: "caps work-mode" }, [["request", "Only when asked", "It doesn't wake up by itself: it works when you talk to it or someone gives it a task. While it waits, it doesn't spend."],
+    ["alone", "Wakes up by itself", "Every so often it wakes up, looks at what it has to do and does it, without anyone asking."]].map(([v, t, txt]) => h("label", { class: "cap" },
+    h("input", { type: "radio", name: modeName, value: v, checked: (v === "alone") === alone(), onchange: () => { b.heartbeat = v === "alone" ? { every: Math.max(1, parseInt(num.value, 10) || 1), unit: uni.value } : { every: b.heartbeat.every || 1, unit: "on_request" }; aloneRow.hidden = v !== "alone"; } }),
+    h("span", {}, t, h("small", {}, txt)))));
   const caps = h("div", { class: "caps" }, CAPABILITIES.filter((x) => x.type === "basic").map((x) => h("label", { class: "cap" },
     h("input", { type: "checkbox", checked: b.capabilities.includes(x.id), disabled: x.id === "write", onchange: (ev) => { b.capabilities = ev.target.checked ? [...new Set([...b.capabilities, x.id])] : b.capabilities.filter((y) => y !== x.id); } }),
     h("span", {}, x.name, h("small", {}, x.how)))));
@@ -2092,9 +2219,8 @@ function renderCreateAgent(fresh) {
     b.floor === "new" ? h("div", { class: "two" }, pName, pJob) : null,
     field("Spot", selSeat),
     field("Instructions", instructions), field("Personality", personality, "Sent with every call: its character doesn't depend on the brain."), field("Objective", objective),
-    field("Brain", selBrain, "At the top, the recommended ones by level; below, all of them. Prices in dollars per million tokens (input / output), according to OpenRouter."),
-    h("div", { class: "field" }, h("span", {}, "Resting, it wakes up"), h("div", { class: "row-c" }, h("span", {}, "every"), num, uni)),
-    b.role === "sage" ? null : field("When it wakes up", selOnWake),
+    field("Brain", selBrain, "All of them, from cheapest to most expensive. Prices in dollars per million tokens (input / output), according to OpenRouter."), popularNote(),
+    h("div", { class: "field" }, h("span", {}, "When it works"), modeChoice, aloneRow),
     h("div", { class: "field" }, h("span", {}, "Capabilities"), caps)));
   // 3. its look
   c.append(h("div", { class: "block" }, h("h4", {}, "Its appearance"), lookPicker(b.look, (A) => { b.look = A; })));
@@ -2142,7 +2268,7 @@ function renderSpendingDrawer(dataOnly) {
   c.append(h("div", { class: "block" }, h("h4", {}, "The whole building"),
     h("div", { class: "spending3" }, ["today", "week", "month"].map((p) => h("div", {}, h("b", {}, fmt(ed.buildingSpending(p))), h("small", {}, { today: "today", week: "7 days", month: "this month" }[p])))),
     h("div", { class: "bar" }, h("i", { class: phaseClass(), style: { width: Math.min(100, usage * 100) + "%" } })),
-    h("p", { class: "note", style: { margin: 0 } }, tr(`Cap used: ${Math.round(usage * 100)} %.`) + " " + tr({ normal: "Everyone works.", freeze1: "Priority 1 and 2 are frozen.", freeze2: "Only priority 5 works.", cap: "Cap reached: everything frozen until tomorrow or until you raise the cap." }[ed.e.phase || "normal"]))));
+    h("p", { class: "note", style: { margin: 0 } }, tr(`Cap used: ${Math.round(usage * 100)} %.`) + " " + tr({ normal: "Everyone works.", freeze1: "Priority 4 and 5 are frozen.", freeze2: "Only priority 1 works.", cap: "Cap reached: everything frozen until tomorrow or until you raise the cap." }[ed.e.phase || "normal"]))));
   // the master switch and who spends when waking up
   const pause = aj.pause !== false;
   const list = ed.whoSpends().filter((x) => !["memory"].includes(x.a.role));
@@ -2172,8 +2298,8 @@ function renderSpendingDrawer(dataOnly) {
     h("label", { class: "field" }, h("span", {}, "Start freezing at (%)"), cd),
     h("div", { class: "tiers" },
       h("div", {}, h("b", {}, `< ${Math.round((aj.freezeFrom || 0.8) * 100)} %`), h("span", {}, "everyone works")),
-      h("div", {}, h("b", {}, `≥ ${Math.round((aj.freezeFrom || 0.8) * 100)} %`), h("span", {}, "priority 1 and 2 are frozen")),
-      h("div", {}, h("b", {}, `≥ ${mid} %`), h("span", {}, "only priority 5 works (the boss and the controls)")),
+      h("div", {}, h("b", {}, `≥ ${Math.round((aj.freezeFrom || 0.8) * 100)} %`), h("span", {}, "priority 4 and 5 are frozen")),
+      h("div", {}, h("b", {}, `≥ ${mid} %`), h("span", {}, "only priority 1 works (the boss and the controls)")),
       h("div", {}, h("b", {}, "100 %"), h("span", {}, "everything frozen, the boss too; it comes back the next day or when you raise the cap"))),
     h("small", { class: "note" }, "Also put a limit on the key on the OpenRouter website: it's the safety net if something goes wrong here.")));
   const rows = ed.e.agents.map((a) => ({ a, today: ed.agentSpending(a, "today"), sem: ed.agentSpending(a, "week"), month: ed.agentSpending(a, "month") })).sort((x, y) => y.month - x.month || y.today - x.today);
@@ -2249,7 +2375,7 @@ function renderSettings() {
   if (mode === "local") {
     const k = h("input", { type: "password", autocomplete: "off", placeholder: "sk-or-...", value: store.get(K.key) ? "••••••••••" : "" });
     k.onfocus = () => { if (k.value.startsWith("•")) k.value = ""; };
-    c.append(h("div", { class: "block" }, h("h4", {}, "Your OpenRouter key"),
+    c.append(h("div", { class: "block" }, h("h4", {}, "Your OpenRouter key"), whyOpenRouter(),
       h("div", { class: "row-c" }, k, h("button", { class: "btn primary mini", onclick: () => { if (!k.value.startsWith("•")) store.set(K.key, k.value.trim()); k.value = store.get(K.key) ? "••••••••••" : ""; render(); renderChat(true); closeDrawer(); } }, "Save")),
       h("p", { class: "note", style: { margin: 0 } }, "Where it is and where it goes: it's stored only in this browser, on this device. It doesn't go through any Fer Agent server: when an agent thinks, speaks or listens, this browser sends it straight to OpenRouter, and to nobody else. Anyone using this same browser could use it."),
       h("small", { class: "note" }, "Safety net: put a spending limit on the key on the OpenRouter website."),
@@ -2258,7 +2384,7 @@ function renderSettings() {
     // in the app: the key is pasted here and saved on this computer; and you sign in to your websites once with the agents' Chrome
     const k = h("input", { type: "password", autocomplete: "off", placeholder: "sk-or-...", value: homeInfo.key ? "••••••••••" : "" });
     k.onfocus = () => { if (k.value.startsWith("•")) k.value = ""; };
-    c.append(h("div", { class: "block" }, h("h4", {}, "Your OpenRouter key"),
+    c.append(h("div", { class: "block" }, h("h4", {}, "Your OpenRouter key"), whyOpenRouter(),
       h("div", { class: "row-c" }, k, h("button", { class: "btn primary mini", onclick: async () => {
         if (!k.value.trim() || k.value.startsWith("•")) return;
         try { await callApp("/api/conf/key", { prov: "openrouter", key: k.value.trim() }); await refreshHome(); toast("Key saved on this computer."); render(); renderChat(true); closeDrawer(); } catch (e) { warn(e); }
@@ -2336,18 +2462,12 @@ function renderSettings() {
     h("label", { class: "cap" }, chkShort, h("span", {}, "Short answers when you talk by voice", h("small", {}, "One to three sentences; if you want more, ask for the details."))),
     h("label", { class: "cap" }, chkCut, h("span", {}, "Stops talking when you speak", h("small", {}, "The mic stays open while it talks. With very loud speakers, if it cuts itself off, use headphones or turn this off."))),
     field("Model that turns coins into lessons", selLec, "A cheap one: it writes the rule and you approve it in the inbox.")));
-  // recommended models: at the top of each picker. Artie proposes the new ones; you decide.
+  // models: every picker shows OpenRouter's whole list, from cheapest to most expensive (we don't recommend: it goes out of date in a week)
   const pendingModels = (ed.e.modelProposals || []).filter((x) => x.state === "pending");
-  const recSummary = h("div", { class: "list" }, Object.keys(MODEL_TYPES).filter((t) => t !== "others").map((t) => {
-    const rec = ((aj.recommended || {})[t]) || {};
-    const lines = LEVELS.filter((n) => (rec[n] || []).length).map((n) => h("div", {}, h("b", {}, tr(LEVEL_NAME[n]) + ": "), rec[n].map(modelName).join(", ")));
-    return lines.length ? h("div", { class: "item" }, h("div", { class: "head" }, h("span", {}, tr(MODEL_TYPES[t]))), lines) : null;
-  }).filter(Boolean));
-  c.append(h("div", { class: "block" }, h("h4", {}, "Recommended models"),
-    h("p", { class: "note", style: { margin: 0 } }, "Every selector first shows the recommended ones by PRICE level (free, cheap, mid, high and cutting-edge), not by quality: each level has the newest version from each maker. Below, all of OpenRouter's, sorted by what they do according to their data. When a new model comes out, Artie proposes it; nothing changes without your yes."),
-    pendingModels.length ? Object.keys(MODEL_TYPES).map((t) => proposalsFor(t)).flat() : h("p", { class: "note", style: { margin: 0 } }, "Artie has no pending proposals."),
-    h("details", {}, h("summary", {}, "See the current recommended ones"), recSummary),
-    h("div", {}, h("button", { class: "btn mini", onclick: (ev) => confirm(ev.target, "Go back to the original ones? Press again", () => Motor.run({ type: "recommended.reset" }).then(() => { render(); renderSettings(); }).catch(warn)) }, "Go back to the original recommended ones"))));
+  c.append(h("div", { class: "block" }, h("h4", {}, "Models"),
+    h("p", { class: "note", style: { margin: 0 } }, "Every selector shows all of OpenRouter's models of that type, from cheapest to most expensive, as they are today. Not sure which one? Look at the most popular ones on OpenRouter."),
+    h("div", {}, h("a", { class: "btn mini", href: POPULAR_MODELS, target: "_blank", rel: "noopener" }, "See the most popular on OpenRouter")),
+    pendingModels.length ? Object.keys(MODEL_TYPES).map((t) => proposalsFor(t)).flat() : null));
   // lessons and view
   const nLec = h("input", { type: "number", min: "1", max: "50", step: "1", value: aj.lessonsPerRole || 5, onchange: (ev) => saveSetting({ lessonsPerRole: Math.max(1, Math.min(50, parseInt(ev.target.value, 10) || 5)) }) });
   const selBuildingView = h("select", { onchange: (ev) => saveSetting({ buildingView: ev.target.value }) }, [["auto", `Automatic: strips from ${AUTO_AGENTS + 1} agents or ${AUTO_STOREYS + 1} floors`], ["drawing", "Always the drawing"], ["strips", "Always in strips"]].map(([v, t]) => h("option", { value: v }, t)));

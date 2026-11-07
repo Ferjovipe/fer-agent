@@ -88,7 +88,9 @@ try:
     s, b, _ = ask("/api/action", "POST", {"type": "speak", "agent": red["id"], "text": "¿Qué tal?"}, "24681357")
     s2, b2, _ = ask("/api/state", pin="24681357"); e = json.loads(b2)["state"]
     red = next(a for a in e["agents"] if a["name"] == "Redactor")
-    check(s == 200 and json.loads(b)["reply"] == "Trabajo hecho en casa." and len(red["chat"]) == 2, "chat with the Redactor (not the boss) through Fer Home")
+    talk = [x for x in red["chat"] if x["role"] in ("user", "assistant")]
+    check(s == 200 and json.loads(b)["reply"] == "Trabajo hecho en casa." and len(talk) == 2, "chat with the Redactor (not the boss) through Fer Home")
+    check(any(x["role"] == "report" and x.get("own") and "Escribe algo" in (x.get("task") or "") for x in red["chat"]), "9.1: the task it did on waking up is also in its own chat")
     ask("/api/action", "POST", {"type": "editAgent", "id": red["id"], "changes": {"capabilities": ["write", "search"]}}, "24681357")
     ask("/api/action", "POST", {"type": "assignTask", "id": red["id"], "text": "Busca imprentas", "now": True}, "24681357")
     time.sleep(2.5)

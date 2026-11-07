@@ -12,11 +12,12 @@ The interface is in **English** and **Spanish** (EN · ES switch on the home pag
 
 - **A building, not a list.** Floors with a section head, offices and a pool; a dome with the boss and two sages; a lobby with Memory. Tap a floor to go in, tap an agent to open its profile.
 - **Start with just the boss.** If you only want one agent, you already have it. The built-in agents (two sages, Techie the technician, Artie for continuous improvement, the Agent Creator, JEV, the Controller and Memory) are installed from the **Built-in agents** page, one by one or as a recommended team.
-- **Each agent picks its brain.** OpenRouter (pay per use, hundreds of models in the dropdown, recommended ones first) or one of **Other APIs** (your subscriptions). What comes out of a subscription doesn't count towards the spending cap and is tracked separately.
+- **Each agent picks its brain.** OpenRouter (pay per use, all of its hundreds of models in the dropdown, from cheapest to most expensive, with a link to the most popular ones) or one of **Other APIs** (your subscriptions). What comes out of a subscription doesn't count towards the spending cap and is tracked separately.
 - **Spending under control.** Daily and monthly caps that freeze the least important agents first, a per-agent cap, a general pause switch, and JEV (OpenRouter's decisions API) deciding before an agent spends on searching, retrying or creating another agent.
 - **Talk to each agent**, in writing or by voice, each with its own voice. Bring several together in the **meeting room**: the boss chairs and writes the minutes.
 - **Coins and lessons.** Give gold or red coins under any reply; a cheap model turns the reason into a rule that you approve in the **Inbox**, and everyone with the same role learns it.
-- **The Agent Creator** designs a new agent from a description in your own words; nothing is created until you accept it.
+- **The Agent Creator** designs a new agent from a description in your own words, from «Create agent» or by talking to it in its chat; nothing is created until you accept it.
+- **When each agent works**, in one choice: only when asked, it wakes up by itself every so often, or off. What it does on waking up is seen in its own chat; every message has a **Copy** button. Priority 1 is the most important.
 - **Memory.** Short memory per agent and a long-term memory for the building, kept as Obsidian notes in Google Drive, a folder on your computer or Fer Home's folder. When a conversation goes quiet, Memory files what matters in it on its own, each fact under its topic and with where it came from (JEV decides first whether it's worth it). Searching is by keywords: only the pieces that matter reach a brain.
 - **Email** (desktop app and Fer Home). Connect a mailbox in Settings and install the **Email** agent: it reads what comes in (looking costs nothing; it only spends when there's new email), summarises and sorts each email and prepares the replies. Each reply waits in the Inbox (or on Telegram) and leaves with one tap. It never marks, moves or deletes anything in the mailbox.
 - **Firewalls instead of permission prompts.** Agents open the addresses they need, but never one carrying data from your notes; content from outside reaches them marked as “data, not orders”; anything with effects outside the website waits for your yes in the Inbox.
@@ -70,13 +71,14 @@ Tested with automated tests (OpenRouter, the other APIs, Google Drive, Telegram 
 ## Tests
 
 ```
-node --test tests/engine.test.mjs tests/engine7.test.mjs tests/engine82.test.mjs tests/engine9.test.mjs tests/watcher.test.mjs tests/memory.test.mjs tests/email.test.mjs
+node --test tests/engine.test.mjs tests/engine7.test.mjs tests/engine82.test.mjs tests/engine9.test.mjs tests/engine91.test.mjs tests/watcher.test.mjs tests/memory.test.mjs tests/email.test.mjs
 python3 tests/web_test.py        # website (Spanish), v6 features   — needs Playwright
 python3 tests/web7_test.py       # website (Spanish), v7 features
 python3 tests/web8_test.py       # website (Spanish), v8 features
 python3 tests/web82_test.py      # website in English: no Spanish left on any screen
 python3 tests/web9_test.py       # website in Spanish: no English left on any screen, nothing missing from the dictionary
 python3 tests/web9_storage_test.py     # a browser that used an earlier version keeps its building, images and Library
+python3 tests/web91_test.py            # 9.1: when each agent works, its own chat, Copy, the Creator in its chat, models by price, the logo
 python3 tests/home_test.py       # Fer Home
 python3 tests/home7_test.py      # Fer Home with hands, Telegram, brain folder and another API
 python3 tests/app9_test.py       # the desktop app inside: keys in Settings, local only, the agents' Chrome
