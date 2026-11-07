@@ -615,6 +615,26 @@
   .why-or { margin: 0 0 10px; font-size: 13.5px; line-height: 1.5; display: grid; gap: 8px; }
   .why-or p { margin: 0; }
   .copy-btn.done { border-color: var(--ok); color: var(--ok); }
+  /* the meeting room: debate or loop */
+  .room-modes { display: grid; gap: 6px; margin-top: 6px; }
+  .room-mode { display: flex; gap: 9px; align-items: flex-start; padding: 8px 11px; border: 1px solid rgba(255, 255, 255, .2); border-radius: 12px; cursor: pointer; }
+  .room-mode:has(input:checked) { border-color: #FFC56B; background: rgba(255, 197, 107, .1); }
+  .room-mode input { margin-top: 3px; accent-color: #FFC56B; }
+  .room-mode small { display: block; opacity: .8; font-size: 12.5px; line-height: 1.35; }
+  .loop-order { color: #FFC56B; }
+  /* personality: ready-made ones to tick; «Let the Creator write it» */
+  .personality-chips { display: flex; flex-wrap: wrap; gap: 6px; margin: 2px 0 4px; }
+  .chip-btn { border: 1px solid var(--line); background: var(--paper); border-radius: 999px; padding: 3px 11px; font-size: 13px; cursor: pointer; }
+  .chip-btn[aria-pressed="true"] { border-color: color-mix(in srgb, var(--accent) 70%, transparent); background: color-mix(in srgb, var(--accent) 14%, var(--paper)); font-weight: 600; }
+  .creator-writes { justify-self: start; margin: -2px 0 6px; }
+  /* its own look */
+  .own-look { display: grid; gap: 8px; margin-top: 12px; }
+  .own-look textarea { width: 100%; }
+  /* who learns a lesson */
+  .lesson-reach { display: grid; gap: 6px; margin-top: 6px; }
+  .lesson-pick { display: grid; gap: 6px; padding: 8px; border: 1px dashed var(--line); border-radius: 10px; }
+  .lesson-pick .pick-list { display: flex; flex-wrap: wrap; gap: 6px 12px; font-size: 13px; }
+  .lesson-pick label { display: inline-flex; align-items: center; gap: 5px; }
   .cap.adv { opacity: .75; }
   .cap .plug { font-size: 11px; padding: 0 7px; border-radius: 999px; border: 1px dashed var(--soft); color: var(--soft); margin-left: 6px; white-space: nowrap; }
   .list { display: grid; gap: 8px; }

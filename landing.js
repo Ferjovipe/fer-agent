@@ -52,7 +52,7 @@ export function renderLanding(cont, { h, enter, figure, languages, language, cha
       h("div", { class: "control" },
         h("div", {}, h("b", {}, "Caps that freeze"), h("span", {}, "A daily cap and a monthly one. As they get close, the least important agents are frozen first.")),
         h("div", {}, h("b", {}, "JEV before spending"), h("span", {}, "Before searching, retrying or creating another agent, JEV decides whether it's worth it.")),
-        h("div", {}, h("b", {}, "Coins and lessons"), h("span", {}, "Gold and red coins that become lessons for everyone with the same role.")),
+        h("div", {}, h("b", {}, "Coins and lessons"), h("span", {}, "Gold and red coins that become lessons: you decide who learns them, one agent or the whole team.")),
         h("div", {}, h("b", {}, "The meter, always in sight"), h("span", {}, "What each agent, each floor and the whole building spends.")))),
     h("section", { class: "section-l" },
       h("h2", {}, "Live wherever you like"),

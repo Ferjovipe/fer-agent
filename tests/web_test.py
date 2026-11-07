@@ -320,7 +320,7 @@ try:
         # it's approved in the inbox (and can be retouched)
         page.click("#closeChat"); page.click("#openInbox"); page.wait_for_selector("#inboxView:not([hidden]) .request")
         check(page.is_visible("#inboxView .request:has-text('Lección nueva') textarea"), "the lesson reaches the inbox, to approve or retouch it")
-        page.click("#inboxView .request:has-text('Lección nueva') button:text-is('Aprobar')"); page.wait_for_timeout(300)
+        page.click("#inboxView .request:has-text('Lección nueva') button:has-text('Todos los de su papel')"); page.wait_for_timeout(300)
         check(any(l["state"] == "approved" and "frases claras" in l["text"] for l in state(page)["lessons"]), "approved: it's now a lesson of its role")
         page.click("#inboxView .back-btn"); chat_with(page, "Redactor")
         n0 = len(calls)

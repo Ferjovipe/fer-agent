@@ -194,7 +194,7 @@ try:
         page.click("#closeChat")
         page.click("#openInbox"); page.wait_for_selector("#inboxView .request")
         check(not spanish(page, "#inboxView", "bandeja lección"), f"the inbox with the lesson, in English: {leftovers.get('bandeja lección')}")
-        page.click("#inboxView .request:has-text('New lesson') button:text-is('Approve')"); page.wait_for_timeout(400)
+        page.click("#inboxView .request:has-text('New lesson') button:has-text('Everyone with its role')"); page.wait_for_timeout(400)
         page.click("#inboxView .back-btn")
         # the Creator designs an agent (in English) and it's created
         page.click("#createAgent"); page.fill("#drawerBody .creator textarea", "I want one that plans the weekly menu")

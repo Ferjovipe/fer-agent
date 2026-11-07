@@ -226,7 +226,7 @@ try:
         page.click("#openInbox"); page.wait_for_selector("#inboxView .request")
         photo(page, "8-inbox")
         page.fill("#inboxView .request:has-text('Lección nueva') textarea", "Antes de contestar, repasa tu función y di solo lo que te toca.")
-        page.click("#inboxView .request:has-text('Lección nueva') button:text-is('Aprobar')"); page.wait_for_timeout(400)
+        page.click("#inboxView .request:has-text('Lección nueva') button:has-text('Todos los de su papel')"); page.wait_for_timeout(400)
         lec = [l for l in state(page)["lessons"] if l["state"] == "approved"]
         check(lec and lec[-1]["text"] == "Antes de contestar, repasa tu función y di solo lo que te toca." and lec[-1]["role"] == "techie", "you approve the (retouched) rule in the inbox and it's now a lesson of its role")
         check(page.is_visible("#inboxView .inbox-empty") and page.is_hidden("#inboxBadge"), "empty inbox and no warning")

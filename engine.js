@@ -57,6 +57,7 @@ export const ROLES = {
   sage:        { name: "Sage",              priority: 2 },
   section_head: { name: "Section head",    priority: 2 },
   subagent:    { name: "Sub-agent",          priority: 3 },
+  junior:      { name: "Junior",             priority: 4 },   // 9.1: very simple, repetitive jobs with a cheap brain; it sits in the pool
   techie:        { name: "Technician",            priority: 1 },
   improvement:       { name: "Continuous improvement",    priority: 3 },
   creator:      { name: "Agent Creator", priority: 2 },
@@ -409,7 +410,12 @@ export function cleanConnection(x) {
 // The rule against making things up (it goes in every call, short)
 export const NO_MAKING_UP_RULE = "Rule: don't make up data, tools, sub-agents or results. If your task or objective needs tools or data you don't have, don't go ahead on your own: start your reply with “MISSING:” and say in one or two lines what you're missing.";
 export const MAX_MEETING_SEATS = 10;   // seats at the table of a meeting room
-const RETRY_BUSY_MS = 2 * 60e3;        // an overloaded model (too many requests): try again in 2 minutes
+// 9.1: a meeting room can be a debate (as before) or a loop: «improve» (each one takes the previous one's whole version and improves it)
+// or «continue» (each one goes on where the previous one left off). In a loop the text is passed whole and every version is kept.
+export const MEETING_MODES = ["debate", "improve", "continue"];
+const RETRY_BUSY_MS = 2 * 60e3;
+// The style of the building's characters, for an agent's own look made with AI (in English: image models understand it best)
+const LOOK_STYLE = "A full-body character in a glossy 3D cartoon style, like a friendly animated-film mascot: big head, big expressive eyes, warm smile, standing upright and facing the viewer, arms relaxed at the sides, the whole body visible from the top of the head to the shoes, centred, nothing cut off. Plain flat pure green background (#00FF00) all around, no shadow on the floor, no other objects, no text, no frame. The character: ";        // an overloaded model (too many requests): try again in 2 minutes
 const MEETING_TRANSCRIPT = 120000;     // letters of the transcript each one reads, at most (about 30,000 tokens)
 
 // If «id» starts reporting to «jefe», is there a loop? (going up from «jefe» you reach «id»)
@@ -742,7 +748,7 @@ export const MAX_OFFICES = 12, MAX_POOLS = 4;
 export function defaultSeat(role, type) {
   if (type === "dome") return role === "boss" ? "center" : "left";
   if (type === "lobby") return role === "memory" ? "reception" : "left";
-  return role === "section_head" || role === "techie" ? "head_office" : "office";
+  return role === "section_head" || role === "techie" ? "head_office" : role === "junior" ? "pool" : "office";
 }
 export function capacity(floor, seat) {
   if (!floor) return 0;
@@ -768,6 +774,8 @@ export const incompleteProfile = (a) => {
 const COLOR = /^#[0-9a-fA-F]{6}$/;
 export function cleanLook(x) {
   x = x && typeof x === "object" ? x : {};
+  // 9.1: its own look (created with AI or uploaded): the picture is kept with the media, not inside the building
+  if (x.p === "custom" && /^med_[a-z0-9]+$/i.test(String(x.media || ""))) return { p: "custom", media: String(x.media), accent: COLOR.test(String(x.accent || "")) ? String(x.accent) : "#4A6CF7" };
   const o = { p: Object.prototype.hasOwnProperty.call(CHARACTER_NAMES, x.p) ? x.p : "boy" };
   for (const k of ["clothes", "eyes", "hair", "skin"]) o[k] = !CHARACTERS_WITHOUT_COLOUR.has(o.p) && COLOR.test(String(x[k] || "")) ? String(x[k]) : null;
   return o;
@@ -905,7 +913,7 @@ export class Building {
       const storey = storeyOf.get(a.floor) || storeyOf.get("_") || [...storeyOf.values()][0];
       const b = baseAgent(Object.assign({}, a, { id: n.agents.some((x) => x.id === a.id) ? uid("ag_") : a.id, floor: "", seat: "" }));
       if (b.role === "sage") { try { this.place(b, n.floors[0].id, ""); n.agents.push(b); movedOnes.push(b.name); continue; } catch {} }
-      b.role = ["section_head", "subagent"].includes(b.role) ? b.role : "subagent";
+      b.role = ["section_head", "subagent", "junior"].includes(b.role) ? b.role : "subagent";
       try { this.place(b, storey.id, b.role === "section_head" && !this.sectionHead(storey.id) ? "head_office" : "office"); }
       catch { try { this.place(b, storey.id, "pool"); } catch { continue; } }
       n.agents.push(b); movedOnes.push(b.name);
@@ -1572,7 +1580,7 @@ export class Building {
   hireAgent(f) {
     const e = this.e;
     f = f && typeof f === "object" ? f : {};
-    const hireRoles = ["section_head", "subagent", "sage", "techie", "improvement", "creator"];
+    const hireRoles = ["section_head", "subagent", "junior", "sage", "techie", "improvement", "creator"];
     const role = hireRoles.includes(OLD_ROLE[f.role] || f.role) ? (OLD_ROLE[f.role] || f.role) : "subagent";
     let pl = role === "sage" ? e.floors[0] : this.floor(f.floor);
     if (!pl && f.newFloor && f.newFloor.name) pl = this.newFloorDraft(f.newFloor.name, f.newFloor.job);
@@ -1703,6 +1711,8 @@ export class Building {
       this.logActivity(a, this.L("error: ") + err.message, 0);
       this.closeQuery(this._queries.get(a.id), { did: this.L("it tried and failed: ") + err.message });
       if (reintento && !task.implicit) this.proposeCoin(a, "red", this.F("Retried “{1}” and it failed again", task.text.slice(0, 60)), "jev");
+      // if it isn't going to retry it by itself (it only works when asked, or it already retried), whoever gave it is told, so it can decide
+      if (task.followUp && !task.giverTold && !task.implicit && (intervalMs(a.heartbeat) === null || (task.attempts || 0) >= 2)) { task.giverTold = true; task.noRetry = true; this.wakeGiver(a, task, err.message, true); }
       schedule();
       return { id, outcome: "error", error: err.message };
     } finally {
@@ -1719,14 +1729,14 @@ export class Building {
   systemMessages(a, extra) {
     const bossOf = this.agent(a.reportsTo);
     const recent = a.shortMemory.slice(-8).map((m) => `- ${new Date(m.ts).toLocaleString(LOCALE)}: ${m.text}`).join("\n");
-    const roleLessons = this.lessonsOf(a.role), org = this.orgChartFor(a);
+    const roleLessons = this.lessonsFor(a), org = this.orgChartFor(a);
     return [
       a.instructions || this.L("You are an agent in the building."),
       this.F("Your name is {1}. Your role: {2}.", a.name, this.L((ROLES[a.role] || {}).name || a.role)) + (bossOf ? this.F(" You report to {1}.", bossOf.name) : ""),
       a.personality ? this.L("Your personality: ") + a.personality : "",
       this.e.objectives ? this.L("Building objectives:\n") + this.e.objectives : "",
       a.objective ? this.L("Your objective: ") + a.objective : "",
-      roleLessons.length ? this.L("Lessons for your role:\n") + roleLessons.map((l) => "- " + l.text).join("\n") : "",
+      roleLessons.length ? this.L("Lessons you've learnt:\n") + roleLessons.map((l) => "- " + l.text).join("\n") : "",
       this.L(NO_MAKING_UP_RULE),
       this.L("Date and time: ") + new Date(this.now()).toLocaleString(LOCALE) + ".",
       org ? this.L("Org chart (your part of it):\n") + org : "",
@@ -1758,7 +1768,7 @@ export class Building {
   }
 
   skillsOf(a) { return a.capabilities.includes("skills") ? this.skillsCatalog().filter((k) => a.skills.includes(k.name)) : []; }
-  workerTools(a, images, audios) {
+  workerTools(a, images, audios, ctx = {}) {
     const h = [
       { name: "search_memory", description: this.L("Searches the building's long-term memory by keywords."), parameters: { type: "object", properties: { words: { type: "string" } }, required: ["words"] } },
       { name: "save_memory", description: this.L("Saves a useful fact for the future in the long-term memory."), parameters: { type: "object", properties: { text: { type: "string" }, tags: { type: "array", items: { type: "string" } } }, required: ["text"] } }
@@ -1785,13 +1795,98 @@ export class Building {
       h.push({ name: "create_music", description: this.L("Creates a piece of music from a description (style, mood, instruments, length)."), parameters: { type: "object", properties: { description: { type: "string" } }, required: ["description"] } });
       executors.create_music = async (x) => { const mu = await this.createMusic(a, x.description || ""); (audios || []).push({ id: mu.id, url: mu.url, text: x.description }); return this.L("Music created and delivered."); };
     }
+    // 9.1: an agent hands work to another one and, if it needs the result to carry on, it's woken up with it (a plan, a loop…)
+    const team = this.e.agents.filter((z) => z.id !== a.id && !["boss", "sage", ...ROLES_CONTROL].includes(z.role));
+    if (a.brain && !ROLES_CONTROL.includes(a.role) && team.length) {
+      h.push({ name: "assign_task", description: this.L("Gives a task to another agent of the building, by name. If you need its result to carry on (a step-by-step plan, a loop…), say in follow_up what you'll do with it: you'll be woken up with the result.") + this.F(" Agents: {1}.", team.map((z) => z.name).join(", ")),
+        parameters: { type: "object", properties: { agent: { type: "string" }, task: { type: "string" }, now: { type: "boolean" }, follow_up: { type: "string" } }, required: ["agent", "task"] } });
+      executors.assign_task = (x) => this.delegate(a, x, ctx.parentFrom || "", !!ctx.inChat);
+    }
+    if (a.brain && !ROLES_CONTROL.includes(a.role)) {
+      h.push({ name: "choose_best", description: this.L("JEV compares several answers to the same question and says which is best (it looks at quality, not length). Give each option a short name and its whole text."),
+        parameters: { type: "object", properties: { question: { type: "string" }, options: { type: "array", items: { type: "object", properties: { name: { type: "string" }, text: { type: "string" } }, required: ["name", "text"] } } }, required: ["question", "options"] } });
+      executors.choose_best = async (x) => { const r = await this.jevChoose(a, x.question, x.options); return r.text; };
+    }
+    if (a.role === "boss") {   // working on its own (with a result it was waiting for), the boss can also call a meeting or a loop room
+      h.push(this.meetingTool());
+      executors.call_meeting = (x) => { const r = this.callMeeting({ title: x.title, agenda: x.agenda, participants: x.participants || [], rounds: x.rounds, mode: x.mode, followUp: x.follow_up ? { by: a.id, note: x.follow_up, parentFrom: ctx.parentFrom || "" } : null }, "boss");
+        return this.F("Meeting “{1}” proposed with {2} at the table; rounds: {3}. It will start when your owner confirms the rounds.", r.title, r.participants.length, r.rounds); };
+    }
     return { h, run: (n, args) => (executors[n] ? executors[n](args) : this.L("Unknown tool.")) };
+  }
+  // The call_meeting tool, the same for the boss in its chat and working on its own
+  meetingTool() {
+    return { name: "call_meeting", description: this.L("Proposes a meeting in the room: title, agenda, participants by name (up to 9 besides you), number of rounds and mode: “debate” (each one gives their view and you write the minutes), “improve” (a loop: each one takes the previous one's whole version and improves it) or “continue” (a loop: each one continues the text where the previous one left off; the order is the order of the participants). If you need its result to carry on, say in follow_up what you'll do with it: you'll be woken up with the minutes. Your owner confirms the rounds before it starts."),
+      parameters: { type: "object", properties: { title: { type: "string" }, agenda: { type: "string" }, participants: { type: "array", items: { type: "string" } }, rounds: { type: "integer" }, mode: { type: "string", enum: MEETING_MODES }, follow_up: { type: "string" } }, required: ["title", "agenda", "participants", "rounds"] } };
+  }
+  // Giving a task to another agent (from its chat or while it works on its own). JEV first, except for the boss: it's worth spending?
+  async delegate(a, x, parentFrom, inChat) {
+    const team = this.e.agents.filter((z) => z.id !== a.id && !["boss", "sage", ...ROLES_CONTROL].includes(z.role));
+    const ag = this.agent(x.agent);
+    if (!ag || ag === a) return this.F("There's no agent called “{1}”. Agents: {2}.", x.agent, team.map((z) => z.name).join(", "));
+    if (ag.role === "boss") return this.L("The boss isn't given tasks: tell whoever you report to.");
+    if (ag.role === "sage") return this.L("Sages aren't given tasks.");
+    if (ROLES_CONTROL.includes(ag.role)) return this.F("{1} is a control agent and doesn't take tasks.", ag.name);
+    if (!this.canWork(ag)) return this.F("{1} is {2} ({3}); it can't work right now.", ag.name, ag.state, ag.statusReason);
+    if ((a.role !== "boss" || !inChat) && this.byRoleList("jev").length) {
+      const same = ag.tasks.filter((t) => t.from === a.id && t.text.trim() === String(x.task || "").trim() && this.now() - t.created < DAY).length;
+      const c = await this.askJev(a, this.F("Give {1} the task: {2}", ag.name, String(x.task || "").slice(0, 300)) + (same ? this.F(" (it already gave it this same task {1} times today)", same) : ""), "delegate", { noBoss: true });
+      if (c.final === "stop" || c.final === "reuse") { c.did = this.L("the task wasn't given"); return this.F("JEV says “{1}”: the task wasn't given.", this.L(DECISION_NAMES[c.final])); }
+      c.did = this.F("gave the task to {1}", ag.name);
+    }
+    const t = this.assignTask(ag, x.task, a.id, !!x.now || !!x.follow_up, 30000);
+    if (x.follow_up) t.followUp = { by: a.id, note: String(x.follow_up).slice(0, 800), parentFrom: parentFrom || "" };
+    if (this.e.settings.pause && this.spendsOnWake(ag)) return this.F("Task given to {1}. The building is on a general pause: it will do it when your owner lifts it or wakes it up.", ag.name);
+    return this.F("Task given to {1}{2}.", ag.name, x.follow_up ? this.L("; you'll be woken up with its result") : x.now ? this.L("; starting now") : this.L("; it will do it on its next heartbeat"));
+  }
+  // The one who gave a task with follow_up is woken up with its result (or with its failure): that's how an agent carries on by itself
+  wakeGiver(a, task, result, failed) {
+    const f = task.followUp, giver = f && this.agent(f.by);
+    if (!giver || !giver.brain) return null;
+    const text = failed ? this.F("The task you gave {1} (“{2}”) failed: {3}\nWhat you said you'd do with its result: {4}\nDecide how to carry on.", a.name, task.text.slice(0, 200), String(result).slice(0, 600), f.note || this.L("carry on"))
+      : this.F("Result of the task you gave {1} (“{2}”):\n<<<\n{3}\n>>>\nWhat you said you'd do with it: {4}", a.name, task.text.slice(0, 200), String(result).slice(0, 24000), f.note || this.L("carry on"));
+    const t = this.assignTask(giver, text, f.parentFrom || "", true, 30000);
+    t.wokenBy = a.id;
+    return t;
+  }
+  // JEV picks the best of several answers. It's asked twice, with the options the other way round: models that judge tend to prefer
+  // the first one they read or the longest; if the two answers don't agree, it says so and the agent decides.
+  async jevChoose(a, question, options) {
+    const opts = (Array.isArray(options) ? options : []).filter((o) => o && String(o.text || "").trim()).slice(0, 6).map((o, i) => ({ key: "option_" + (i + 1), name: String(o.name || this.F("Option {1}", i + 1)).slice(0, 60), text: String(o.text) }));
+    if (opts.length < 2) return { choice: null, text: this.L("Give at least two options to compare.") };
+    const jev = this.byRoleList("jev")[0], key = this.o.key();
+    if (!jev || !this.canWork(jev) || !key) return { choice: null, text: this.L("JEV can't compare right now: decide yourself.") };
+    const ask = async (order) => {
+      this.checkCap(jev);
+      const body = { model: jev.brain || JEV_MODEL,
+        state: [this.F("Question or task: {1}", String(question || "").slice(0, 4000)), ...order.map((o) => `${o.name}:\n${o.text.slice(0, 30000)}`)],
+        questions: { decision: { type: "choice", instructions: this.L("Which of these answers the question or does the task best? Judge correctness, usefulness and clarity, not length."),
+          criteria: Object.fromEntries(order.map((o) => [o.key, this.F("{1} is the best one.", o.name)])) } } };
+      const r = await this.fetch(this.o.decisionsApi || String(this.o.api).replace(/\/v1\/?$/, "/alpha/decisions"), { method: "POST", signal: timeLimit(),
+        headers: { "Authorization": "Bearer " + key, "Content-Type": "application/json", "X-Title": "Fer Agent" }, body: JSON.stringify(body) });
+      let d = null; try { d = await r.json(); } catch {}
+      if (!r.ok) throw new Error(explainError(r.status, (d && d.error && d.error.message) || ""));
+      const ans = (d.answers || {}).decision || {}, u = d.usage || {};
+      this.recordSpending(jev, typeof u.cost === "number" ? u.cost : (u.input_tokens || 0) * 0.042e-6, this.L("comparison for ") + a.name, typeof u.cost !== "number");
+      return { choice: ans.choice, p: ans.probabilities || {} };
+    };
+    try {
+      const one = await ask(opts), two = await ask(opts.slice().reverse());
+      const name = (k) => (opts.find((o) => o.key === k) || {}).name;
+      const pct = (k) => Math.round((((one.p[k] || 0) + (two.p[k] || 0)) / 2) * 100);
+      if (one.choice && one.choice === two.choice) {
+        this.logActivity(jev, this.F("compared {1} answers for {2}: the best is “{3}” ({4} %)", opts.length, a.name, name(one.choice), pct(one.choice)), 0);
+        return { choice: name(one.choice), text: this.F("JEV chooses “{1}” ({2} %), the same both times it read them.", name(one.choice), pct(one.choice)) };
+      }
+      this.logActivity(jev, this.F("compared {1} answers for {2}: it doesn't see a clear winner", opts.length, a.name), 0);
+      return { choice: null, text: this.F("JEV doesn't see a clear winner: reading them in one order it prefers “{1}” and in the other “{2}”. Decide yourself.", name(one.choice) || "—", name(two.choice) || "—") };
+    } catch (err) { return { choice: null, text: this.F("JEV couldn't compare ({1}): decide yourself.", err.message) }; }
   }
 
   async work(a, task, op = {}) {
     if (a.role === "creator") return await this.creatorWork(a, task, op);
     const images = [], audios = [];
-    const { h, run } = this.workerTools(a, images, audios);
+    const { h, run } = this.workerTools(a, images, audios, { parentFrom: task.from || "" });
     const from = this.agent(task.from);
     // Is it going to spend on something JEV should see first? Searching the internet, retrying something that failed or repeating a task already done.
     let search = a.capabilities.includes("search");
@@ -1870,6 +1965,10 @@ export class Building {
       if (target.role === "boss") { const media = [...images.map((i) => ({ id: i.id, type: "image", text: i.text })), ...audios.map((x) => ({ id: x.id, type: "audio", text: x.text }))].filter((m) => m.id);
         this.e.conversation.push({ role: "report", agent: a.id, name: a.name, content: final, ts: this.now(), images: images.map((i) => i.text), audios: audios.map((x) => x.text), media: media.length ? media : undefined }); }
     }
+    // the boss working on its own (for example, with a result it was waiting for): it tells you in its chat
+    if (a.role === "boss" && !target) this.e.conversation.push({ role: "report", agent: a.id, name: a.name, content: final, ts: this.now(), media: undefined, own: true });
+    // whoever gave this task and wanted its result to carry on is woken up with it
+    if (task.followUp) this.wakeGiver(a, task, final, false);
     // and in its own chat too: what it did on waking up can be seen where you talk to it (before 9.1, only in the chat of whoever it reports to)
     if (a.role !== "boss" && (!target || target.id !== a.id)) {
       const media = [...images.map((i) => ({ id: i.id, type: "image", text: i.text })), ...audios.map((x) => ({ id: x.id, type: "audio", text: x.text }))].filter((m) => m.id);
@@ -1972,6 +2071,14 @@ export class Building {
     this.e.lessons.push(l);
     return l;
   }
+  // The boss asks, in its chat, who should learn a coin's lesson: everyone, some or only that agent (it costs nothing: it's a fixed text)
+  askLessonScope(l) {
+    const j = this.boss(); if (!j) return;
+    const name = l.name || (this.exactAgent(l.agent) || {}).name || "";
+    const q = l.type === "red" ? this.F("You didn't like what {1} did: “{2}”. Shall I make it clear that it mustn't happen again? To everyone, to some, or only to {1}?", name, l.reason)
+      : this.F("You liked what {1} did: “{2}”. Shall I pass that way of working on? To everyone, to some, or only to {1}?", name, l.reason);
+    this.e.conversation.push({ role: "report", agent: j.id, name: j.name, content: q + "\n\n" + this.F("The rule: “{1}”", l.text), ts: this.now(), lesson: l.id, own: true });
+  }
   lessonsModel() { return this.e.settings.lessonsModel || chooseModel("budget", this.models); }
   async writeLesson(l) {
     if (!l || l.state !== "proposed" || l.writtenUp) return l;
@@ -1996,11 +2103,12 @@ export class Building {
     } catch (err) { l.error = err.message; }
     return l;
   }
-  pruneLessons(role) {   // the oldest ones go; pinned ones never (only approved ones count)
+  pruneLessons(role) {   // the oldest ones go; pinned ones never (only approved ones count). Counted per group: a role, one agent, everyone…
     const max = Math.max(1, Math.round(Number(this.e.settings.lessonsPerRole) || 5));
-    const roles = role ? [role] : [...new Set(this.e.lessons.map((l) => l.role))];
-    for (const p of roles) {
-      let toDrop = this.e.lessons.filter((l) => l.role === p && !l.fixed && l.state === "approved");
+    const group = (l) => ({ role: "role:" + l.role, agent: "agent:" + l.agent, all: "all", agents: "agents:" + (l.agents || []).slice().sort().join(",") })[l.scope || "role"];
+    const groups = [...new Set(this.e.lessons.filter((l) => !role || l.role === role || (l.scope && l.scope !== "role")).map(group))];
+    for (const p of groups) {
+      let toDrop = this.e.lessons.filter((l) => group(l) === p && !l.fixed && l.state === "approved");
       while (toDrop.length > max) {
         const oldOne = toDrop.slice().sort((x, y) => x.ts - y.ts)[0];
         if (!oldOne) break;
@@ -2009,7 +2117,18 @@ export class Building {
       }
     }
   }
-  lessonsOf(role) { return this.e.lessons.filter((l) => l.role === role && l.state === "approved"); }
+  lessonsOf(role) { return this.e.lessons.filter((l) => l.role === role && l.state === "approved" && (l.scope || "role") === "role"); }
+  // 9.1: what each agent learns: the lessons for it alone, for its role, for everyone and for the agents chosen (it included)
+  lessonsFor(a) {
+    return this.e.lessons.filter((l) => l.state === "approved" && ({ role: l.role === a.role, agent: l.agent === a.id, all: true, agents: (l.agents || []).includes(a.id) })[l.scope || "role"]);
+  }
+  lessonScopeText(l) {
+    const sc = l.scope || "role", ag = this.exactAgent(l.agent);
+    if (sc === "agent") return this.F("only {1}", ag ? ag.name : l.name || "—");
+    if (sc === "all") return this.L("every agent");
+    if (sc === "agents") return (l.agents || []).map((id) => (this.exactAgent(id) || {}).name).filter(Boolean).join(", ") || "—";
+    return this.F("everyone with the role {1}", this.L((ROLES[l.role] || {}).name || l.role));
+  }
 
   // ---------------- What each agent spends when it wakes up ----------------
   // Can it spend if it wakes up on its own? The fixed-rule ones and those that only run a skill without a brain, no.
@@ -2220,19 +2339,92 @@ export class Building {
     if (j && !ids.includes(j.id)) ids.unshift(j.id);   // the boss chairs: always at the table
     if (ids.length < 2) throw Object.assign(new Error(this.L("A meeting needs at least one agent besides the boss.")), { shown: true });
     if (ids.length > MAX_MEETING_SEATS) throw Object.assign(new Error(this.F("The table seats {1} agents, counting the boss.", MAX_MEETING_SEATS)), { shown: true });
-    const agendaText = String(f.agenda || f.agenda || "").trim().replace(/^\**\s*(orden del d[ií]a|agenda)\s*\**\s*[:.\-–]?\s*/i, "");   // without repeating the title
+    const agendaText = String(f.agenda || "").trim().replace(/^\**\s*(orden del d[ií]a|agenda)\s*\**\s*[:.\-–]?\s*/i, "");   // without repeating the title
     if (!agendaText) throw Object.assign(new Error(this.L("The meeting needs an agenda.")), { shown: true });
-    const r = { id: uid("re_"), created: this.now(), title: String(f.title || this.L("Meeting")).slice(0, 80), agenda: agendaText.slice(0, 2000), participants: ids,
+    const loop = ["improve", "continue"].includes(f.mode);
+    const r = { id: uid("re_"), created: this.now(), title: String(f.title || this.L("Meeting")).slice(0, 80), agenda: agendaText.slice(0, loop ? 60000 : 2000), participants: ids,
       rounds: Math.max(1, Math.round(Number(f.rounds) || 2)), calledBy: calledBy || "you", state: calledBy === "boss" ? "proposed" : "ready",
+      mode: MEETING_MODES.includes(f.mode) ? f.mode : "debate", followUp: f.followUp && f.followUp.by ? f.followUp : null,
       contributions: [], minutes: "", cost: 0, reason: "" };
     this.e.meetings.push(r); this.e.meetings = this.e.meetings.slice(-MAX_MEETINGS);
+    if (loop && ids.filter((id) => id !== (j || {}).id).length < 1) throw Object.assign(new Error(this.L("A loop needs at least one agent besides the boss.")), { shown: true });
     this.logActivity(j || { id: "", name: "" }, (r.calledBy === "boss" ? this.F("proposes the meeting “{1}” ({2} at the table; rounds: {3})", r.title, ids.length, r.rounds) : this.F("called the meeting “{1}” ({2} at the table; rounds: {3})", r.title, ids.length, r.rounds)), 0);
+    return r;
+  }
+  // After the minutes: whoever called it wanting its result to carry on (follow_up) is woken up with them
+  afterMeeting(r) {
+    const f = r.followUp, by = f && this.agent(f.by);
+    if (!by || !by.brain) return;
+    const t = this.assignTask(by, this.F("The meeting “{1}” has finished. Its minutes:\n<<<\n{2}\n>>>\nWhat you said you'd do next: {3}", r.title, String(r.minutes).slice(0, 40000), f.note || this.L("carry on")), f.parentFrom || "", true, 44000);
+    t.wokenBy = "meeting:" + r.id;
+  }
+  // A loop room: the participants, in order, round after round. «improve»: each one receives the whole latest version and returns it
+  // improved, whole. «continue»: each one receives the whole text so far and writes only what comes next. Every version is kept;
+  // at the end the result goes into the minutes as it is (it isn't rewritten) and the boss only sums up how it got there.
+  async holdLoop(r, j) {
+    const workers = r.participants.map((id) => this.agent(id)).filter((a) => a && a !== j);
+    let current = "", last = "";
+    const forModel = (t) => (t.length > MEETING_TRANSCRIPT ? "…" + t.slice(-MEETING_TRANSCRIPT) : t);
+    try {
+      for (let round = 1; round <= r.rounds; round++) {
+        r.currentRound = round;
+        for (const a of workers) {
+          if (!a.brain) { if (round === 1) r.contributions.push({ ts: this.now(), agent: a.id, name: a.name, text: this.L("(doesn't speak: it works with fixed rules, without a brain)"), round, absent: true, cost: 0 }); continue; }
+          if (!this.canWork(a)) { r.contributions.push({ ts: this.now(), agent: a.id, name: a.name, text: this.F("(doesn't speak: it's {1}{2})", a.state, a.statusReason ? ", " + a.statusReason : ""), round, absent: true, cost: 0 }); continue; }
+          const asked = r.mode === "improve"
+            ? (current ? this.F("The question or task:\n{1}\n\nThe latest version, by {2}:\n<<<\n{3}\n>>>\n\nImprove it: correct mistakes, fill in what's missing and make it clearer and more useful. Give back the WHOLE improved version, ready to use, without comments about what you changed.", r.agenda, last, forModel(current))
+              : this.F("The question or task:\n{1}\n\nWrite the first complete version.", r.agenda))
+            : (current ? this.F("What is being written:\n{1}\n\nThe text so far:\n<<<\n{2}\n>>>\n\nContinue it exactly where it left off, with the same characters, tone and style. Write only the new part: don't repeat or sum up what's above, and don't end it unless that's what was asked.", r.agenda, forModel(current))
+              : this.F("What is being written:\n{1}\n\nWrite the beginning.", r.agenda));
+          const alreadyTaken = this.busyIds.has(a.id);
+          if (!alreadyTaken) this.busyIds.add(a.id); this.notice("state");
+          try {
+            const res = await this.call(a, [{ role: "system", content: this.systemMessages(a, this.F("You're in the loop room “{1}”: each one takes the work from the previous one and passes it on. Deliver only the work, without greetings or comments.", r.title)) },
+              { role: "user", content: asked }], { concept: this.F("loop “{1}”", r.title) });
+            const text = String(res.msg.content || "").trim();
+            r.cost += res.cost;
+            r.contributions.push({ ts: this.now(), agent: a.id, name: a.name, text, round, cost: res.cost, version: r.contributions.filter((x) => !x.absent).length + 1 });
+            if (text) { current = r.mode === "improve" ? text : (current ? current + "\n\n" + text : text); last = a.name; }
+          } finally { if (!alreadyTaken) this.busyIds.delete(a.id); }
+          await this.save();
+        }
+      }
+      r.currentRound = 0;
+      const turns = r.contributions.filter((x) => !x.absent);
+      let summary = "";
+      if (j && j.brain && this.canWork(j)) {
+        try {
+          const res = await this.call(j, [{ role: "system", content: this.systemMessages(j, this.F("You chair the loop room “{1}”.", r.title)) },
+            { role: "user", content: this.F("The loop has finished: {1} turns, mode “{2}”. What each one did, in short:\n{3}\n\nIn three lines at most, for the minutes: how the work changed from turn to turn and whether the last version is the best. Don't rewrite the result.", turns.length, r.mode,
+              turns.map((x) => `${x.name} (${this.F("round {1}", x.round)}): ${x.text.slice(0, 240).replace(/\s+/g, " ")}…`).join("\n")) }], { concept: this.F("minutes of “{1}”", r.title), max_tokens: 400 });
+          r.cost += res.cost; summary = String(res.msg.content || "").trim();
+        } catch (err) { summary = this.F("(the boss couldn't sum it up: {1})", err.message); }
+      }
+      r.result = current;
+      r.minutes = this.F("## Result\n\n{1}", current || this.L("(nobody wrote anything)")) + (summary ? this.F("\n\n## How it got here\n\n{1}", summary) : "");
+      r.state = "finished"; r.finished = this.now();
+      if (j) {
+        this.rememberShort(j, this.F("Minutes of the meeting “{1}”: {2}", r.title, r.minutes.slice(0, 500)), "meeting");
+        this.e.conversation.push({ role: "report", agent: j.id, name: this.L("Meeting room"), content: this.F("Minutes of “{1}”\n\n{2}", r.title, r.minutes), ts: this.now(), meeting: r.id });
+      }
+      this.afterMeeting(r);
+    } catch (err) {
+      r.state = "interrupted"; r.reason = err.message;
+    } finally {
+      this._reunion = null; r.currentRound = 0;
+      this.applyBudget();
+      await this.save();
+    }
     return r;
   }
   estimateMeeting(r) {   // ASSUMPTION: about 3,000 input tokens and 600 output tokens per contribution (no word limit since 9.1)
     const ags = r.participants.map((id) => this.agent(id)).filter(Boolean);
     const price = (a) => { const m = this.model(a.brain); return m ? 3000 * m.inPrice + 600 * m.outPrice : 0; };
     const j = ags.find((a) => a.role === "boss"), others = ags.filter((a) => a !== j && a.brain && a.role !== "jev");
+    if (["improve", "continue"].includes(r.mode)) {   // a loop: nobody chairs each round; the boss only sums it up at the end
+      const loopPrice = (a) => { const m = this.model(a.brain); return m ? 4000 * m.inPrice + 1500 * m.outPrice : 0; };
+      return { calls: r.rounds * others.length + 1, cost: r.rounds * others.reduce((s, a) => s + loopPrice(a), 0) + (j ? price(j) : 0) };
+    }
     const calls = r.rounds * others.length + r.rounds + 1;
     const cost = r.rounds * others.reduce((s, a) => s + price(a), 0) + (r.rounds + 1) * (j ? price(j) : 0);
     return { calls, cost };
@@ -2244,6 +2436,7 @@ export class Building {
     const j = this.boss();
     if (!j) throw new Error(this.L("Without a boss there's nobody to chair."));
     this._reunion = r.id; r.state = "in_progress"; r.startedAt = this.now();
+    if (["improve", "continue"].includes(r.mode)) return await this.holdLoop(r, j);
     // the whole transcript, without cutting what each one said (before 9.1: the last 14 contributions, 700 letters each);
     // only if it got enormous, the oldest part goes (MEETING_TRANSCRIPT letters at most)
     const transcript = () => { let t = r.contributions.filter((x) => !x.absent).map((x) => `${x.name}${x.chairs ? this.L(" (chairs)") : ""}: ${String(x.text)}`).join("\n\n"); if (t.length > MEETING_TRANSCRIPT) t = "…" + t.slice(-MEETING_TRANSCRIPT); return t; };
@@ -2278,6 +2471,7 @@ export class Building {
       r.cost += res.cost; r.minutes = String(res.msg.content || "").trim(); r.state = "finished"; r.finished = this.now();
       this.rememberShort(j, this.F("Minutes of the meeting “{1}”: {2}", r.title, r.minutes.slice(0, 500)), "meeting");
       this.e.conversation.push({ role: "report", agent: j.id, name: this.L("Meeting room"), content: this.F("Minutes of “{1}”\n\n{2}", r.title, r.minutes), ts: this.now(), meeting: r.id });
+      this.afterMeeting(r);
     } catch (err) {
       r.state = "interrupted"; r.reason = err.message;
     } finally {
@@ -2410,12 +2604,12 @@ export class Building {
     const storeyList = storeys.map((p) => { const r = seating(this.e, p.id); return this.F("- id \"{1}\": {2} — {3} (head office: {4}; {5}/{6} offices; {7}/{8} in the pool)", p.id, p.name, p.job || this.L("no job"), (r.head_office[0] || {}).name || this.L("vacant"), r.office.length, p.offices, r.pool.length, p.pools * PER_POOL); }).join("\n") || this.L("(no floors yet)");
     const system = [c.instructions,
       this.L("Reply ONLY with a JSON object, nothing else, with these keys (keep the keys and the quoted option values exactly as written; write the texts in English):"),
-      this.L("{\"name\": \"short and easy to remember\", \"role\": \"section_head\" | \"subagent\", \"floor\": \"id of an existing floor\" or \"new\", \"newFloor\": {\"name\": \"...\", \"job\": \"...\"} (only if floor is \"new\"), ") +
+      this.L("{\"name\": \"short and easy to remember\", \"role\": \"section_head\" | \"subagent\" | \"junior\" (very simple, repetitive work with a cheap brain), \"floor\": \"id of an existing floor\" or \"new\", \"newFloor\": {\"name\": \"...\", \"job\": \"...\"} (only if floor is \"new\"), ") +
       this.L("\"seat\": \"head_office\" (section head only) | \"office\" | \"pool\" (for simple, cheap sub-agents), \"instructions\": \"full instructions in the second person, 60-200 words\", \"objective\": \"one sentence\", ") +
       this.L("\"personality\": \"one or two sentences: its tone, its humour and whether it gets to the point\", ") +
       this.L("\"level\": \"budget\" | \"mid\" | \"high\", \"heartbeat\": {\"every\": number, \"unit\": \"min\" | \"h\" | \"d\" | \"on_request\"}, \"onWake\": \"tasks\" | \"objective\", ") +
       this.L("\"capabilities\": list of [") + BASIC_CAPS.map((x) => `"${x}"`).join(", ") + this.L("], \"look\": {\"p\": \"boy\" | \"girl\" | \"grandpa\" | \"grandma\", \"clothes\": \"#rrggbb\", \"hair\": \"#rrggbb\", \"eyes\": \"#rrggbb\"}, \"why\": \"one sentence: why this design and roughly how much it will spend\"}"),
-      this.L("Rules: the cheapest brain that can do it well; the slowest heartbeat that will do (every minute costs a lot); “search” only if it really needs the internet; if the work is big and repetitive, a section head with sub-agents in the pool. ") +
+      this.L("Rules: the cheapest brain that can do it well; the slowest heartbeat that will do (every minute costs a lot); “search” only if it really needs the internet; if the work is big and repetitive, a section head with juniors in the pool (cheap, for the simple and repetitive part). ") +
       this.L("If the right floor doesn't exist, propose a new one with its job. Never give it capabilities to send, delete or pay. ") +
       this.L("In the instructions, don't attribute tools, sub-agents, access or data it doesn't have: only what it can really do with its capabilities. ") +
       this.L("Personality: if you're given one, use it as it is; if not, propose a short one (tone, humour and whether it gets to the point) and mention it in “why” so your owner can change it if they want."),
@@ -2428,7 +2622,7 @@ export class Building {
     let j = null; try { j = m ? JSON.parse(m[0]) : null; } catch {}
     if (!j || typeof j !== "object") throw Object.assign(new Error(this.L("The Creator didn't return a readable profile. Try explaining it another way or with another brain.")), { shown: true });
     const profile = {
-      name: String(j.name || "").slice(0, 40), role: j.role === "section_head" ? "section_head" : "subagent",
+      name: String(j.name || "").slice(0, 40), role: ["section_head", "junior"].includes(j.role) ? j.role : "subagent",
       floor: storeys.some((p) => p.id === j.floor) ? j.floor : "", newFloor: null,
       seat: ["head_office", "office", "pool"].includes(j.seat) ? j.seat : "", instructions: String(j.instructions || "").slice(0, 6000), objective: String(j.objective || "").slice(0, 1000),
       personality: String(op.personality || j.personality || "").slice(0, MAX_PERSONALITY),
@@ -2444,6 +2638,7 @@ export class Building {
       else profile.floor = storeys[0].id;
     }
     if (profile.role === "section_head") profile.seat = "head_office";
+    else if (profile.role === "junior" && !profile.seat) profile.seat = "pool";
     else if (profile.seat === "head_office") profile.seat = "office";
     profile.brain = chooseModel(profile.level, this.models);
     const prop = { id: uid("pr_"), ts: this.now(), requested: String(text).slice(0, 1000), from: op.from || "", profile, state: "pending" };
@@ -2451,6 +2646,24 @@ export class Building {
     this.e.proposals = this.e.proposals.slice(-20);
     this.logActivity(c, this.F("designed an agent: {1}", profile.name || this.L("(no name)")), 0);
     return { proposal: prop, cost: r.cost };
+  }
+  // 9.1: the Creator writes a field of an agent (instructions, objective or personality) from what you say in your own words
+  async creatorWrite(field, text, about = {}) {
+    const c = this.byRoleList("creator").find((x) => this.canWork(x)) || this.byRoleList("creator")[0];
+    if (!c) throw Object.assign(new Error(this.L("There's no Agent Creator in the building. Install it from “Built-in agents”.")), { shown: true });
+    const what = { instructions: this.L("Write the agent's instructions in the second person (“You…”), clear and complete, between 60 and 250 words, from what the owner says. Keep everything they asked for and their way of putting it; don't add limits, tools, access or data they didn't ask for. Reply only with the instructions."),
+      objective: this.L("Write the agent's objective in one or two sentences, concrete and easy to check, from what the owner says. Reply only with the objective."),
+      personality: this.F("Write the agent's personality in one or two sentences ({1} characters at most): its tone, its humour and whether it gets to the point, from what the owner says. Reply only with the personality.", MAX_PERSONALITY) }[field];
+    if (!what) throw new Error("field");
+    if (!String(text || "").trim() && !about.instructions) throw Object.assign(new Error(this.L("First write something in your own words.")), { shown: true });
+    const context = [about.name ? this.F("Name: {1}", about.name) : "", about.role ? this.F("Role: {1}", this.L((ROLES[about.role] || {}).name || about.role)) : "",
+      about.instructions && field !== "instructions" ? this.F("Its instructions: {1}", String(about.instructions).slice(0, 2000)) : "", about.objective && field !== "objective" ? this.F("Its objective: {1}", about.objective) : ""].filter(Boolean).join("\n");
+    const r = await this.call(c, [{ role: "system", content: [c.instructions, what].join("\n\n") },
+      { role: "user", content: (context ? context + "\n\n" : "") + this.F("What the owner says: {1}", String(text || "").slice(0, 6000)) }], { concept: this.F("writes the {1} of an agent", this.L(field)), max_tokens: 900 });
+    let out = String(r.msg.content || "").trim().replace(/^["“«]|["”»]$/g, "");
+    out = out.slice(0, field === "personality" ? MAX_PERSONALITY : field === "objective" ? 1000 : 6000);
+    this.logActivity(c, this.F("wrote the {1} of {2}", this.L(field), about.name || this.L("a new agent")), 0);
+    return { text: out, cost: r.cost };
   }
   async creatorWork(a, task, op = {}) {
     const c = await this.askJev(a, this.F("Create another agent: {1}", task.text.slice(0, 300)), "create_agent");
@@ -2513,7 +2726,8 @@ export class Building {
       this.L("You can use tools: search_memory and save_memory (long-term memory)") + (j.capabilities.includes("create_images") ? ", create_image" : "") + (j.capabilities.includes("create_music") ? ", create_music" : "") + (this.skillsOf(j).length ? this.L(", use_skill (your hands)") : "") + ".",
       memory, short
     ].filter(Boolean).join("\n\n") : [
-      this.L("You can use tools: assign_task (give work to an agent by name; now=true if it's urgent; if they ask for a new agent, give the job to the Agent Creator), consult_sages (only for decisions of the utmost importance: it's expensive), call_meeting (propose a meeting of several agents with an agenda; your owner confirms the rounds), search_memory and save_memory (long-term memory), create_image and create_music (if you have those capabilities)."),
+      this.L("You can use tools: assign_task (give work to an agent by name; now=true if it's urgent; with follow_up you're woken up with its result and you carry on by yourself, step by step, until the work is done; if they ask for a new agent, give the job to the Agent Creator), consult_sages (only for decisions of the utmost importance: it's expensive), call_meeting (a debate, or a loop room where each one improves or continues the previous one's work; your owner confirms the rounds; with follow_up you're woken up with the minutes), choose_best (JEV compares several answers and picks the best), search_memory and save_memory (long-term memory), create_image and create_music (if you have those capabilities)."),
+      this.L("When your owner gives you something that takes several steps, don't stop after the first one to ask them to carry on: plan it, hand out each step with follow_up and carry on by yourself each time you're woken up with a result. Only come back to your owner to ask for permission or to deliver the result."),
       this.L("When you share out work, say who and what, in one sentence. Don't do yourself what a cheaper agent can do."),
       reports ? this.L("Recent reports from your team:\n") + reports : "",
       this.e.settings.pause ? this.L("The building is on a general pause: the tasks you share out wait until your owner wakes the agent up or lifts the pause. Tell them when you share out work.") : "",
@@ -2527,7 +2741,7 @@ export class Building {
     let proposedMeeting = "";
     let sageQueries = 0;
     const audios = [];
-    const ownOnes = this.workerTools(j, images, audios);
+    const ownOnes = this.workerTools(j, images, audios, { inChat: true, parentFrom: "" });
     const designed = [];   // agents the Creator designs in this conversation (they're shown with their buttons)
     const toolDefs = !isBoss ? [...ownOnes.h] : [
       { name: "assign_task", description: this.L("Gives a task to an agent in the building by name."), parameters: { type: "object", properties: { agent: { type: "string" }, task: { type: "string" }, now: { type: "boolean" } }, required: ["agent", "task"] } },
@@ -2535,7 +2749,9 @@ export class Building {
       { name: "search_memory", description: this.L("Searches the long-term memory by keywords."), parameters: { type: "object", properties: { words: { type: "string" } }, required: ["words"] } },
       { name: "save_memory", description: this.L("Saves a fact in the long-term memory."), parameters: { type: "object", properties: { text: { type: "string" }, tags: { type: "array", items: { type: "string" } } }, required: ["text"] } }
     ];
-    if (isBoss) toolDefs.push({ name: "call_meeting", description: this.L("Proposes a meeting in the room: title, agenda, participants by name (up to 9 besides you) and number of rounds. Your owner confirms the rounds before it starts."), parameters: { type: "object", properties: { title: { type: "string" }, agenda: { type: "string" }, participants: { type: "array", items: { type: "string" } }, rounds: { type: "integer" } }, required: ["title", "agenda", "participants", "rounds"] } });
+    if (isBoss) toolDefs.push(this.meetingTool());
+    if (isBoss) { const cb = ownOnes.h.find((x) => x.name === "choose_best"); if (cb) toolDefs.push(cb); }
+    if (isBoss) { const at = toolDefs.find((x) => x.name === "assign_task"); at.description = this.L("Gives a task to an agent in the building by name. If you need its result to carry on (a step-by-step plan, a loop…), say in follow_up what you'll do with it: you'll be woken up with the result and you carry on by yourself."); at.parameters.properties.follow_up = { type: "string" }; }
     if (isBoss && j.capabilities.includes("create_music")) toolDefs.push(ownOnes.h.find((x) => x.name === "create_music"));
     if (isBoss && j.capabilities.includes("create_images")) toolDefs.push({ name: "create_image", description: this.L("Creates an image from a detailed description."), parameters: { type: "object", properties: { description: { type: "string" } }, required: ["description"] } });
     if (isBoss) { const us = ownOnes.h.find((x) => x.name === "use_skill"); if (us) toolDefs.push(us); toolDefs.find((x) => x.name === "save_memory").parameters.properties.topic = { type: "string" }; }
@@ -2552,7 +2768,7 @@ export class Building {
       if (!isBoss) { const r = await ownOnes.run(name, x); if (name === "create_image") events.push(this.L("image created")); if (name === "create_music") events.push(this.L("music created")); return r; }
       if (name === "create_music") { const r = await ownOnes.run(name, x); events.push(this.L("music created")); return r; }
       if (name === "call_meeting") {
-        const r = this.callMeeting({ title: x.title, agenda: x.agenda, participants: x.participants || [], rounds: x.rounds }, "boss");
+        const r = this.callMeeting({ title: x.title, agenda: x.agenda, participants: x.participants || [], rounds: x.rounds, mode: x.mode, followUp: x.follow_up ? { by: j.id, note: x.follow_up, parentFrom: "" } : null }, "boss");
         events.push(this.L("meeting proposed"));
         proposedMeeting = r.id;
         return this.F("Meeting “{1}” proposed with {2} at the table; rounds: {3}. It will start when your owner confirms the rounds.", r.title, r.participants.length, r.rounds);
@@ -2564,11 +2780,12 @@ export class Building {
         if (ag.role === "sage") return this.L("Sages aren't given tasks: use consult_sages, and only for something of the utmost importance.");
         if (ROLES_CONTROL.includes(ag.role)) return this.F("{1} is a control agent and doesn't take tasks.", ag.name);
         if (!this.canWork(ag)) return this.F("{1} is {2} ({3}); it can't work right now.", ag.name, ag.state, ag.statusReason);
-        this.assignTask(ag, x.task, j.id, !!x.now);
+        const t = this.assignTask(ag, x.task, j.id, !!x.now || !!x.follow_up, 30000);
+        if (x.follow_up) t.followUp = { by: j.id, note: String(x.follow_up).slice(0, 800), parentFrom: "" };
         events.push(this.F("task for {1}", ag.name));
         if (this.e.settings.pause && this.spendsOnWake(ag)) { events.push(this.L("paused: the task waits")); return this.F("Task assigned to {1}. The building is paused: it will do it when your owner wakes it up (“Wake up now” in its profile) or lifts the pause.", ag.name); }
         if (x.now) urgent.push(ag.id);
-        return this.F("Task assigned to {1}{2}.", ag.name, x.now ? this.L("; starting now") : this.L("; it will do it on its next heartbeat (") + heartbeatText(ag.heartbeat) + ")");
+        return this.F("Task assigned to {1}{2}.", ag.name, x.follow_up ? this.L("; you'll be woken up with its result") : x.now ? this.L("; starting now") : this.L("; it will do it on its next heartbeat (") + heartbeatText(ag.heartbeat) + ")");
       }
       if (name === "consult_sages") {
         if (sageQueries++ >= 1) return this.L("You already consulted the sages in this conversation; use what they said.");
@@ -2586,6 +2803,7 @@ export class Building {
         }));
         return resp.join("\n\n");
       }
+      if (name === "choose_best") { events.push(this.L("JEV compares")); return (await this.jevChoose(j, x.question, x.options)).text; }
       if (name === "search_memory") { const r = this.searchMemory(x.words || ""); events.push(this.L("Memory searched")); return this.memoryText(r); }
       if (name === "save_memory") { this.saveMemory(x.text, x.tags, j.id, x.topic); events.push(this.L("saved to memory")); return "Saved."; }
       if (name === "use_skill") { events.push(this.L("skill ") + (x.skill || "")); return await this.useSkill(j, x.skill, x.data, x.reason); }
@@ -2632,7 +2850,7 @@ export class Building {
         const m = this.giveCoin(ag, acc.coinType, acc.reason, "you");
         await this.save();
         const l = e.lessons.find((x) => x.coin === m.id);
-        if (l) { await this.writeLesson(l); await this.save(); }   // a cheap model turns it into a rule; it waits for your yes in the inbox
+        if (l) { await this.writeLesson(l); this.askLessonScope(l); await this.save(); }   // a cheap model turns it into a rule; the boss asks you who learns it
         return { ok: true, id: m.id, lesson: l ? { id: l.id, text: l.text, writtenUp: !!l.writtenUp } : null };
       }
       case "coin.confirm": case "coin.discard": {
@@ -2642,14 +2860,21 @@ export class Building {
         let l = null;
         if (m.state === "confirmed") l = this.createLesson(m);
         await this.save();
-        if (l) { await this.writeLesson(l); await this.save(); }
+        if (l) { await this.writeLesson(l); this.askLessonScope(l); await this.save(); }
         return { ok: true };
       }
       case "lesson.approve": case "lesson.reject": {
         const l = e.lessons.find((x) => x.id === acc.lesson);
         if (!l || l.state !== "proposed") throw Object.assign(new Error(this.L("That lesson is no longer pending.")), { shown: true });
         if (t === "lesson.reject") e.lessons = e.lessons.filter((x) => x !== l);
-        else { if (typeof acc.text === "string" && acc.text.trim()) l.text = acc.text.replace(/\s+/g, " ").trim().slice(0, 300); l.state = "approved"; l.approved = this.now(); this.pruneLessons(l.role); }
+        else {
+          if (typeof acc.text === "string" && acc.text.trim()) l.text = acc.text.replace(/\s+/g, " ").trim().slice(0, 300);
+          // who learns it: you choose (only that agent, its role, everyone or the ones you tick)
+          if (["agent", "role", "all", "agents"].includes(acc.scope)) l.scope = acc.scope;
+          if (l.scope === "agents") { l.agents = [...new Set((Array.isArray(acc.agents) ? acc.agents : []).filter((id) => this.exactAgent(id)))]; if (!l.agents.length) l.scope = "agent"; }
+          l.state = "approved"; l.approved = this.now(); this.pruneLessons(l.role);
+          this.logActivity(this.exactAgent(l.agent) || { id: l.agent, name: l.name || "" }, this.F("new lesson, for {1}: {2}", this.lessonScopeText(l), l.text.slice(0, 120)), 0);
+        }
         await this.save(); return { ok: true };
       }
       case "lesson.draft": { const l = e.lessons.find((x) => x.id === acc.lesson); if (l) { l.writtenUp = false; await this.writeLesson(l); } await this.save(); return { ok: true, text: l && l.text }; }
@@ -2747,7 +2972,7 @@ export class Building {
           c.reportsTo = j;
         }
         for (const k of allowed) if (k in c) ag[k] = c[k];
-        if ("role" in c && ["section_head", "subagent"].includes(c.role) && ["section_head", "subagent"].includes(ag.role)) ag.role = c.role;
+        if ("role" in c && ["section_head", "subagent", "junior"].includes(c.role) && ["section_head", "subagent", "junior"].includes(ag.role)) ag.role = c.role;
         if ("name" in c) ag.name = String(c.name || "").trim().slice(0, 40) || ag.name;
         if ("look" in c) ag.look = cleanLook(Object.assign({}, ag.look, c.look));
         if ("voice" in c && c.voice && typeof c.voice === "object") ag.voice = { model: String(c.voice.model || ""), voice: String(c.voice.voice || "") };
@@ -2762,6 +2987,22 @@ export class Building {
         if (pr) pr.state = "created";
         this.applyBudget(); await this.save(); return { ok: true, id: fresh.id };
       }
+      // 9.1: its own look. «look.generate» asks the image model for a character in the building's style, on a plain green background
+      // (the page cuts it out); «look.store» keeps the cut-out picture with the media and gives its id.
+      case "look.generate": {
+        const ag = (acc.id && this.exactAgent(acc.id)) || this.boss();
+        if (!String(acc.description || "").trim()) throw Object.assign(new Error(this.L("Describe what it looks like.")), { shown: true });
+        const im = await this.createImage(ag, LOOK_STYLE + String(acc.description).slice(0, 1200));
+        this.logActivity(ag, this.L("created its own look with AI"), 0);
+        await this.save(); return { ok: true, url: im.url, cost: im.cost };
+      }
+      case "look.store": {
+        if (!/^data:image\/png;base64,/.test(String(acc.dataUrl || "")) || acc.dataUrl.length > 8e6) throw Object.assign(new Error(this.L("That picture can't be used.")), { shown: true });
+        const id = uid("med_");
+        await this.saveMedia(id, acc.dataUrl, "image", this.L("an agent's look"));
+        return { ok: true, media: id };
+      }
+      case "creator.write": { const ag = acc.id ? this.exactAgent(acc.id) : null; const r = await this.creatorWrite(acc.field, acc.text, Object.assign({}, ag ? { name: ag.name, role: ag.role, instructions: ag.instructions, objective: ag.objective } : {}, acc.about || {})); await this.save(); return { ok: true, text: r.text, cost: r.cost }; }
       case "proposeAgent": { const r = await this.proposeAgent(acc.text, { personality: acc.personality }); await this.save(); return { ok: true, proposal: r.proposal, cost: r.cost }; }
       case "acceptProposal": {
         const pr = e.proposals.find((x) => x.id === acc.proposal);

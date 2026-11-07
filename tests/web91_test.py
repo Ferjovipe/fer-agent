@@ -19,15 +19,30 @@ ALL["data"] = TEXT + VOICES + HEARING_MODELS + IMAGES + MUSIC + DECISIONS + OTHE
 
 DESIGN = {"name": "Redactor 1", "role": "subagent", "floor": "tech", "seat": "office", "instructions": "Escribes historias de ficción en español.", "objective": "Escribir historias.",
           "personality": "Un genio loco.", "level": "budget", "heartbeat": {"every": 1, "unit": "on_request"}, "onWake": "tasks", "capabilities": ["write"], "look": {"p": "boy"}, "why": "Un escritor, solo cuando se lo pidas."}
+# a character on a plain green background, as the image model is asked for (to cut it out)
+import io, base64
+from PIL import Image, ImageDraw
+_im = Image.new("RGB", (300, 600), (0, 255, 0)); _d = ImageDraw.Draw(_im)
+_d.ellipse((110, 60, 190, 140), fill=(240, 190, 160)); _d.rectangle((95, 150, 205, 420), fill=(200, 40, 40)); _d.rectangle((110, 420, 190, 560), fill=(30, 30, 90))
+_buf = io.BytesIO(); _im.save(_buf, "PNG"); GREEN = base64.b64encode(_buf.getvalue()).decode()
 def chat91(b):
     msgs = b["messages"]; sys0 = str(msgs[0]["content"]); last = msgs[-1]
     user = next((x for x in reversed(msgs) if x["role"] == "user"), {"content": ""}); ut = user["content"] if isinstance(user["content"], str) else ""
+    if "Estás en la sala de bucle" in sys0:
+        prev = re.search(r"La última versión, de [^:]+:\n<<<\n([\s\S]*?)\n>>>", ut)
+        who = re.search(r"Te llamas ([^.]+)\.", sys0).group(1)
+        return resp((prev.group(1) + " + " + who) if prev else "v1 de " + who, cost=0.0002)
+    if "El bucle ha terminado" in ut: return resp("Mejoró en cada vuelta; la última es la mejor.")
+    if "Escribe el objetivo del agente" in sys0: return resp("Saludar cada mañana con una frase distinta.")
     if "Responde SOLO con un objeto JSON" in sys0 and "Creador" in sys0: return resp(json.dumps(DESIGN))
     if "Creador de agentes" in sys0 and last["role"] == "tool": return resp("Te lo he dejado aquí abajo: acéptalo para crearlo.")
     if "Creador de agentes" in sys0 and "crea un redactor" in ut.lower(): return resp("", ("design_agent", {"request": "Un escritor de ficción llamado Redactor 1, solo cuando se lo pidan."}))
     if "Gemma" in sys0: return resp("¡Hola! Que tengas un día precioso.", cost=0.0001)
     return chat(b)
 def router91(route, request):
+    if request.url == "https://openrouter.ai/api/v1/images" and request.method == "POST" and "pure green background" in request.post_data:
+        calls.append({"image": json.loads(request.post_data)})
+        return route.fulfill(status=200, content_type="application/json", headers=CORS, body=json.dumps({"data": [{"b64_json": GREEN, "media_type": "image/png"}], "usage": {"cost": 0.04}}))
     if request.url == "https://openrouter.ai/api/v1/chat/completions" and request.method == "POST":
         b = json.loads(request.post_data); calls.append(b)
         return route.fulfill(status=200, content_type="application/json", headers=CORS, body=chat91(b))
@@ -130,6 +145,67 @@ try:
         modes = page.eval_on_selector_all("#drawerBody .work-mode label.cap", "ls => ls.map(l => l.querySelector('span').firstChild.textContent)")
         check(modes == ["Solo cuando se lo piden", "Se despierta solo"], f"and «When it works», the same choice as in the profile: {modes}")
         photo(page, "4-create-agent")
+        page.click("#closeDrawer")
+        # ---------- second round: Junior, the Creator writes it, personality chips ----------
+        page.click("#createAgent") if page.is_visible("#createAgent") else None
+        page.wait_for_selector("#drawer:not([hidden]) >> text=Cuéntaselo con tus palabras")
+        roles = page.eval_on_selector_all("#drawerBody .field:has(> span:text-is('Papel')) option", "os => os.map(o => o.textContent)")
+        check("Junior" in roles, f"the Junior role, for very simple and repetitive jobs: {roles}")
+        page.click("#closeDrawer")
+        profile(page, "Gemma", "Trabajo")
+        page.click("#profile .personality-chips button:text-is('Divertido')"); page.wait_for_timeout(400)
+        check("divertido" in agent(page, "Gemma")["personality"].lower(), f"personality: tick a ready-made one: «{agent(page, 'Gemma')['personality']}»")
+        page.fill("#profile .field:has(> span:text-is('Objetivo')) textarea", "que salude por las mañanas")
+        page.locator("#profile button.creator-writes").last.click()
+        page.wait_for_function("JSON.parse(localStorage.getItem('ferAgent.state')).agents.find(a => a.name === 'Gemma').objective.startsWith('Saludar cada mañana')", timeout=15000)
+        check(page.input_value("#profile .field:has(> span:text-is('Objetivo')) textarea").startswith("Saludar cada mañana"), "«Let the Creator write it»: the objective, written from your words")
+        photo(page, "5-work-creator-chips")
+        # ---------- a coin: the boss asks who learns the lesson ----------
+        chat_with(page, "Gemma")
+        page.locator("#messages .msg.report .coin-btn").first.click()
+        page.fill(".reason-row input", "Saludó con gracia"); page.click(".reason-row .btn.primary")
+        page.wait_for_timeout(800); page.click("#closeChat")
+        chat_with(page, "Jefe")
+        page.wait_for_selector("#messages .lesson-reach", timeout=15000)
+        check("Te gustó lo que hizo Gemma" in page.inner_text("#messages .msg.report >> nth=-1"), "the boss asks, in its chat, who should learn it")
+        page.click("#messages .lesson-reach button:has-text('Solo Gemma')"); page.wait_for_timeout(500)
+        l = next(x for x in state(page)["lessons"] if "gracia" in x.get("reason", ""))
+        check(l["state"] == "approved" and l.get("scope") == "agent", f"only Gemma learns it: {l.get('scope')}")
+        check("La aprende: solo Gemma" in page.inner_text("#messages"), "and the chat says who learns it")
+        page.click("#closeChat")
+        # ---------- a loop room: each one improves the previous one's whole version ----------
+        page.click("#openRooms"); page.wait_for_selector("#roomsView:not([hidden]) .form-dark")
+        page.fill(".form-dark input >> nth=0", "Lupes")
+        page.click(".room-mode:has-text('Bucle: mejorar') input"); page.wait_for_timeout(300)
+        page.fill(".form-dark textarea", "¿Cuál es la mejor forma de aprender un idioma?")
+        page.click(".choose-attendees label:has-text('Gemma') input"); page.click(".choose-attendees label:has-text('Redactor 1') input")
+        check("Gemma → Redactor 1" in page.inner_text(".form-dark .loop-order"), f"the order of the loop, as you tick them: {page.inner_text('.form-dark .loop-order')}")
+        page.fill(".form-dark input[type=number]", "2")
+        page.click(".form-dark .btn.primary"); page.wait_for_selector(".room .btn.primary")
+        page.click(".room .btn.primary")
+        page.wait_for_function("JSON.parse(localStorage.getItem('ferAgent.state')).meetings.some(r => r.title === 'Lupes' && r.state === 'finished')", timeout=30000)
+        page.wait_for_selector(".room .minutes", timeout=10000)
+        mins = page.inner_text(".room .minutes")
+        check("v1 de Gemma + Redactor 1 + Gemma + Redactor 1" in mins and "Cómo se llegó aquí" in mins, f"the minutes: the last version, whole, and how it got there: «{mins[:120]}»")
+        check(page.is_visible(".room .minutes .copy-btn") and "versión 4" in page.inner_text(".room .transcript"), "every version is kept, and the result can be copied")
+        photo(page, "6-loop-room")
+        page.click("#roomsView .back-btn")
+        # ---------- its own look, made with AI ----------
+        profile(page, "Gemma", "Identidad")
+        page.click("#profile button:text-is('Cambiar su aspecto')"); page.wait_for_selector("#drawerBody .own-look")
+        page.fill("#drawerBody .own-look textarea", "una chica con chaqueta roja")
+        page.click("#drawerBody .own-look button:text-is('Crearlo con IA')")
+        page.wait_for_function("JSON.parse(localStorage.getItem('ferAgent.state')).agents.find(a => a.name === 'Gemma').look.p === 'custom'", timeout=20000)
+        look = agent(page, "Gemma")["look"]
+        check(look["media"].startswith("med_") and look["accent"].startswith("#"), f"its own look: kept with the media, with its colour ({look})")
+        img = [x for x in calls if isinstance(x, dict) and "image" in x][-1]["image"]
+        check("pure green background" in img["prompt"] and "una chica con chaqueta roja" in img["prompt"], "asked in the building's style, on green, with your description")
+        corner = page.evaluate("""async () => { const src = document.querySelector('#drawerBody .fig-preview').src; const i = new Image(); i.src = src; await i.decode();
+          const c = document.createElement('canvas'); c.width = i.naturalWidth; c.height = i.naturalHeight; const x = c.getContext('2d'); x.drawImage(i, 0, 0); return [c.width, c.height, x.getImageData(0, 0, 1, 1).data[3]]; }""")
+        check(corner[1] == 880 and corner[2] == 0, f"cut out of the green and sized like the others: {corner}")
+        page.click("#closeDrawer"); page.wait_for_timeout(500)
+        check(page.eval_on_selector(f".fig[data-id='gemma'] img", "i => i.src.startsWith('data:image/png') || i.src.startsWith('blob:')"), "and that's how it looks in the building")
+        photo(page, "7-own-look")
         check(not errors, f"no JavaScript errors: {errors[:3]}")
         b.close()
 finally:

@@ -581,7 +581,7 @@ test("coins: the gold or the red one becomes a lesson for its role; 5 per role (
   assert.deepEqual(ed.lessonsOf("subagent").map((l) => l.text), ["Hazlo así: Resumen claro y con fuentes", "No lo hagas: Se inventó una cifra"]);
   ed.assignTask(bus, "Algo", "", true);
   await ed.wakeUp(bus.id);
-  assert.match(lastSystem, /Lecciones de tu papel:/, "another agent with the same role sees them");
+  assert.match(lastSystem, /Lecciones que has aprendido:/, "another agent with the same role sees them (approved without choosing: for its role, as before 9.1)");
   assert.match(lastSystem, /No lo hagas: Se inventó una cifra/);
   const first = ed.lessonsOf("subagent")[0];
   await ed.run({ type: "lesson.pin", lesson: first.id, fixed: true });
@@ -624,7 +624,7 @@ test("each agent has its own chat, with its brain and its instructions", async (
   assert.equal(calls.at(-1).body.model, ed.agent("techie").brain);
   assert.equal(ed.agent("techie").chat.length, 2);
   assert.equal(ed.e.conversation.length, 0, "it doesn't get mixed with the boss's chat");
-  assert.ok(!(calls.at(-1).body.tools || []).some((t) => t.function.name === "assign_task"), "sharing out work is still the boss's job");
+  assert.ok((calls.at(-1).body.tools || []).some((t) => t.function.name === "assign_task"), "9.1: any agent can hand work to another one (not only the boss)");
   await assert.rejects(() => ed.run({ type: "speak", agent: "memory", text: "hola" }), /sin cerebro/);
   await ed.run({ type: "conversation.new", id: "techie" });
   assert.equal(ed.agent("techie").chat.length, 0);

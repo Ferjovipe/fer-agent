@@ -50,6 +50,28 @@ La primera tanda de la lista de Fer tras probar la aplicación en su Mac:
     había despertado solo).
   - La sala de reuniones, sin tope de palabras: cada uno dice lo que haga falta y todos leen todo.
   - En la ficha, «Cambiar su aspecto»; las tareas, explicadas.
+Segunda tanda (lo de fondo):
+  - Agentes que siguen solos: cualquier agente puede dar una tarea a otro (assign_task) y, si
+    necesita el resultado para seguir, lo dice (follow_up): cuando el otro termina, lo despiertan
+    con el resultado y da el paso siguiente, sin que nadie diga «sigue». El jefe hace lo mismo: se le
+    pide una vez algo de varios pasos y vuelve solo para pedir permiso o entregar el resultado.
+    Antes de que un agente reparta trabajo por su cuenta, JEV decide si merece la pena (y sabe si es
+    la misma tarea repetida: así se cortan los bucles que no llevan a nada). Si la tarea falla y no
+    se va a reintentar, también despiertan a quien la dio.
+  - Salas de bucle: la sala de reuniones puede ser un debate (como antes) o un bucle. «Mejorar»: cada
+    uno coge la versión entera del anterior y la mejora, ronda tras ronda, por orden. «Continuar»:
+    cada uno sigue el texto donde lo dejó el anterior. Se pasa siempre el texto entero, se guardan
+    todas las versiones y el acta lleva el resultado tal cual, más un resumen del jefe.
+  - JEV elige la mejor de varias respuestas (choose_best). Las lee dos veces, en orden contrario,
+    porque los modelos que juzgan tienden a preferir la primera o la más larga; si cambia de opinión,
+    dice que no hay una ganadora clara.
+  - Monedas: el jefe pregunta en su chat quién aprende la lección: solo ese agente, todos los de su
+    papel, todos los agentes o los que elijas. Lo mismo en la bandeja.
+  - Papel «Junior»: para trabajos muy sencillos y repetitivos, con cerebro barato; se sienta en el pool.
+  - «Que lo redacte el Creador»: instrucciones, personalidad y objetivo, dichos con tus palabras y
+    redactados por el Creador de agentes. Personalidades ya hechas para marcar (Amable, Directo…).
+  - Su aspecto propio: descrito con tus palabras, el modelo de imagen lo dibuja con el estilo del
+    edificio (es de pago: una imagen); la web lo recorta del fondo. También se puede subir una imagen.
 
 Versión 9.0
 -----------
