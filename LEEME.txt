@@ -1,4 +1,4 @@
-FER AGENT · EL EDIFICIO (versión 9.1)
+FER AGENT · EL EDIFICIO (versión 9.2)
 =====================================
 
 Tienes una empresa agéntica a tu servicio. Nosotros ponemos la base; tú decides el organigrama
@@ -17,8 +17,37 @@ README.md                 La portada en GitHub, en inglés.
 characters.js, img/       Los diez personajes y los trozos del dibujo del edificio.
 engine.js                 El motor. Lo usan igual la web y Fer Casa.
 fer-home.mjs              Fer Casa: el mismo edificio encendido las 24 horas en un ordenador, y las manos.
-hands.mjs, skills/        Las manos de los agentes (solo con Fer Casa): su Chrome, su carpeta y las skills.
+hands.mjs, skills/        Las manos de los agentes (app y Fer Casa): su Chrome, tus archivos, tu ordenador, el
+                          correo y las skills.
 tests/                    Las pruebas automáticas (no hacen falta para usarlo).
+
+
+Versión 9.2
+-----------
+Capacidades, para que los agentes actúen como tú:
+  - Las capacidades, simplificadas: Escribir, Internet como tú, Tu ordenador como tú, Correo,
+    Archivos, Ver, Crear imágenes, Crear música, Hablar, Oír y Habilidades extra. Ya no hay
+    «avanzadas» pendientes. Las de siempre se convierten solas («Buscar en internet» pasa a ser
+    «Internet como tú»; las skills de serie pasan a su capacidad).
+  - Internet como tú: cada agente tiene su pestaña en el Chrome de los agentes, con las sesiones que
+    abras en él una vez. Busca gratis, lee la página como texto (barato), pulsa, escribe, elige,
+    marca, desplaza, vuelve atrás y sigue las pestañas nuevas. Solo mira la pantalla (con un modelo
+    de visión) como último recurso.
+  - Tu ordenador como tú (Mac y Windows): archivos en cualquier carpeta, órdenes al sistema (Terminal
+    o PowerShell), los botones de tus apps leídos como texto y, como último recurso, la pantalla con
+    ratón y teclado. En un Mac, la primera vez pide Accesibilidad y Grabación de pantalla.
+  - Correo: todos los buzones que quieras, de cualquier proveedor (IMAP/SMTP). En la ficha de cada
+    agente eliges desde cuáles lee y envía.
+  - Su propio Telegram: cada agente puede tener su bot; le hablas desde el móvil como a una persona y
+    sus informes te llegan ahí. El primer chat privado que le escribe queda como el tuyo.
+  - Permisos, agente por agente, los decides tú: «Pregúntame antes», «Con límites» (solo pregunta lo
+    que marques: pagar o comprar, enviar o publicar, borrar, lo demás con efecto fuera) o «Sin
+    preguntar». El agente no puede cambiar sus propios permisos.
+  - Qué es un agente y qué arriesgas: en la portada, en el README y en cada ficha.
+  - El crédito: un producto de Fernando Villar Peláez (Ferjovipe) para AI The Hive, en la portada,
+    abajo de cada pantalla y en Ajustes.
+  - Los agentes con manos pueden dar hasta 60 pasos seguidos (antes 8); las páginas que ya vieron se
+    acortan para no gastar de más.
 
 
 Versión 9.1
@@ -467,6 +496,7 @@ Pruebas (para quien quiera comprobarlo)
   node --test tests/engine82.test.mjs    el motor en inglés
   node --test tests/engine9.test.mjs     los edificios de versiones anteriores pasan a la 9 sin perder nada
   node --test tests/engine91.test.mjs    9.1: lo del latido en su chat, «Despertar ahora», cerebro saturado, empezar de cero, la Creadora y la sala
+  node --test tests/engine92.test.mjs    9.2: permisos, Internet como tú (contra una tienda de prueba), archivos y órdenes
   node --test tests/memory.test.mjs     la memoria automática: Memory archiva sola lo importante de cada conversación
   node --test tests/email.test.mjs      el correo: lee lo que entra, prepara las respuestas y envía solo con tu sí
   python3 tests/web_test.py        la web, lo de la versión 6 (necesita Playwright)

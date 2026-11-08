@@ -13,6 +13,7 @@ MODELS = {"data": [
   {"id": "openai/gpt-6-luna", "name": "GPT 6 Luna", "pricing": {"prompt": "0.0000001", "completion": "0.0000005"}, "architecture": {"input_modalities": ["text"], "output_modalities": ["text"]}, "context_length": 128000},
   {"id": "deepseek/deepseek-v4.1-flash", "name": "DeepSeek Flash", "pricing": {"prompt": "0.00000015", "completion": "0.0000006"}, "architecture": {"input_modalities": ["text"], "output_modalities": ["text"]}, "context_length": 128000}]}
 received = []
+tools_seen = []   # 9.2: the tools and plugins each brain call got
 
 class OR(BaseHTTPRequestHandler):
     def log_message(self, *a): pass
@@ -31,6 +32,7 @@ class OR(BaseHTTPRequestHandler):
         received.append(("POST", self.path, self.headers.get("Authorization")))
         if self.path == "/api/v1/chat/completions":
             b = json.loads(raw); sys0 = str(b["messages"][0]["content"])
+            tools_seen.append(([t.get("function", {}).get("name") for t in b.get("tools") or []], b.get("plugins"), self.headers.get("Authorization")))
             if "el control externo" in sys0: txt = '{"veredicto":"vale"}'
             elif sys0.startswith("Eres el jefe del edificio"): txt = "Hola desde Fer Casa."
             else: txt = "Trabajo hecho en casa."
@@ -96,10 +98,13 @@ try:
     talk = [x for x in red["chat"] if x["role"] in ("user", "assistant")]
     check(s == 200 and json.loads(b)["reply"] == "Trabajo hecho en casa." and len(talk) == 2, "chat with the Redactor (not the boss) through Fer Home")
     check(any(x["role"] == "report" and x.get("own") and "Escribe algo" in (x.get("task") or "") for x in red["chat"]), "9.1: the task it did on waking up is also in its own chat")
-    ask("/api/action", "POST", {"type": "editAgent", "id": red["id"], "changes": {"capabilities": ["write", "search"]}}, "24681357")
+    ask("/api/action", "POST", {"type": "editAgent", "id": red["id"], "changes": {"capabilities": ["write", "search"]}}, "24681357")   # the old name: it becomes «Internet como tú»
+    n_tools = len(tools_seen)
     ask("/api/action", "POST", {"type": "assignTask", "id": red["id"], "text": "Busca imprentas", "now": True}, "24681357")
     time.sleep(2.5)
-    check(any(m == "POST" and p == "/api/alpha/decisions" and a == "Bearer sk-or-casa" for (m, p, a) in received), "before searching, Fer Home asks JEV (with Fer Home's key)")
+    new_calls = tools_seen[n_tools:]
+    check(any("web_search" in t and "web_open" in t and not pl and a == "Bearer sk-or-casa" for t, pl, a in new_calls),
+          "9.2: in Fer Home «Internet como tú» searches for free with the agents' Chrome (web_search, web_open…; no paid search plugin), with Fer Home's key")
     s, b, _ = ask("/api/action", "POST", {"type": "meeting.call", "title": "Prueba", "agenda": "Probar la sala.", "participants": [red["id"]], "rounds": 1}, "24681357")
     rid = json.loads(b)["id"]
     ask("/api/action", "POST", {"type": "meeting.start", "meeting": rid}, "24681357")

@@ -100,7 +100,7 @@ try:
         check("In this app" in aj and page.is_visible("#drawerBody .where .here:has-text('In this app')") and data in aj, "Settings → where it lives: “In this app”, marked, with the data folder")
         check("Your OpenRouter key" in aj and "No key yet?" in aj and "Fer Home PIN" not in aj and "PIN" not in page.inner_text("#drawerBody h4 >> nth=1"), "without a key, Settings opens with “Your OpenRouter key” and the steps; no PIN is asked for")
         check("Your websites, in the agents' Chrome" in aj, "and the block to sign in to your websites with the agents' Chrome")
-        bad = [l for l in aj.split("\n") if SPANISH.search(re.sub(r"Fer Agent|Fer Home|fer-home\.mjs|ES · Español|Español|Biblioteca|Memoria larga|edificio\.json|" + re.escape(data), "", l))]
+        bad = [l for l in aj.split("\n") if SPANISH.search(re.sub(r"Fer Agent|Fer Home|fer-home\.mjs|ES · Español|Español|Biblioteca|Memoria larga|edificio\.json|Fernando Villar Peláez|" + re.escape(data), "", l))]
         check(not bad, f"Settings, in English: {bad[:3]}")
         page.screenshot(path=os.path.join(OUTPUT, "app9-settings.png"))
         # a key that isn't one
@@ -152,6 +152,7 @@ try:
         try:
             check(json.loads(mail.stdout.readline()).get("ready"), "a fake mailbox on this computer (IMAP and SMTP)")
             em = page.locator("#drawerBody .block:has(h4:text-is('Email'))")
+            em.locator("button:text-is('Connect a mailbox')").click(); page.wait_for_timeout(300)   # 9.2: as many mailboxes as you like
             em.locator("input[type=email]").fill("office@acme.example"); em.locator("input[type=email]").press("Tab")
             check(em.locator("input[placeholder='imap.yourdomain.com']").input_value() == "imap.acme.example" and em.locator("input[placeholder='smtp.yourdomain.com']").input_value() == "smtp.acme.example",
                   "the servers are guessed from the address")
@@ -160,12 +161,25 @@ try:
             em.locator("input[placeholder='smtp.yourdomain.com']").fill("127.0.0.1"); em.locator("input[placeholder='465']").fill("9625")
             em.locator("button:text-is('Save')").click(); page.wait_for_timeout(1000)
             conf = json.load(open(os.path.join(data, "config.json")))
-            check((conf.get("email") or {}).get("address") == "office@acme.example" and conf["email"].get("password") == "app-password-1" and conf["email"].get("imapPort") == 9243 and conf["email"].get("smtpPort") == 9625,
-                  f"the mailbox is saved in config.json, only on this computer: {dict((k, v) for k, v in (conf.get('email') or {}).items() if k != 'password')}")
+            mb = (conf.get("mailboxes") or [{}])[0]
+            check(mb.get("id") == "main" and mb.get("address") == "office@acme.example" and mb.get("password") == "app-password-1" and mb.get("imapPort") == 9243 and mb.get("smtpPort") == 9625,
+                  f"the mailbox is saved in config.json, only on this computer: {dict((k, v) for k, v in mb.items() if k != 'password')}")
+            # a second mailbox
+            em.locator("button:text-is('Add another mailbox')").click(); page.wait_for_timeout(300)
+            em.locator("input[type=email]").fill("sales@acme.example"); em.locator("input[type=email]").press("Tab")
+            em.locator("input[type=password]").fill("app-password-2")
+            em.locator("input[placeholder='imap.yourdomain.com']").fill("127.0.0.1"); em.locator("input[placeholder='993']").fill("9243")
+            em.locator("input[placeholder='smtp.yourdomain.com']").fill("127.0.0.1"); em.locator("input[placeholder='465']").fill("9625")
+            em.locator("button:text-is('Save')").click(); page.wait_for_timeout(1000)
+            conf = json.load(open(os.path.join(data, "config.json")))
+            boxes = conf.get("mailboxes") or []
+            check([m.get("address") for m in boxes] == ["office@acme.example", "sales@acme.example"] and len({m.get("id") for m in boxes}) == 2 and boxes[1].get("password") == "app-password-2" and not conf.get("email"),
+                  f"9.2: a second mailbox, with its own id: {[(m.get('id'), m.get('address')) for m in boxes]}")
+            check(em.locator(".mailbox").count() == 2, "and Settings lists both")
             st, body, _ = ask("/api/state", pin=PIN)
             body = body.decode() if isinstance(body, bytes) else body
-            check("app-password-1" not in body and (json.loads(body)["home"].get("email") or {}).get("address") == "office@acme.example", "the website only sees the address, never the password")
-            em.locator("button:text-is('Check')").click()
+            check("app-password-1" not in body and "app-password-2" not in body and [m.get("address") for m in json.loads(body)["home"].get("mailboxes") or []] == ["office@acme.example", "sales@acme.example"], "the website only sees the addresses, never the passwords")
+            em.locator(".mailbox >> nth=0").locator("button:text-is('Check')").click()
             page.wait_for_function("() => [...document.querySelectorAll('#drawerBody .block small.note')].some((x) => /^(It works|The mailbox|The server|I couldn't|No mailbox)/.test(x.textContent))", timeout=20000)
             result = [t for t in em.locator("small.note").all_inner_texts() if t.startswith(("It works", "The mailbox", "The server", "I couldn't", "No mailbox"))]
             check(result == ["It works: it can read and send (1 emails in the inbox)."], f"«Check»: it signs in to read and to send: {result}")

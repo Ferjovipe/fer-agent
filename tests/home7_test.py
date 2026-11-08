@@ -51,7 +51,8 @@ class OR(Base):
             ut = next((m["content"] for m in reversed(msgs) if m["role"] == "user"), "")
             ut = ut if isinstance(ut, str) else json.dumps(ut)
             if s0.startswith("Eres el archivero"):
-                if not has_tool: return self._resp(200, reply("", ("use_skill", {"skill": "write-file", "data": {"path": "informes/hoy.md", "text": "Informe de hoy: todo en orden."}, "reason": "guardar el informe del día"})))
+                if "aprobó" in json.dumps(msgs, ensure_ascii=False): return self._resp(200, reply("Informe guardado."))
+                if not has_tool: return self._resp(200, reply("", ("file_write", {"path": OUTSIDE_FILE, "text": "Informe de hoy: todo en orden."})))
                 return self._resp(200, reply("He pedido permiso para guardar el informe."))
             if s0.startswith("Eres el jefe"):
                 if "dibuja" in ut.lower() and not has_tool: return self._resp(200, reply("", ("create_image", {"description": "Un faro"})))
@@ -117,8 +118,10 @@ def wait_for(cond, seconds=15, step=0.25):
 for P, H in [(P_OR, OR), (P_ANT, ANT), (P_TG, TG), (P_X, X)]:
     s = ThreadingHTTPServer(("127.0.0.1", P), H); threading.Thread(target=s.serve_forever, daemon=True).start()
 data = tempfile.mkdtemp(prefix="fercasa7-")
+OUTSIDE_FILE = os.path.join(data, "fuera", "informes", "hoy.md")  # 9.2: outside the agents' folder
 json.dump({"key": "sk-or-casa", "pin": PIN, "keys": {"anthropic": "sk-ant-casa"}, "telegram": {"token": "TOK", "chat": 777}}, open(os.path.join(data, "config.json"), "w"))
-env = dict(os.environ, FER_LANGUAGE="es", OPENROUTER_BASE=f"http://127.0.0.1:{P_OR}/api/v1", ANTHROPIC_BASE=f"http://127.0.0.1:{P_ANT}/v1", TELEGRAM_API=f"http://127.0.0.1:{P_TG}",
+# FER_ALLOW_LOCAL: the imitation of X lives on this computer (the agents only use the internet otherwise)
+env = dict(os.environ, FER_ALLOW_LOCAL="1", FER_LANGUAGE="es", OPENROUTER_BASE=f"http://127.0.0.1:{P_OR}/api/v1", ANTHROPIC_BASE=f"http://127.0.0.1:{P_ANT}/v1", TELEGRAM_API=f"http://127.0.0.1:{P_TG}",
            FER_PORT=str(P_HOME), FER_DATA=data, FER_HEARTBEAT_SEC="1", FER_BRAIN_SEC="2", FER_CHROME_CHANNEL="chromium", FER_TEMPLATE="basic")
 home = subprocess.Popen(["node", os.path.join(ROOT, "fer-home.mjs")], env=env, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, stdin=subprocess.DEVNULL, text=True)
 output = []
@@ -129,7 +132,7 @@ try:
     e = state()
     names = [k["name"] for k in e["skills"]]
     check({"x-watcher", "read-web", "web-search", "read-file", "write-file"} <= set(names), f"hands: the skills it comes with ({', '.join(names)})")
-    check(next(k for k in e["skills"] if k["name"] == "write-file")["effect"] == "external", "writing in the folder has an effect outside the website: it asks for permission")
+    check(next(k for k in e["skills"] if k["name"] == "write-file")["effect"] == "read", "9.2: writing in its own folder doesn't ask (outside it, it does)")
     check(e["home"]["telegram"] and e["home"]["keys"]["anthropic"] and not e["home"]["keys"]["openai"], "the website knows there's Telegram and a Claude key (not the key itself)")
     check("sk-ant-casa" not in json.dumps(e), "Claude's key doesn't leave Fer Home")
     check(e["state"]["settings"]["pause"] is True, "Fer Home's building also starts paused")
@@ -147,25 +150,25 @@ try:
     r2 = action({"type": "wakeUp", "id": vid})
     check(r2.get("outcome") == "nothing", "on the next round it doesn't repeat the same tweet")
 
-    # ---------- A skill with an effect outside the website: your permission, from Telegram ----------
+    # ---------- 9.2 · Writing outside its folder (with «Your computer as you», mode “ask”): your permission, from Telegram ----------
     aid = action({"type": "createAgent", "profile": {"name": "Archivero", "floor": pid, "instructions": "Eres el archivero: guardas los informes en la carpeta de los agentes.", "level": "budget"}})["id"]
-    action({"type": "editAgent", "id": aid, "changes": {"capabilities": ["write", "skills"], "skills": ["write-file"]}})
+    action({"type": "editAgent", "id": aid, "changes": {"capabilities": ["write", "computer"]}})
     action({"type": "assignTask", "id": aid, "text": "Guarda el informe de hoy", "now": True})
     check(wait_for(lambda: any(x["state"] == "pending" for x in state()["state"]["approvals"])), "the Archivero asks for permission: it stays in the inbox")
-    archivo = os.path.join(data, "agent-files", "informes", "hoy.md")
+    archivo = OUTSIDE_FILE
     check(not os.path.exists(archivo), "without your yes, it writes nothing")
     def button():
         for m, b in tg_out:
-            if m == "sendMessage" and "Escribir en su carpeta" in b.get("text", "") and b.get("reply_markup"): return b
+            if m == "sendMessage" and "Escribir el archivo" in b.get("text", "") and b.get("reply_markup"): return b
     check(wait_for(lambda: button() is not None), "the request reaches Telegram with buttons (who, what)")
     b = button(); cb_si = b["reply_markup"]["inline_keyboard"][0][0]["callback_data"]
-    check(b["text"].startswith("Acción fuera de la web · Archivero") and "guardar el informe del día" in b["text"], "the message says who asks for it and what: “" + b["text"].split("\n")[0] + "”")
+    check(b["text"].startswith("Acción fuera de la web · Archivero") and OUTSIDE_FILE in b["text"] and "Informe de hoy" in b["text"], "the message says who asks for it and what: “" + b["text"].split("\n")[0] + "”")
     tg_queue.append({"update_id": 10, "callback_query": {"id": "cbx", "data": cb_si, "message": {"message_id": 3, "chat": {"id": 999}, "text": b["text"]}}})
     time.sleep(2)
     check(not os.path.exists(archivo), "a button pressed from another chat doesn't count")
     tg_queue.append({"update_id": 11, "callback_query": {"id": "cb1", "data": cb_si, "message": {"message_id": 3, "chat": {"id": 777}, "text": b["text"]}}})
     check(wait_for(lambda: os.path.exists(archivo)), "you press “Approve” on Telegram and it does it")
-    check(open(archivo).read() == "Informe de hoy: todo en orden.", "it writes inside the agents' folder, and only that")
+    check(open(archivo).read() == "Informe de hoy: todo en orden.", "it writes exactly that, where it said")
     check(wait_for(lambda: any(m == "answerCallbackQuery" and b.get("text", "").startswith("Hecho") for m, b in tg_out)), "Telegram te contesta «Hecho»")
     check(any(x["state"] == "done" for x in state()["state"]["approvals"]), "in the inbox it stays as done")
     tg_queue.append({"update_id": 12, "message": {"message_id": 9, "chat": {"id": 777}, "text": "/marcha"}})

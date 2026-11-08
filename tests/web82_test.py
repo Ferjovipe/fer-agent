@@ -46,7 +46,7 @@ VISIBLE = """(sel) => { const raiz = document.querySelector(sel); if (!raiz) ret
   for (const el of raiz.querySelectorAll('select option, select optgroup')) { if (el.closest('[hidden]')) continue; const v = el.tagName === 'OPTGROUP' ? el.label : el.textContent; if (v && v.trim()) out.push(v.trim()); }
   return out; }"""
 ALLOWED = ["Fer Agent", "Biblioteca", "Memoria larga", "edificio.json", "data/config.json", "data/brain", "node fer-home.mjs claves", "node fer-home.mjs carpeta",
-             "ES · Español", "Español", "JEV", "Índice"]
+             "ES · Español", "Español", "JEV", "Índice", "Fernando Villar Peláez", "Ferjovipe"]
 ES = re.compile(r"[áéíóúñ¿¡]|\b(el|la|los|las|del|que|para|por|con|una|tus|sus|está|están|hay|pero|sin|como|cuando|donde|qué|cómo|más|también|aquí|ahora|todo|todos|cada|este|esta|pulsa|edificio|agentes?|planta|piso|ficha|gasto|tope|jefe|sabios?|reuni[oó]n|monedas?|cerebro|latido|ajustes|bandeja|tareas?|nada|ningún|ninguna|guardar|borrar|crear|quitar|ver|hablar|pausa|copia)\b", re.I)
 SHORT_ONES = re.compile(r"(?<![\w'’-])(de|en|y|su|tu|se|es|un|al|lo|ya|mi|ve|sí|ti)(?![\w'’-])")   # short Spanish words, in lower case (EN · English doesn't count)
 # also: any word that only appears in the dictionary's Spanish texts (and not in its English)

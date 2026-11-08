@@ -14,6 +14,8 @@ import path from "node:path";
 import { pathToFileURL } from "node:url";
 import { createRequire } from "node:module";
 import dns from "node:dns/promises";
+import os from "node:os";
+import { execFile } from "node:child_process";
 import net from "node:net";
 import { translate, fillIn, LANGUAGE, OLD_SKILL_NAMES } from "./engine.js";
 const requireCjs = createRequire(import.meta.url);
@@ -239,6 +241,180 @@ export function createHands(op) {
     }, id);
   }
 
+  // ---------------- 9.2 · Files: its folder always; with «Your computer as you», any path ----------------
+  function filePath(p, anywhere) {
+    const raw = String(p || ".").trim().replace(/^~(?=$|[\\/])/, os.homedir());
+    if (anywhere && (path.isAbsolute(raw) || /^[A-Za-z]:[\\/]/.test(raw))) return path.resolve(raw);
+    return insideOf(o.agentsFolder, raw);
+  }
+  async function files(op, d, ctx) {
+    const anywhere = !!(ctx && ctx.anywhere), target = filePath(d.path, anywhere);
+    if (op === "list") {
+      const items = await fs.readdir(target, { withFileTypes: true });
+      return { text: items.slice(0, 300).map((x) => (x.isDirectory() ? "📁 " : "📄 ") + x.name).join("\n") || L("(empty)"), path: target };
+    }
+    if (op === "read") {
+      const st = await fs.stat(target);
+      if (st.isDirectory()) return files("list", d, ctx);
+      const buf = await fs.readFile(target);
+      if (buf.includes(0)) return { text: L("It's not a text file ({1} bytes). Use «Your computer as you» to open it with its app.", buf.length), path: target };
+      const t = buf.toString("utf8"), max = Math.min(60000, Math.max(1000, Number(d.max) || 20000));
+      return { text: t.slice(0, max) + (t.length > max ? "\n" + L("[…cut]") : ""), path: target };
+    }
+    if (op === "write") {
+      mkdirSync(path.dirname(target), { recursive: true });
+      if (d.append) await fs.appendFile(target, String(d.text ?? "")); else await fs.writeFile(target, String(d.text ?? ""));
+      return { text: L("Saved: {1}", target), path: target };
+    }
+    throw new Error(L("I don't know the step “{1}”.", op));
+  }
+
+  // ---------------- 9.2 · Your computer as you: orders to the system, the apps' buttons as text and, last, the screen ----------------
+  const MAC = process.platform === "darwin", WIN = process.platform === "win32";
+  function runProgram(file, args, seconds, input) {
+    return new Promise((resolve) => {
+      const child = execFile(file, args, { timeout: seconds * 1000, maxBuffer: 8e6, cwd: o.agentsFolder, windowsHide: true }, (err, out, errOut) =>
+        resolve({ code: err ? (err.code ?? 1) : 0, out: String(out || ""), err: String(errOut || "") + (err && err.killed ? "\n" + L("(stopped: it took more than {1} s)", seconds) : "") }));
+      if (input && child.stdin) { child.stdin.end(input); }
+    });
+  }
+  // An order to the system, as you'd type it: zsh/bash on the Mac and Linux, PowerShell on Windows
+  async function command(d) {
+    const cmd = String(d.command || "").trim();
+    if (!cmd) throw Object.assign(new Error(L("Which order?")), { shown: true });
+    const seconds = Math.min(600, Math.max(5, Number(d.timeout) || 120));
+    const r = WIN ? await runProgram("powershell.exe", ["-NoProfile", "-NonInteractive", "-Command", cmd], seconds) : await runProgram(process.env.SHELL || "/bin/bash", ["-lc", cmd], seconds);
+    const out = (r.out + (r.err ? "\n" + r.err : "")).trim();
+    return { text: L("Result (code {1}):", r.code) + "\n" + (out.length > 20000 ? out.slice(0, 20000) + "\n" + L("[…cut]") : out || L("(nothing)")) };
+  }
+  // macOS: JavaScript for Automation (it comes with the Mac). It needs Accessibility (and, for pictures, Screen Recording) once.
+  const jxa = (code, seconds = 25) => runProgram("/usr/bin/osascript", ["-l", "JavaScript", "-e", code], seconds);
+  const PS = (code, seconds = 25) => runProgram("powershell.exe", ["-NoProfile", "-NonInteractive", "-Command", code], seconds);
+  let lastElements = [];   // the numbered list of the last «look at the app» (to click by number)
+  // The buttons and fields of the app in front, as text (cheap). Each one with its number and where it is.
+  async function appElements() {
+    if (MAC) {
+      const r = await jxa(`
+        const se = Application("System Events"); const p = se.processes.whose({ frontmost: true })[0];
+        const out = { app: p.name(), items: [] };
+        const ws = p.windows(); const w = ws.length ? ws[0] : null;
+        if (w) { out.window = w.name ? w.name() : "";
+          const all = w.entireContents(); let n = 0;
+          for (const e of all) { if (n >= 220) break; let role = "", label = "", pos = null, size = null;
+            try { role = e.role(); } catch (x) {}
+            if (!/AXButton|AXTextField|AXTextArea|AXCheckBox|AXRadioButton|AXPopUpButton|AXMenuButton|AXLink|AXTab|AXComboBox|AXCell|AXRow|AXStaticText|AXMenuItem|AXSlider|AXIncrementor/.test(role)) continue;
+            try { label = e.description() || e.name() || e.title() || e.value() || ""; } catch (x) {}
+            try { pos = e.position(); size = e.size(); } catch (x) {}
+            if (!pos || !size || size[0] < 2 || size[1] < 2) continue;
+            n++; out.items.push({ n, role: String(role).replace(/^AX/, "").toLowerCase(), label: String(label).replace(/\s+/g, " ").slice(0, 80), x: Math.round(pos[0] + size[0] / 2), y: Math.round(pos[1] + size[1] / 2) }); } }
+        JSON.stringify(out);`, 40);
+      if (r.code !== 0) throw Object.assign(new Error(L("The Mac didn't let me read the app. Give Fer Agent permission in System Settings → Privacy and Security → Accessibility. ({1})", r.err.trim().slice(0, 160))), { shown: true });
+      return JSON.parse(r.out);
+    }
+    if (WIN) {
+      const r = await PS(`Add-Type -AssemblyName UIAutomationClient,UIAutomationTypes
+        Add-Type @"
+using System; using System.Runtime.InteropServices; public class FW { [DllImport("user32.dll")] public static extern IntPtr GetForegroundWindow(); }
+"@
+        $root = [System.Windows.Automation.AutomationElement]::FromHandle([FW]::GetForegroundWindow())
+        $all = $root.FindAll([System.Windows.Automation.TreeScope]::Descendants, [System.Windows.Automation.Condition]::TrueCondition)
+        $n = 0; $items = @()
+        foreach ($e in $all) { if ($n -ge 220) { break }
+          $c = $e.Current; $t = $c.ControlType.ProgrammaticName -replace 'ControlType.', ''
+          if ($t -notmatch 'Button|Edit|CheckBox|RadioButton|ComboBox|Hyperlink|TabItem|ListItem|MenuItem|Text|DataItem|TreeItem') { continue }
+          $r = $c.BoundingRectangle; if ($r.Width -lt 2 -or $r.Height -lt 2 -or [double]::IsInfinity($r.X)) { continue }
+          $n++; $items += [pscustomobject]@{ n = $n; role = $t.ToLower(); label = ($c.Name -replace '\s+', ' '); x = [int]($r.X + $r.Width / 2); y = [int]($r.Y + $r.Height / 2) } }
+        [pscustomobject]@{ app = $root.Current.Name; items = $items } | ConvertTo-Json -Depth 4 -Compress`, 40);
+      if (r.code !== 0) throw Object.assign(new Error(L("Windows didn't let me read the app. ({1})", r.err.trim().slice(0, 160))), { shown: true });
+      const j = JSON.parse(r.out || "{}"); j.items = Array.isArray(j.items) ? j.items : j.items ? [j.items] : [];
+      return j;
+    }
+    throw Object.assign(new Error(L("Using the screen works on a Mac or on Windows.")), { shown: true });
+  }
+  // A picture of the whole screen (the expensive way), at the size of the screen's points, so clicking on it lands where it should
+  async function screenshot() {
+    const file = path.join(os.tmpdir(), "fa-screen-" + Date.now() + ".jpg");
+    try {
+      if (MAC) {
+        const r = await runProgram("/usr/sbin/screencapture", ["-x", "-t", "jpg", file], 20);
+        if (r.code !== 0 || !existsSync(file)) throw Object.assign(new Error(L("The Mac didn't let me take a picture of the screen. Give Fer Agent permission in System Settings → Privacy and Security → Screen Recording.")), { shown: true });
+        const w = await jxa(`ObjC.import("AppKit"); JSON.stringify([$.NSScreen.mainScreen.frame.size.width, $.NSScreen.mainScreen.frame.size.height])`, 10);
+        const [pw, ph] = JSON.parse(w.out || "[0,0]");
+        if (pw) await runProgram("/usr/bin/sips", ["--resampleWidth", String(Math.round(pw)), file], 20);
+        return { image: "data:image/jpeg;base64," + (await fs.readFile(file)).toString("base64"), width: Math.round(pw), height: Math.round(ph) };
+      }
+      if (WIN) {
+        const r = await PS(`Add-Type -AssemblyName System.Windows.Forms,System.Drawing
+          $b = [System.Windows.Forms.SystemInformation]::VirtualScreen; $bmp = New-Object System.Drawing.Bitmap $b.Width, $b.Height
+          $g = [System.Drawing.Graphics]::FromImage($bmp); $g.CopyFromScreen($b.Left, $b.Top, 0, 0, $bmp.Size)
+          $bmp.Save('${file.replace(/'/g, "''")}', [System.Drawing.Imaging.ImageFormat]::Jpeg); "$($b.Width) $($b.Height)"`, 20);
+        if (r.code !== 0 || !existsSync(file)) throw Object.assign(new Error(L("Windows didn't let me take a picture of the screen. ({1})", r.err.trim().slice(0, 160))), { shown: true });
+        const [w, hh] = r.out.trim().split(/\s+/).map(Number);
+        return { image: "data:image/jpeg;base64," + (await fs.readFile(file)).toString("base64"), width: w, height: hh };
+      }
+      throw Object.assign(new Error(L("Using the screen works on a Mac or on Windows.")), { shown: true });
+    } finally { fs.unlink(file).catch(() => {}); }
+  }
+  const KEYS_MAC = { enter: 36, return: 36, tab: 48, space: 49, delete: 51, backspace: 51, escape: 53, esc: 53, left: 123, right: 124, down: 125, up: 126, home: 115, end: 119, pageup: 116, pagedown: 121 };
+  // A step with mouse or keyboard: «click», «double_click», «right_click» (an element of the list or x,y), «type» (text), «key» (enter, tab, cmd+c…),
+  // «scroll» (up/down), «open_app» (its name). On the Mac with JavaScript for Automation; on Windows with PowerShell.
+  async function act(d) {
+    const action = String(d.action || "click").toLowerCase();
+    let x = Number(d.x), y = Number(d.y);
+    if (Number(d.element) > 0) { const it = lastElements.find((e) => e.n === Number(d.element)); if (!it) throw Object.assign(new Error(L("I don't have element {1}: look at the app again (pc_look).", d.element)), { shown: true }); x = it.x; y = it.y; }
+    const text = String(d.text ?? "");
+    if (MAC) {
+      let code;
+      if (action === "open_app") { const r = await runProgram("/usr/bin/open", ["-a", text], 20); if (r.code) throw Object.assign(new Error(r.err.trim() || L("I couldn't open {1}.", text)), { shown: true }); return { text: L("Opened {1}.", text) }; }
+      if (/click/.test(action)) {
+        if (!(x >= 0 && y >= 0)) throw Object.assign(new Error(L("Say where: an element of the list or x and y.")), { shown: true });
+        const btn = action === "right_click" ? ["kCGEventRightMouseDown", "kCGEventRightMouseUp", "kCGMouseButtonRight"] : ["kCGEventLeftMouseDown", "kCGEventLeftMouseUp", "kCGMouseButtonLeft"];
+        const times = action === "double_click" ? 2 : 1;
+        code = `ObjC.import("CoreGraphics"); const p = $.CGPointMake(${x}, ${y});
+          $.CGEventPost($.kCGHIDEventTap, $.CGEventCreateMouseEvent(null, $.kCGEventMouseMoved, p, $.${btn[2]})); delay(0.05);
+          for (let i = 1; i <= ${times}; i++) { const dn = $.CGEventCreateMouseEvent(null, $.${btn[0]}, p, $.${btn[2]}); const up = $.CGEventCreateMouseEvent(null, $.${btn[1]}, p, $.${btn[2]});
+            $.CGEventSetIntegerValueField(dn, $.kCGMouseEventClickState, i); $.CGEventSetIntegerValueField(up, $.kCGMouseEventClickState, i);
+            $.CGEventPost($.kCGHIDEventTap, dn); $.CGEventPost($.kCGHIDEventTap, up); delay(0.05); } "ok"`;
+      } else if (action === "type") code = `Application("System Events").keystroke(${JSON.stringify(text)}); "ok"`;
+      else if (action === "key") {
+        const parts = text.toLowerCase().split("+").map((t) => t.trim()), key = parts.pop(), mods = parts.map((m) => ({ cmd: "command down", command: "command down", ctrl: "control down", control: "control down", alt: "option down", option: "option down", shift: "shift down" })[m]).filter(Boolean);
+        code = KEYS_MAC[key] !== undefined ? `Application("System Events").keyCode(${KEYS_MAC[key]}, { using: ${JSON.stringify(mods)} }); "ok"` : `Application("System Events").keystroke(${JSON.stringify(key)}, { using: ${JSON.stringify(mods)} }); "ok"`;
+      } else if (action === "scroll") code = `ObjC.import("CoreGraphics"); $.CGEventPost($.kCGHIDEventTap, $.CGEventCreateScrollWheelEvent(null, $.kCGScrollEventUnitLine, 1, ${/up|arriba/i.test(text) ? 8 : -8})); "ok"`;
+      else throw Object.assign(new Error(L("I don't know the step “{1}”.", action)), { shown: true });
+      const r = await jxa(code, 20);
+      if (r.code !== 0) throw Object.assign(new Error(L("The Mac didn't let me use the mouse or the keyboard. Give Fer Agent permission in System Settings → Privacy and Security → Accessibility. ({1})", r.err.trim().slice(0, 160))), { shown: true });
+      return { text: L("Done: {1}.", action) };
+    }
+    if (WIN) {
+      let code;
+      const mouse = `Add-Type @"
+using System; using System.Runtime.InteropServices; public class M { [DllImport("user32.dll")] public static extern bool SetCursorPos(int x, int y); [DllImport("user32.dll")] public static extern void mouse_event(uint f, uint x, uint y, int d, UIntPtr e); }
+"@
+`;
+      if (action === "open_app") code = `Start-Process ${JSON.stringify(text)}`;
+      else if (/click/.test(action)) {
+        if (!(x >= 0 && y >= 0)) throw Object.assign(new Error(L("Say where: an element of the list or x and y.")), { shown: true });
+        const [dn, up] = action === "right_click" ? [8, 16] : [2, 4], times = action === "double_click" ? 2 : 1;
+        code = mouse + `[M]::SetCursorPos(${x}, ${y}); Start-Sleep -Milliseconds 50; for ($i = 0; $i -lt ${times}; $i++) { [M]::mouse_event(${dn}, 0, 0, 0, [UIntPtr]::Zero); [M]::mouse_event(${up}, 0, 0, 0, [UIntPtr]::Zero); Start-Sleep -Milliseconds 60 }`;
+      } else if (action === "type" || action === "key") {
+        const esc = (t) => t.replace(/[+^%~(){}[\]]/g, "{$&}");
+        const k = action === "type" ? esc(text) : text.toLowerCase().split("+").map((t) => t.trim()).reduce((acc, t, i, arr) => i < arr.length - 1 ? acc + ({ ctrl: "^", control: "^", alt: "%", shift: "+", cmd: "^" })[t] : acc + ({ enter: "{ENTER}", return: "{ENTER}", tab: "{TAB}", escape: "{ESC}", esc: "{ESC}", backspace: "{BACKSPACE}", delete: "{DELETE}", up: "{UP}", down: "{DOWN}", left: "{LEFT}", right: "{RIGHT}", home: "{HOME}", end: "{END}" }[t] || t), "");
+        code = `Add-Type -AssemblyName System.Windows.Forms; [System.Windows.Forms.SendKeys]::SendWait(${JSON.stringify(k)})`;
+      } else if (action === "scroll") code = mouse + `[M]::mouse_event(0x0800, 0, 0, ${/up|arriba/i.test(text) ? 600 : -600}, [UIntPtr]::Zero)`;
+      else throw Object.assign(new Error(L("I don't know the step “{1}”.", action)), { shown: true });
+      const r = await PS(code, 20);
+      if (r.code !== 0) throw Object.assign(new Error(L("Windows didn't let me do it. ({1})", r.err.trim().slice(0, 160))), { shown: true });
+      return { text: L("Done: {1}.", action) };
+    }
+    throw Object.assign(new Error(L("Using the screen works on a Mac or on Windows.")), { shown: true });
+  }
+  async function look(d) {
+    if (d.screen) { const s = await screenshot(); return Object.assign(s, { text: "" }); }
+    const r = await appElements();
+    lastElements = r.items || [];
+    return { app: r.app, window: r.window || "", elements: lastElements, text: L("App in front: {1}{2}", r.app || "?", r.window ? " — " + r.window : "") };
+  }
+
   // What the skills' programs receive
   const toolDefs = {
     withPage, browser, isPublicAddress, internetOnly,
@@ -253,8 +429,11 @@ export function createHands(op) {
   };
 
   // One thing at a time (a single Chrome): skills and web steps queue up. With a clock: if something hangs, it's stopped and its Chrome closed.
-  function enqueue(label, seconds, f) {
-    const task = queue.then(async () => {
+  // 9.2: separate lanes: the Chrome ones (skills and the web), the screen (mouse and keyboard) and the rest (orders, files, email) don't wait for each other
+  const lanes = new Map();
+  function enqueue(label, seconds, f, lane = "chrome") {
+    const prev = lane === "chrome" ? queue : (lanes.get(lane) || Promise.resolve());
+    const task = prev.then(async () => {
       const running = Promise.resolve().then(f);
       running.catch(() => {});
       let timer;
@@ -263,7 +442,7 @@ export function createHands(op) {
       catch (err) { if (err.timeout) { o.log(err.message); await closeChrome(); } throw err; }
       finally { clearTimeout(timer); }
     });
-    queue = task.catch(() => {});
+    if (lane === "chrome") queue = task.catch(() => {}); else if (!lane.includes(":")) lanes.set(lane, task.catch(() => {}));   // «x:…» lanes: each one on its own
     return task;
   }
 
@@ -370,12 +549,21 @@ export function createHands(op) {
   }
 
   return {
+    // 9.2: files («list», «read», «write»): its folder; with ctx.anywhere (Your computer as you), any path
+    files(op, data, ctx) { return enqueue("files", 60, () => files(op, data || {}, ctx || {}), "files:" + Math.random()); },   // they don't wait for anything
+    // 9.2: the computer: «command» (an order to the system), «look» (the app in front as text; {screen: true}: a picture), «act» (mouse and keyboard)
+    computer(op, data, ctx) {
+      const d = data || {};
+      const f = op === "command" ? () => command(d) : op === "look" ? () => look(d) : op === "act" ? () => act(d) : null;
+      if (!f) return Promise.reject(new Error(L("I don't know the step “{1}”.", op)));
+      return enqueue("computer", op === "command" ? 620 : 60, f, op === "command" ? "cmd:" + Math.random() : "screen");   // orders: each on its own; the screen: one at a time
+    },
     // 9.2: email for the tools: «list» (the latest, or the ones matching a search) and «read» (one whole). «ctx.mailbox»: which one.
     email(op, data, ctx) {
       const id = (ctx && ctx.mailbox) || undefined, d = data || {};
       const f = op === "list" ? () => emailList(id, d) : op === "read" ? () => emailRead(id, d) : null;
       if (!f) return Promise.reject(new Error(L("I don't know the step “{1}”.", op)));
-      return enqueue("email", 120, f);
+      return enqueue("email", 120, f, "email");
     },
     // 9.2: «search» (free, DuckDuckGo), «open» (a website in its tab), «act» (a step on the page), «look» (a picture of its tab)
     web(op, data, ctx) {

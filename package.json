@@ -1,7 +1,7 @@
 {
   "name": "fer-agent",
   "productName": "Fer Agent",
-  "version": "9.1.0",
+  "version": "9.2.0",
   "description": "Your AI agents live in a building: an open-source agentic company on your computer.",
   "author": "Fernando Villar Peláez",
   "homepage": "https://feragent.netlify.app",
@@ -64,7 +64,10 @@
       "category": "public.app-category.productivity",
       "identity": "-",
       "hardenedRuntime": false,
-      "gatekeeperAssess": false
+      "gatekeeperAssess": false,
+      "extendInfo": {
+        "NSAppleEventsUsageDescription": "Fer Agent's agents use the buttons of your apps when you give them «Your computer as you»."
+      }
     },
     "dmg": {
       "title": "Fer Agent"

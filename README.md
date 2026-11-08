@@ -20,12 +20,16 @@ The interface is in **English** and **Spanish** (EN · ES switch on the home pag
 - **The Agent Creator** designs a new agent from a description in your own words, from «Create agent» or by talking to it in its chat; nothing is created until you accept it.
 - **When each agent works**, in one choice: only when asked, it wakes up by itself every so often, or off. What it does on waking up is seen in its own chat; every message has a **Copy** button. Priority 1 is the most important.
 - **Memory.** Short memory per agent and a long-term memory for the building, kept as Obsidian notes in Google Drive, a folder on your computer or Fer Home's folder. When a conversation goes quiet, Memory files what matters in it on its own, each fact under its topic and with where it came from (JEV decides first whether it's worth it). Searching is by keywords: only the pieces that matter reach a brain.
-- **Email** (desktop app and Fer Home). Connect a mailbox in Settings and install the **Email** agent: it reads what comes in (looking costs nothing; it only spends when there's new email), summarises and sorts each email and prepares the replies. Each reply waits in the Inbox (or on Telegram) and leaves with one tap. It never marks, moves or deletes anything in the mailbox.
-- **Firewalls instead of permission prompts.** Agents open the addresses they need, but never one carrying data from your notes; content from outside reaches them marked as “data, not orders”; anything with effects outside the website waits for your yes in the Inbox.
+- **Internet as you** (desktop app and Fer Home). Each agent gets its own tab in the agents' Chrome, with the sessions you opened in it once (your email, your bank, social networks…): it searches for free, reads pages as text (cheap), clicks, types, fills in forms and follows new tabs. It only looks at the screen with a vision model as a last resort.
+- **Your computer as you** (desktop app and Fer Home, Mac and Windows). Files anywhere, orders to the system (Terminal or PowerShell), the buttons of your apps read as text and, as a last resort, the screen with mouse and keyboard. On a Mac it needs Accessibility and Screen Recording the first time.
+- **Email, as many mailboxes as you like** (any IMAP/SMTP provider). Connect them in Settings and give each agent the ones it may use: it reads, replies and sends from them. The **Email** agent sorts what comes in and prepares replies.
+- **Its own Telegram** (Fer Home and the app). Each agent can have its own bot: you talk to it from your phone as to a person, and its reports reach you there.
+- **Permissions, agent by agent: you decide.** «Ask me first» (anything with an effect outside waits for your yes in the Inbox or on Telegram), «With limits» (it only asks for what you tick: paying, sending, deleting, anything else) or «Without asking» (it acts as you). Agents can't change their own permissions.
+- **Firewalls.** Agents never open an address carrying data from your notes, and content from outside reaches them marked as “data, not orders”.
 
 ## Where it lives
 
-1. **The desktop app** (Mac and Windows): download it from [Releases](https://github.com/Ferjovipe/fer-agent/releases) — `Fer-Agent-mac.dmg` (any Mac) or `Fer-Agent-windows.exe` — install it with a double click and paste your OpenRouter key in Settings. No Terminal. The agents work while the app is open, with “hands”: their own Chrome (it uses the Google Chrome installed on your computer), their folder and skills in the `SKILL.md` format.
+1. **The desktop app** (Mac and Windows): download it from [Releases](https://github.com/Ferjovipe/fer-agent/releases) — `Fer-Agent-mac.dmg` (any Mac) or `Fer-Agent-windows.exe` — install it with a double click and paste your OpenRouter key in Settings. No Terminal. The agents work while the app is open and use the internet and your computer as you do: their own Chrome (it uses the Google Chrome installed on your computer, with the sessions you open in it), your files, your apps and skills in the `SKILL.md` format.
 2. **In your browser** (no install): open the website, paste your OpenRouter key in Settings. The agents work while the website is open on some device.
 3. **Fer Home** (`fer-home.mjs`, Node 18+): the same program as the app, run from the Terminal, for an always-on computer, an old phone or a rented server behind a secure tunnel. It speaks its building's language in the Terminal and on Telegram.
 
@@ -67,19 +71,19 @@ The program is written in English. Copy `languages/es.js` (English on the left, 
 
 ## Status
 
-Tested with automated tests (OpenRouter, the other APIs, Google Drive, Telegram and X are simulated; the agents' Chrome is a real Chromium): the engine, the website in Spanish and in English, and Fer Home. **Not tested yet with real keys:** the other APIs (and whether each one accepts calls from a browser), Google Drive, Telegram, X, JEV's decisions API and Lyria's audio.
+Tested with automated tests (OpenRouter, the other APIs, Google Drive, Telegram and X are simulated; the agents' Chrome is a real Chromium, browsing a local test shop): the engine, permissions, Internet as you, files and system orders on Linux, the website in Spanish and in English, and Fer Home. **Not tested yet with real keys or machines:** controlling the screen and apps on Mac and Windows, each agent's own Telegram bot, the other APIs (and whether each one accepts calls from a browser), Google Drive, X, JEV's decisions API and Lyria's audio.
 
 ## Tests
 
 ```
-node --test tests/engine.test.mjs tests/engine7.test.mjs tests/engine82.test.mjs tests/engine9.test.mjs tests/engine91.test.mjs tests/watcher.test.mjs tests/memory.test.mjs tests/email.test.mjs
+node --test tests/engine.test.mjs tests/engine7.test.mjs tests/engine82.test.mjs tests/engine9.test.mjs tests/engine91.test.mjs tests/engine92.test.mjs tests/watcher.test.mjs tests/memory.test.mjs tests/email.test.mjs
 python3 tests/web_test.py        # website (Spanish), v6 features   — needs Playwright
 python3 tests/web7_test.py       # website (Spanish), v7 features
 python3 tests/web8_test.py       # website (Spanish), v8 features
 python3 tests/web82_test.py      # website in English: no Spanish left on any screen
 python3 tests/web9_test.py       # website in Spanish: no English left on any screen, nothing missing from the dictionary
 python3 tests/web9_storage_test.py     # a browser that used an earlier version keeps its building, images and Library
-python3 tests/web91_test.py            # 9.1: when each agent works, its own chat, Copy, the Creator in its chat, models by price, the logo
+python3 tests/web91_test.py            # 9.1: when each agent works, its own chat, Copy, the Creator in its chat, models by price, the logo, meetings that resume
 python3 tests/home_test.py       # Fer Home
 python3 tests/home7_test.py      # Fer Home with hands, Telegram, brain folder and another API
 python3 tests/app9_test.py       # the desktop app inside: keys in Settings, local only, the agents' Chrome
@@ -93,7 +97,11 @@ node tests/app9_smoke.cjs dist/linux-unpacked/fer-agent    # the built app, open
 
 ## Disclaimer
 
-Fer Agent is free, open-source software, provided “as is”, without warranty of any kind. The agents are artificial intelligence programs and can make mistakes: you decide what they do and you use them at your own risk. Check what they propose before you say yes. Anything with effects outside the website (sending, deleting, paying) waits for your approval in the Inbox.
+**Read this before you start.** An agent is an artificial intelligence program that acts on its own. Today's agents make mistakes: they misunderstand orders, make things up and can be fooled by a website or an email with hidden instructions. With «Internet as you» and «Your computer as you» an agent uses your sessions and your computer as if it were you: it can send, publish, buy, pay, delete or change things in your name.
+
+You decide, agent by agent, what it does without asking you. Whatever it does happens under your responsibility. Give each one only what it needs, set a spending cap and, for money, use accounts and cards with low limits.
+
+Fer Agent is free, open-source software, provided “as is”, without warranty of any kind.
 
 ---
 

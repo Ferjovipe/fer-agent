@@ -35,7 +35,7 @@ for line in open(os.path.join(ROOT, "languages", "es.js"), encoding="utf8"):
     if mm: _en |= _words(json.loads(mm.group(1))); _es |= _words(json.loads(mm.group(2)))
 ONLY_EN = _en - _es
 EN = re.compile(r"\b(the|and|of|to|with|your|you|it's|its|is|are|this|that|from|for|what|when|each|have|can|by|not|there|they|their|will|which|who|how|building|agents?|floor|profile|spending|boss|sages?|meeting|coins?|brain|heartbeat|settings|inbox|tasks?|nothing|save|delete|create|remove|talk|backup)\b", re.I)
-ALLOWED = ["Fer Agent", "OpenRouter", "Google Drive", "Google", "Chrome", "Obsidian", "Whisper", "JEV", "Memory", "Jev Latest", "Credits", "Keys", "Create Key", "EN · English", "English", "skills", "skill", "Telegram"]
+ALLOWED = ["Fer Agent", "OpenRouter", "Google Drive", "Google", "Chrome", "Obsidian", "Whisper", "JEV", "Memory", "Jev Latest", "Credits", "Keys", "Create Key", "EN · English", "English", "skills", "skill", "Telegram", "AI The Hive", "Ferjovipe"]
 leftovers = {}
 def english(page, sel, where):
     bad = []
@@ -116,7 +116,7 @@ try:
         check(not english(page, "#drawer", "ajustes"), f"Settings in Spanish: {leftovers.get('settings')}")
         photo(page, "4-settings"); page.click("#closeDrawer")
         page.click("#meter"); page.wait_for_selector("#drawerBody .who-spends"); page.wait_for_timeout(200)
-        check(not english(page, "#drawer", "gasto"), f"Spending in Spanish: {leftovers.get('spending')}")
+        check(not english(page, "#drawer", "gasto"), f"Spending in Spanish: {leftovers.get('gasto')}")
         page.click("#closeDrawer")
         page.click("#createAgent"); page.wait_for_selector("#drawer:not([hidden])"); page.wait_for_timeout(300)
         check(not english(page, "#drawer", "crear agente"), f"Create agent in Spanish: {leftovers.get('crear agente')}")

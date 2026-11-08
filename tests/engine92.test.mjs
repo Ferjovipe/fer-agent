@@ -158,3 +158,52 @@ test("9.2 change: the paid search and the skills that came with Fer Agent become
   ed.repair && ed.repair();
   assert.ok(!ed.e.agents.find((x) => x.name === "Rita").capabilities.includes("internet"), "once you turn it off, it stays off");
 });
+
+// ---------------- Files and «Your computer as you» (the orders run here; mouse and screen only on a Mac or Windows) ----------------
+async function withComputer(script, permissions) {
+  const b = await building(script, permissions);
+  await b.ed.run({ type: "editAgent", id: b.a.id, changes: { capabilities: ["write", "files", "computer"] } });
+  return b;
+}
+test("files: in its own folder it writes and reads without asking; outside it, it goes by its permissions", async () => {
+  const outsidePath = path.join(fs.mkdtempSync(path.join(os.tmpdir(), "fa92out-")), "note.txt");
+  const { ed, a, toolResults } = await withComputer([
+    ["file_write", { path: "reports/today.md", text: "All fine." }],
+    ["file_read", { path: "reports/today.md" }],
+    ["file_write", { path: outsidePath, text: "outside" }],
+    "Done."
+  ]);
+  await ed.run({ type: "speak", text: "Write the report.", agent: a.id });
+  const t = toolResults();
+  assert.match(t[0], /Saved: .*reports\/today\.md/);
+  assert.match(t[1], /All fine\./);
+  assert.match(t[2], /Permission requested/, "outside its folder, with «ask me first», it asks");
+  assert.ok(!fs.existsSync(outsidePath));
+  const it = ed.inbox().find((x) => x.kind === "action");
+  const r = await ed.run({ type: "inbox.decide", kind: "action", id: it.id, yes: true });
+  assert.equal(r.state, "done");
+  assert.equal(fs.readFileSync(outsidePath, "utf8"), "outside", "written with your yes");
+});
+
+test("orders to the computer: reading goes ahead, deleting asks first; «without asking», it does it", async () => {
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), "fa92cmd-")), victim = path.join(dir, "old.txt");
+  fs.writeFileSync(victim, "x");
+  const ask = await withComputer([["pc_run", { command: `ls ${dir}` }], ["pc_run", { command: `rm ${victim}` }], "Asked."]);
+  await ask.ed.run({ type: "speak", text: "Tidy up.", agent: ask.a.id });
+  let t = ask.toolResults();
+  assert.match(t[0], /old\.txt/, "listing: straight away");
+  assert.match(t[1], /Permission requested/, "deleting: it asks");
+  assert.ok(fs.existsSync(victim));
+  assert.match(ask.ed.inbox().find((x) => x.kind === "action").what, /\(delete\)/);
+  const free = await withComputer([["pc_run", { command: `rm ${victim}` }], "Deleted."], { mode: "free" });
+  await free.ed.run({ type: "speak", text: "Delete it.", agent: free.a.id });
+  t = free.toolResults();
+  assert.match(t[0], /Result \(code 0\)|Resultado \(código 0\)/);
+  assert.ok(!fs.existsSync(victim), "without asking: done");
+});
+
+test("the screen: here (Linux, no screen) it says so instead of breaking", async () => {
+  const { ed, a, toolResults } = await withComputer([["pc_look", {}], "No screen."], { mode: "free" });
+  await ed.run({ type: "speak", text: "Look.", agent: a.id });
+  assert.match(toolResults()[0], /It didn't work|No ha funcionado/);
+});

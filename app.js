@@ -1310,6 +1310,25 @@ function profileCapabilities(box, a, change, { brainless }) {
   }
   box.append(permissionsBlock(a));
   box.append(h("div", { class: "block" }, h("h4", {}, "Capabilities"), caps));
+  if (mode === "home") box.append(telegramBlock(a));
+}
+// 9.2 · Its own Telegram: you talk to it from your phone as to a person
+function telegramBlock(a) {
+  const now = (homeInfo.telegramAgents || {})[a.id];
+  const box = h("div", { class: "block" }, h("h4", {}, "Its own Telegram"));
+  if (now) {
+    box.append(h("p", { class: "note", style: { margin: 0 } }, now.linked ? tr(`Linked: talk to it at @${now.username} from your Telegram.`) : tr(`Bot @${now.username} ready. Write anything to it from your Telegram: the first chat that writes becomes yours.`)),
+      h("button", { class: "btn mini danger", type: "button", onclick: (ev) => confirm(ev.target, "Remove its Telegram? Press again", async () => {
+        try { await callApp("/api/conf/telegram-agent", { agent: a.id, remove: true }); await refreshHome(); renderProfile(true); } catch (e) { warn(e); }
+      }) }, "Remove"));
+    return box;
+  }
+  const t = h("input", { type: "password", autocomplete: "off", placeholder: "123456789:ABC…" });
+  box.append(h("p", { class: "note", style: { margin: 0 } }, "In Telegram, talk to @BotFather, type /newbot and follow the steps: it gives you a token. Paste it here. The token stays only on this computer."),
+    h("div", { class: "row-c" }, t, h("button", { class: "btn mini", type: "button", onclick: async () => {
+      try { const r = await callApp("/api/conf/telegram-agent", { agent: a.id, token: t.value.trim() }); await refreshHome(); toast(tr(`Ready: now write anything to @${r.username} from your Telegram.`)); renderProfile(true); } catch (e) { warn(e); }
+    } }, "Connect")));
+  return box;
 }
 // Signing in once to your websites, in the agents' Chrome (Settings and «Internet as you»)
 function signInWidget() {

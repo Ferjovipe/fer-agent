@@ -337,6 +337,50 @@ function engineNotice(ev) {
   // any change may bring something new to the inbox (the Creator's agents, coins, lessons, meetings, models…): it's all looked at together
   if (ev.type === "inbox" || ev.type === "state") { clearTimeout(inboxWait); inboxWait = setTimeout(() => notifyInbox().catch(() => {}), ev.type === "inbox" ? 300 : 1000); }
   if (ev.type === "skill") telegramSend(`${ev.name} (${ev.skill}):\n\n${String(ev.text).slice(0, 3800)}`);
+  if (ev.type === "report" && ev.agent) agentBotSend(ev.agent, String(ev.text || ""));   // 9.2: what an agent does on its own, to its own Telegram
+}
+
+// ---------------- 9.2 · Each agent with its own Telegram: you talk to it from your phone as to a person ----------------
+// You create the bot with @BotFather and paste its token in the agent's profile. The first chat that writes to it becomes yours:
+// from then on it only answers that chat. The token stays only on this computer (config.json).
+const agentBots = new Map();   // agent → { stop }
+async function botCall(token, method, body) {
+  try { const r = await fetch(`${TELEGRAM}/bot${token}/${method}`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body || {}) }); return await r.json(); }
+  catch (e) { return { ok: false, description: e.message }; }
+}
+async function agentBotSend(agent, text) {
+  const b = (conf.telegramAgents || {})[agent];
+  if (!b || !b.token || !b.chat || !text) return;
+  for (let i = 0; i < Math.min(4, Math.ceil(text.length / 3800)); i++) await botCall(b.token, "sendMessage", { chat_id: b.chat, text: text.slice(i * 3800, (i + 1) * 3800), disable_web_page_preview: true });
+}
+function startAgentBots() { for (const id of Object.keys(conf.telegramAgents || {})) startAgentBot(id); }
+async function startAgentBot(id) {
+  if (agentBots.has(id)) return;
+  const st = { stop: false }; agentBots.set(id, st);
+  let since = 0, wait = 0;
+  const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+  while (!st.stop) {
+    const b = (conf.telegramAgents || {})[id];
+    if (!b || !b.token || !ed.agent(id)) break;
+    let d = null; const t0 = Date.now();
+    try { d = await (await fetch(`${TELEGRAM}/bot${b.token}/getUpdates?timeout=50&offset=${since}`)).json(); } catch { d = null; }
+    if (!d || d.ok === false) { wait = Math.min(300000, wait ? wait * 2 : 5000); await sleep(wait); continue; }
+    wait = 0;
+    if (!(d.result || []).length && Date.now() - t0 < 1000) await sleep(1000);
+    for (const u of d.result || []) {
+      since = u.update_id + 1;
+      const msg = u.message;
+      if (!msg || !msg.chat || msg.chat.type !== "private" || st.stop) continue;
+      if (!b.chat) { b.chat = msg.chat.id; await saveConfig(conf); await botCall(b.token, "sendMessage", { chat_id: b.chat, text: L("Linked. From now on I only answer this chat. — {1}", ed.agent(id).name) }); continue; }
+      if (String(msg.chat.id) !== String(b.chat)) continue;   // only your chat
+      const text = String(msg.text || msg.caption || "").trim();
+      if (!text) continue;
+      await botCall(b.token, "sendChatAction", { chat_id: b.chat, action: "typing" });
+      try { const r = await ed.run({ type: "speak", text, agent: id }); await agentBotSend(id, String(r.reply || "…")); }
+      catch (e) { await agentBotSend(id, L("I couldn't answer: {1}", e.message)); }
+    }
+  }
+  agentBots.delete(id);
 }
 
 // ---------------- Telegram: the inbox on your phone (it only listens to your chat) ----------------
@@ -449,6 +493,7 @@ async function listenTelegram() {
   }
 }
 listenTelegram();
+startAgentBots();   // 9.2: the agents that have their own Telegram
 
 // ---------------- The heartbeat ----------------
 let lastSeen = Math.max(0, ...ed.e.log.map((x) => x.ts)), beating = false;
@@ -519,6 +564,7 @@ const server = http.createServer(async (req, res) => {
         home: { app: APP, key: !!conf.key, data: APP ? DATA : "", telegram: !!tg, keys: Object.fromEntries([...new Set([...Object.keys(PROVIDERS), ...ed.connections().map((c) => c.id)])].filter((k) => k !== "openrouter").map((k) => [k, !!(conf.keys || {})[k]])),
           folder: { path: BRAIN_FOLDER, notes: brain.notes, library: brain.library, lastSync: brain.lastSync, error: brain.error }, agentsFolder: AGENTS_FOLDER,
           mailboxes: (conf.mailboxes || []).map(({ password, ...m }) => m),
+          telegramAgents: Object.fromEntries(Object.entries(conf.telegramAgents || {}).map(([k, v]) => [k, { username: v.username || "", linked: !!v.chat }])),
           email: (conf.mailboxes || [])[0] ? (({ password, ...m }) => m)(conf.mailboxes[0]) : null } });
       // saved images and music
       if (route.startsWith("/api/media/") && req.method === "GET") {
@@ -576,6 +622,22 @@ const server = http.createServer(async (req, res) => {
         if (now.id) list[list.findIndex((m) => m.id === now.id)] = box; else list.push(box);
         await saveConfig(conf);
         return json(res, 200, { ok: true, id: box.id });
+      }
+      // 9.2: an agent's own Telegram (its bot's token, from @BotFather). {agent, token} or {agent, remove: true}
+      if (route === "/api/conf/telegram-agent" && req.method === "POST") {
+        let d; try { d = JSON.parse((await readBody(req, 4096)).toString("utf8")); } catch { return json(res, 400, { error: L("Unreadable request.") }); }
+        const id = String(d.agent || ""), all = conf.telegramAgents || (conf.telegramAgents = {});
+        if (!ed.agent(id)) return json(res, 400, { error: L("There is no such agent.") });
+        if (d.remove) { delete all[id]; const st = agentBots.get(id); if (st) st.stop = true; await saveConfig(conf); return json(res, 200, { ok: true }); }
+        const token = String(d.token || "").trim();
+        if (!/^\d{5,}:[\w-]{20,}$/.test(token)) return json(res, 400, { error: L("That doesn't look like a bot token (it looks like 123456789:ABC…).") });
+        if (tg && tg.token === token) return json(res, 400, { error: L("That bot is already the building's Telegram: create another one for this agent.") });
+        const me = await botCall(token, "getMe");
+        if (!me || !me.ok) return json(res, 400, { error: L("Telegram didn't accept that token.") });
+        all[id] = { token, chat: null, username: me.result.username || "" };
+        await saveConfig(conf); const st = agentBots.get(id); if (st) st.stop = true;
+        setTimeout(() => startAgentBot(id), 1500);
+        return json(res, 200, { ok: true, username: all[id].username });
       }
       // Settings → Email → «Check»: it signs in to read and to send, and changes nothing in the mailbox
       if (route === "/api/email/test" && req.method === "POST") {
