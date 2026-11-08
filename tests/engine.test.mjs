@@ -405,7 +405,7 @@ test("the Creator designs an agent with your words; it isn't created until you a
   const r = await ed.run({ type: "proposeAgent", text: "quiero uno que me haga el menú de la semana" });
   assert.equal(ed.e.agents.length, n, "proposing doesn't create");
   assert.equal(r.proposal.profile.name, "Recetas");
-  assert.deepEqual(r.proposal.profile.capabilities, ["write", "speak", "hear", "search"], "never capabilities that pay");
+  assert.deepEqual(r.proposal.profile.capabilities, ["write", "speak", "hear", "internet"], "the old «search» is «Internet as you» (9.2); what doesn't exist goes");
   assert.equal(r.proposal.profile.brain, chooseModel("budget", ed.models));
   assert.equal(calls.at(-1).body.model, "anthropic/claude-sonnet-5.5", "the Creator thinks with a high brain");
   assert.ok(ed.agentSpending(ed.agent("Creador de agentes"), "today") > 0);
@@ -545,7 +545,7 @@ test("review: the Creator's proposal says when it wakes up and what it spends", 
   const r = await ed.creatorWork(ed.agent("creator"), { text: "uno que vigile", from: "boss", implicit: true });
   assert.match(r.text, /Despierta cada minuto y cada vez avanza en su objetivo \(gasta en cada latido\)/);
   assert.match(r.text, /claude-sonnet-5\.5 \(alto\)/);
-  assert.match(r.text, /Buscar en internet/);
+  assert.match(r.text, /Internet como tú/);
   const pr = ed.e.proposals.at(-1);
   await ed.run({ type: "deleteFloor", id: "tech" }).catch(() => {});
   ed.e.floors = ed.e.floors.filter((p) => p.id !== "tech");

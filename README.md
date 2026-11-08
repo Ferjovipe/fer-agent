@@ -1,6 +1,6 @@
 # Fer Agent · The Building
 
-Created by **Fernando Villar Peláez** · [fernandovillarpelaez.com](https://fernandovillarpelaez.com) · Try it now: [feragent.netlify.app](https://feragent.netlify.app)
+A product by **Fernando Villar Peláez** (Ferjovipe) for **[AI The Hive](https://aithehive.com)** · [aithehive.com](https://aithehive.com) · [fernandovillarpelaez.com](https://fernandovillarpelaez.com) · Try it now: [feragent.netlify.app](https://feragent.netlify.app)
 
 **You have an agentic company at your service.** Fer Agent is an open-source web app where your AI agents live in a building: each floor is a team, each agent has a profile with its own brain, heartbeat and capabilities, and a boss you talk to who shares out the work.
 
@@ -97,4 +97,4 @@ Fer Agent is free, open-source software, provided “as is”, without warranty 
 
 ---
 
-Fer Agent was created by Fernando Villar Peláez · [fernandovillarpelaez.com](https://fernandovillarpelaez.com)
+Fer Agent is a product by Fernando Villar Peláez (Ferjovipe) for AI The Hive · [aithehive.com](https://aithehive.com) · [fernandovillarpelaez.com](https://fernandovillarpelaez.com)

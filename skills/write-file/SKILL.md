@@ -1,8 +1,8 @@
 ---
 name: write-file
 title: Write in its folder
-description: Saves a text file in the agents' folder on your computer (or adds to the end of one). It has an effect outside the website, so each time it asks for your permission in the inbox.
-effect: external
+description: Saves a text file in the agents' folder on your computer (or adds to the end of one). It can't leave that folder, so it doesn't ask.
+effect: read
 fixed: false
 data: {"path": "reports/today.md", "text": "…", "append": false}
 script: write.mjs

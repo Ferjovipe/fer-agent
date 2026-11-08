@@ -69,5 +69,11 @@ export function renderLanding(cont, { h, enter, figure, languages, language, cha
       h("p", { class: "landing-notice" }, "Fer Agent is free, open-source software, provided “as is”, without warranty of any kind. The agents are artificial intelligence programs and can make mistakes: you decide what they do and you use them at your own risk. Check what they propose before you say yes.")),
     h("section", { class: "section-l final-l" },
       h("h2", {}, "Your agentic company is waiting."),
-      h("button", { class: "button-big", type: "button", onclick: enter }, "Enter the building")));
+      h("button", { class: "button-big", type: "button", onclick: enter }, "Enter the building"),
+      // the credit: who made it and for whom
+      h("div", { class: "landing-credit" },
+        h("a", { href: "https://aithehive.com", target: "_blank", rel: "noopener" }, h("img", { src: "img/thehive.webp", alt: "AI The Hive" })),
+        h("span", {}, "A product by Fernando Villar Peláez (Ferjovipe) for AI The Hive"),
+        h("span", {}, h("a", { href: "https://aithehive.com", target: "_blank", rel: "noopener" }, "aithehive.com"), " · ",
+          h("a", { href: "https://fernandovillarpelaez.com", target: "_blank", rel: "noopener" }, "fernandovillarpelaez.com")))));
 }

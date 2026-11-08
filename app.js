@@ -4,7 +4,7 @@
 // the meeting rooms and the settings. Every text goes through tr() (languages.js) so it can be translated.
 // The real work is done by engine.js (here in the browser, or in Fer Home).
 // =====================================================================
-import { LOCALE, setLanguage, Building, ROLES, CAPABILITIES, SEATS, PER_POOL, MAX_OFFICES, MAX_POOLS, MAX_MEETING_SEATS, VERSION, JEV_MODEL, MODEL_TYPES, LEVELS, LEVEL_NAME,
+import { LOCALE, setLanguage, Building, ROLES, CAPABILITIES, BUILT_IN_SKILL_CAP, SEATS, PER_POOL, MAX_OFFICES, MAX_POOLS, MAX_MEETING_SEATS, VERSION, JEV_MODEL, MODEL_TYPES, LEVELS, LEVEL_NAME,
   seating, cleanLook, heartbeatText, levelKey, modelType, variablePrice, fmt, fmtCap, explainError, PROVIDERS, filterApiModels, MAX_PERSONALITY, MAX_OBJECTIVE_LINES,
   cleanObjectives, unitPrice, hearingPricePerSecond, noPublishedPrice, describedPrice, imageTokens, memoryNotesMd, cleanTopic, modelVersion, chooseModel, brainFolders, readBackupFile, emailServers } from "./engine.js";
 import { CHARACTERS } from "./characters.js";
@@ -1257,6 +1257,30 @@ function profileBrain(box, a, change, { brainless }) {
     brainless ? null : field("Own daily cap (USD)", h("input", { type: "number", min: "0", step: "0.05", value: a.dailyCap || "", placeholder: "no own cap", onchange: (ev) => change({ dailyCap: Math.max(0, parseFloat(ev.target.value) || 0) }) }), "If it goes over, it's frozen until tomorrow. The building's cap applies too (Spending)."),
     a.role === "controller" ? h("div", {}, h("button", { class: "btn mini", onclick: () => openDrawer("spending") }, "Building caps")) : null));
 }
+// 9.2 · What agents are and what risks they carry: shown in each agent's permissions and on the front page
+const RISKS = "An agent is an artificial intelligence program that acts on its own. It can make mistakes, misunderstand an order or be fooled by a website or an email with hidden instructions. With «Internet as you» and «Your computer as you» it uses your sessions and your computer as if it were you: it can send, publish, buy, pay, delete or change things in your name. Whatever it does, it does under your responsibility. Give each agent only what it needs, set a spending cap and, for money, use accounts and cards with low limits. Fer Agent is free software provided as is, without warranty of any kind.";
+function risksNote() {
+  const more = h("p", { class: "note risks-text", hidden: true }, RISKS);
+  return h("div", {}, h("button", { class: "link-btn", type: "button", onclick: () => { more.hidden = !more.hidden; } }, "Read what an agent is and what you risk"), more);
+}
+// 9.2 · Permissions: what this agent does without asking you (you decide; it can't change it)
+function permissionsBlock(a) {
+  const p = Object.assign({ mode: "ask", ask: ["pay", "send", "delete", "other"] }, a.permissions || {});
+  const save = (q) => Motor.run({ type: "editAgent", id: a.id, changes: { permissions: Object.assign({}, p, q) } }).then(() => renderProfile(true)).catch(warn);
+  const MODES = [["ask", "Ask me first", "Before anything with an effect outside (sending, publishing, buying, paying, deleting…) it asks in your inbox. Reading, searching and typing it does on its own."],
+    ["limits", "With limits", "It only asks for what you tick:"],
+    ["free", "Without asking", "It acts as you, without asking anything. You're responsible for what it does."]];
+  const KINDS = [["pay", "Paying or buying"], ["send", "Sending or publishing"], ["delete", "Deleting"], ["other", "Anything else with an effect outside"]];
+  const box = h("div", { class: "permissions" });
+  for (const [id, name, text] of MODES) box.append(h("label", { class: "perm-mode" + (p.mode === id ? " on" : "") },
+    h("input", { type: "radio", name: "perm-" + a.id, value: id, checked: p.mode === id, onchange: () => save({ mode: id }) }),
+    h("span", {}, h("b", {}, name), h("small", {}, text),
+      id === "limits" && p.mode === "limits" ? h("span", { class: "perm-kinds" }, KINDS.map(([k, label]) => h("label", { class: "cap" },
+        h("input", { type: "checkbox", checked: p.ask.includes(k), onchange: (ev) => save({ ask: ev.target.checked ? [...new Set([...p.ask, k])] : p.ask.filter((x) => x !== k) }) }), h("span", {}, label)))) : null)));
+  return h("div", { class: "block" }, h("h4", {}, "What it does without asking you"), box,
+    p.mode === "free" ? h("p", { class: "warn-note" }, "Without asking: it uses your accounts and your computer as you. Whatever it does is done in your name and under your responsibility.") : null,
+    risksNote());
+}
 // Capabilities: each one, with its own model when it needs one
 function profileCapabilities(box, a, change, { brainless }) {
   if (brainless || a.role === "jev") { box.append(h("div", { class: "block" }, h("p", { class: "note", style: { margin: 0 } }, a.role === "jev" ? "JEV only decides: it doesn't use capabilities." : "Works with fixed rules: it doesn't use capabilities."))); return; }
@@ -1264,6 +1288,10 @@ function profileCapabilities(box, a, change, { brainless }) {
   const mark = (id, yes) => Motor.run({ type: "editAgent", id: a.id, changes: { capabilities: yes ? [...new Set([...a.capabilities, id])] : a.capabilities.filter((x) => x !== id) } }).then(() => { render(); renderProfile(true); }).catch(warn);
   const fromBuilding = (id) => (id ? `The building's model (${modelName(id)})` : "The building's model (none chosen in Settings)");
   const extraFor = {
+    internet: () => isApp() ? signInWidget() : h("small", { class: "note" }, mode === "home" ? "It uses the Chrome of the computer where Fer Home runs." : "Here, in the browser, it can only search through OpenRouter (paid). With the app open on your computer it does everything else."),
+    computer: () => h("small", { class: "note" }, isApp() || mode === "home" ? "The first time, your system will ask you for permission (on a Mac: System Settings → Privacy and Security → Accessibility and Screen Recording)." : "Only with the app open on your computer."),
+    email: () => mailboxesFor(a, change),
+    files: () => h("small", { class: "note" }, homeInfo.agentsFolder ? tr("Its folder:") + " " + homeInfo.agentsFolder : "Its folder is inside the app's data on this computer."),
     create_images: () => [modelPicker("image", a.imageModel, { empty: fromBuilding(aj.imageModel), onChange: (v) => change({ imageModel: v }) }), proposalsFor("image")],
     create_music: () => [modelPicker("music", a.musicModel, { empty: fromBuilding(aj.musicModel), onChange: (v) => change({ musicModel: v }) }), h("small", { class: "note" }, "Music and audio from OpenRouter (for example, Lyria). Paid per song."), proposalsFor("music")],
     speak: () => voicePicker(a, change),
@@ -1273,15 +1301,32 @@ function profileCapabilities(box, a, change, { brainless }) {
   };
   const caps = h("div", { class: "caps" });
   for (const c of CAPABILITIES) {
-    const avz = c.type === "advanced", marked = has(c.id) && !avz;
-    caps.append(h("div", { class: "cap-block" + (marked ? " on" : "") },
-      h("label", { class: "cap" + (avz ? " adv" : "") },
-        h("input", { type: "checkbox", checked: marked || c.id === "write", disabled: avz || c.id === "write", onchange: (ev) => mark(c.id, ev.target.checked) }),
-        h("span", {}, c.name, avz ? h("span", { class: "plug" }, "plug pending") : null, h("small", {}, avz ? `${tr(c.how)} ${tr("Needs:")} ${tr(c.requires)}` : c.how))),
-      marked && extraFor[c.id] ? h("div", { class: "cap-model" }, extraFor[c.id]()) : null));
+    const marked = has(c.id) || c.id === "write";
+    caps.append(h("div", { class: "cap-block" + (marked && c.id !== "write" ? " on" : "") },
+      h("label", { class: "cap" },
+        h("input", { type: "checkbox", checked: marked, disabled: c.id === "write", onchange: (ev) => mark(c.id, ev.target.checked) }),
+        h("span", {}, c.name, c.hands && !isApp() && mode !== "home" ? h("span", { class: "plug" }, "needs the app") : null, h("small", {}, c.how))),
+      marked && c.id !== "write" && extraFor[c.id] ? h("div", { class: "cap-model" }, extraFor[c.id]()) : null));
   }
-  box.append(h("div", { class: "block" }, h("h4", {}, "Capabilities"), caps,
-    h("small", { class: "note" }, "The advanced ones are described but not connected: each needs one more piece and always your authorisation.")));
+  box.append(permissionsBlock(a));
+  box.append(h("div", { class: "block" }, h("h4", {}, "Capabilities"), caps));
+}
+// Signing in once to your websites, in the agents' Chrome (Settings and «Internet as you»)
+function signInWidget() {
+  const u = h("input", { type: "url", placeholder: "https://mail.google.com" });
+  return h("div", {}, h("small", { class: "note" }, "For it to use a website with your account (your email, your bank, a social network…), sign in once yourself in the agents' Chrome. The session stays on this computer."),
+    h("div", { class: "row-c" }, u, h("button", { class: "btn mini", type: "button", onclick: async () => {
+      try { await callApp("/api/conf/login", { url: u.value.trim() }); toast("The agents' Chrome is open. Sign in with your account and, when you're done, close that window."); } catch (e) { warn(e); }
+    } }, "Sign in")));
+}
+// 9.2 · The mailboxes this agent can use (the ones connected in Settings → Email)
+function mailboxesFor(a, change) {
+  const list = (homeInfo.mailboxes || []);
+  if (!list.length) return h("small", { class: "note" }, isApp() || mode === "home" ? "Connect your mailboxes in Settings → Email (as many as you like) and tick here the ones it can use." : "Email works with the app open on your computer.");
+  const mine = a.mailboxes || [];
+  return h("div", { class: "skills-list" }, list.map((m) => h("label", { class: "cap" },
+    h("input", { type: "checkbox", checked: mine.includes(m.id), onchange: (ev) => change({ mailboxes: ev.target.checked ? [...new Set([...mine, m.id])] : mine.filter((x) => x !== m.id) }) }),
+    h("span", {}, m.name || m.address, h("small", {}, m.address)))));
 }
 // ---------------- Other APIs: one from a subscription you already pay for, with your own key ----------------
 const directModels = {};   // the list each API gives with your key (asked for when you press «Load the list»)
@@ -1334,21 +1379,22 @@ function directPicker(prov, current, onChange) {
   return h("div", { class: "field" }, h("span", {}, "Model"), sel, other, h("div", { class: "row-c" }, load, msg));
 }
 // ---------------- Hands: the Fer Home skills this agent can use ----------------
-const catalog = () => (mode === "home" ? homeSkills : ed.skillsCatalog());
+const fullCatalog = () => (mode === "home" ? homeSkills : ed.skillsCatalog());
+const catalog = () => fullCatalog().filter((k) => !BUILT_IN_SKILL_CAP[k.name]);   // 9.2: the built-in ones are inside their capability
 function skillsBlock(a, change) {
-  const cat = catalog();
-  if (!cat.length) return h("small", { class: "note" }, mode === "home" ? "Fer Home has no skills yet (“skills” folder next to fer-home.mjs)." :
+  const cat = catalog(), all = fullCatalog();   // the ones that run on their own on each heartbeat can be any (reading the email, the X Watcher…)
+  if (!all.length) return h("small", { class: "note" }, mode === "home" ? "Fer Home has no skills yet (“skills” folder next to fer-home.mjs)." :
     "Hands work with Fer Home running on your computer: the agents' Chrome, their folder on the Mac and the skills. On this website, without Fer Home, they do nothing. How to set it up: README in the ZIP.");
   const has = (n) => a.skills.includes(n);
   const list = h("div", { class: "skills-list" }, cat.map((k) => h("label", { class: "cap" },
     h("input", { type: "checkbox", checked: has(k.name), onchange: (ev) => change({ skills: ev.target.checked ? [...new Set([...a.skills, k.name])] : a.skills.filter((x) => x !== k.name) }) }),
     h("span", {}, k.title || k.name, k.effect === "external" ? h("span", { class: "plug" }, "asks for your permission") : null, h("small", {}, k.description)))));
   const fixed = a.fixedSkill && a.fixedSkill.skill;
-  const selFixed = h("select", { onchange: (ev) => { const n = ev.target.value; const k = cat.find((x) => x.name === n); change({ fixedSkill: n ? { skill: n, settings: defaultValues(k) } : null, skills: n ? [...new Set([...a.skills, n])] : a.skills }); } },
-    h("option", { value: "" }, "None: it works with its brain"), cat.filter((k) => k.fixed !== false).map((k) => h("option", { value: k.name }, k.title || k.name)));
+  const selFixed = h("select", { onchange: (ev) => { const n = ev.target.value; const k = all.find((x) => x.name === n); change({ fixedSkill: n ? { skill: n, settings: defaultValues(k) } : null, skills: n ? [...new Set([...a.skills, n])] : a.skills }); } },
+    h("option", { value: "" }, "None: it works with its brain"), all.filter((k) => k.fixed !== false).map((k) => h("option", { value: k.name }, k.title || k.name)));
   selFixed.value = fixed || "";
-  const out = [list, field("On every heartbeat, without a brain (doesn't spend)", selFixed, "If you pick one, on every heartbeat it runs that skill and leaves what it finds in its chat. Example: the X Watcher every 10 minutes.")];
-  const k = fixed && cat.find((x) => x.name === fixed);
+  const out = [cat.length ? list : null, field("On every heartbeat, without a brain (doesn't spend)", selFixed, "If you pick one, on every heartbeat it runs that skill and leaves what it finds in its chat. Example: the X Watcher every 10 minutes.")];
+  const k = fixed && all.find((x) => x.name === fixed);
   if (k && (k.settings || []).length) out.push(skillSettingsEditor(a, k, change));
   if (fixed && !k) out.push(h("small", { class: "note" }, `Fer Home doesn't have the “${fixed}” skill right now.`));
   return out;
@@ -2645,27 +2691,39 @@ function renderSettings() {
     h("p", { class: "note", style: { margin: 0 } }, "Start from scratch: “Just the boss” or “With the recommended team” (dome, tech floor and lobby with their agents). Settings and spending are kept."),
     h("div", { class: "row-c" }, template("empty", "Just the boss"), template("basic", "With the recommended team"))));
   c.append(h("p", { class: "note" }, `Fer Agent Building · version ${VERSION} · open source · prices and models come live from OpenRouter.`));
+  c.append(h("p", { class: "note" }, "A product by Fernando Villar Peláez (Ferjovipe) for AI The Hive", " · ",
+    h("a", { href: "https://aithehive.com", target: "_blank", rel: "noopener" }, "aithehive.com"), " · ",
+    h("a", { href: "https://fernandovillarpelaez.com", target: "_blank", rel: "noopener" }, "fernandovillarpelaez.com")));
   c.scrollTop = sc;
 }
 // The mailbox in Settings (for the Email agent): in the app it's connected here; in Fer Home, from its Terminal; a website on its own can't
+// 9.2 · Email: as many mailboxes as you like, of any provider. Each agent uses the ones you tick in its profile (Capabilities → Email).
+let emailEditing = null;   // the mailbox being edited ({} = a new one)
 function emailBlock() {
   const box = h("div", { class: "block" }, h("h4", {}, "Email"));
-  const now = homeInfo.email || null, msg = h("small", { class: "note" });
-  const check = h("button", { class: "btn mini", type: "button", onclick: async () => {
-    check.disabled = true; msg.textContent = tr("Checking…");
-    try { const r = await callApp("/api/email/test", {}); msg.textContent = tr(`It works: it can read and send (${r.emails} emails in the inbox).`); }
-    catch (e) { msg.textContent = e.message; } finally { check.disabled = false; }
-  } }, "Check");
-  const agentNote = h("small", { class: "note" }, "The Email agent (Built-in agents) reads what comes in, summarises and sorts it and prepares the replies; each reply waits for your yes in the inbox. It never marks, moves or deletes anything in the mailbox.");
+  const list = homeInfo.mailboxes || (homeInfo.email ? [homeInfo.email] : []);
+  const agentNote = h("small", { class: "note" }, "Each agent uses the mailboxes you tick in its profile (Capabilities → Email). It reads without marking anything as read; whether it asks you before sending depends on its permissions.");
   if (mode !== "home") {
     box.append(h("p", { class: "note", style: { margin: 0 } }, "A website on its own can't connect to a mailbox. It's done in the desktop app or in Fer Home."), agentNote);
     return box;
   }
-  if (!isApp()) {
-    box.append(h("p", { class: "note", style: { margin: 0 } }, now ? tr(`Connected: ${now.address}`) : "No mailbox connected."),
-      h("small", { class: "note" }, "To connect or change it: on the Fer Home computer, node fer-home.mjs email"), now ? h("div", { class: "row-c" }, check, msg) : null, agentNote);
-    return box;
-  }
+  const checkBtn = (m, msg) => { const b = h("button", { class: "btn mini", type: "button", onclick: async () => {
+    b.disabled = true; msg.textContent = tr("Checking…");
+    try { const r = await callApp("/api/email/test", { id: m.id }); msg.textContent = tr(`It works: it can read and send (${r.emails} emails in the inbox).`); }
+    catch (e) { msg.textContent = e.message; } finally { b.disabled = false; }
+  } }, "Check"); return b; };
+  box.append(h("div", { class: "mailboxes" }, list.length ? list.map((m) => {
+    const msg = h("small", { class: "note" });
+    return h("div", { class: "mailbox" }, h("div", {}, h("b", {}, m.name || m.address), m.name ? h("small", { class: "note" }, " · " + m.address) : null),
+      h("div", { class: "row-c" }, checkBtn(m, msg),
+        isApp() ? h("button", { class: "btn mini", type: "button", onclick: () => { emailEditing = m; renderSettings(); } }, "Change") : null,
+        isApp() ? h("button", { class: "btn mini danger", type: "button", onclick: (ev) => confirm(ev.target, "Disconnect it? The password is deleted from this computer. Press again", async () => {
+          try { await callApp("/api/conf/email", { remove: true, id: m.id }); await refreshHome(); toast("Mailbox disconnected."); renderSettings(); } catch (e) { warn(e); }
+        }) }, "Disconnect") : null), msg);
+  }) : h("p", { class: "note", style: { margin: 0 } }, "No mailbox connected.")));
+  if (!isApp()) { box.append(h("small", { class: "note" }, "To connect or change it: on the Fer Home computer, node fer-home.mjs email"), agentNote); return box; }
+  if (!emailEditing) { box.append(h("button", { class: "btn mini", type: "button", onclick: () => { emailEditing = {}; renderSettings(); } }, list.length ? "Add another mailbox" : "Connect a mailbox"), agentNote); return box; }
+  const now = emailEditing.id ? emailEditing : null;
   const v = Object.assign({ address: "", name: "", imapHost: "", imapPort: "", smtpHost: "", smtpPort: "" }, now || {});
   const inp = (k, o) => { const x = h("input", Object.assign({ value: v[k] ?? "" }, o || {})); x.oninput = () => { v[k] = x.value.trim(); }; return x; };
   const address = inp("address", { type: "email", placeholder: "name@yourdomain.com", autocomplete: "off" });
@@ -2677,18 +2735,16 @@ function emailBlock() {
     const g = emailServers(address.value.trim()); if (!g || (now && now.address === address.value.trim())) return;
     imapHost.value = v.imapHost = g.imapHost; imapPort.value = v.imapPort = g.imapPort; smtpHost.value = v.smtpHost = g.smtpHost; smtpPort.value = v.smtpPort = g.smtpPort;
   };
-  box.append(h("p", { class: "note", style: { margin: 0 } }, "The mailbox the Email agent reads and sends from. The password is only saved on this computer and only travels to your mailbox's servers. Many providers (Gmail, iCloud, Yahoo…) ask for an “app password”, created in your account's security settings, instead of your usual one."),
+  box.append(h("div", { class: "mailbox-form" }, h("p", { class: "note", style: { margin: 0 } }, "The password is only saved on this computer and only travels to your mailbox's servers. Many providers (Gmail, iCloud, Yahoo…) ask for an “app password”, created in your account's security settings, instead of your usual one."),
     field("Address", address), field("Password", password), field("Name shown to whoever receives it", name),
     h("div", { class: "row-c" }, field("Server to read (IMAP)", imapHost), field("Port", imapPort)),
     h("div", { class: "row-c" }, field("Server to send (SMTP)", smtpHost), field("Port", smtpPort)),
     h("div", { class: "row-c" }, h("button", { class: "btn primary mini", type: "button", onclick: async () => {
       try {
-        await callApp("/api/conf/email", Object.assign({}, v, { address: address.value.trim(), password: password.value }));
-        await refreshHome(); toast("Mailbox saved. Press “Check” to try it."); renderSettings();
+        await callApp("/api/conf/email", Object.assign({}, v, { id: now ? now.id : undefined, address: address.value.trim(), password: password.value }));
+        emailEditing = null; await refreshHome(); toast("Mailbox saved. Press “Check” to try it."); renderSettings();
       } catch (e) { warn(e); }
-    } }, "Save"), now ? check : null, now ? h("button", { class: "btn mini danger", type: "button", onclick: (ev) => confirm(ev.target, "Disconnect it? The password is deleted from this computer. Press again", async () => {
-      try { await callApp("/api/conf/email", { remove: true }); await refreshHome(); toast("Mailbox disconnected."); renderSettings(); } catch (e) { warn(e); }
-    }) }, "Disconnect") : null), msg, agentNote);
+    } }, "Save"), h("button", { class: "btn mini", type: "button", onclick: () => { emailEditing = null; renderSettings(); } }, "Cancel"))), agentNote);
   return box;
 }
 // The brain in Settings: where it lives, how to connect it and what the website sees

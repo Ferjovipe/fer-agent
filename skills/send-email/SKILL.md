@@ -3,6 +3,7 @@ name: send-email
 title: Send an email
 description: Sends an email from the mailbox connected in Settings. Each one waits for your yes in the inbox (or on Telegram): without it, nothing is sent.
 effect: external
+kind: send
 fixed: false
 timeout: 60
 data: {"to": "name@example.com", "subject": "…", "text": "…", "in_reply_to": "<Message-ID of the email it answers, if it's a reply>"}

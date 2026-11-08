@@ -609,6 +609,19 @@
   .work-mode .cap small { font-weight: 400; }
   .how-it-works-link { justify-self: start; border: 0; background: none; padding: 0; font-size: 13px; color: color-mix(in srgb, var(--accent) 80%, var(--ink)); text-decoration: underline; text-underline-offset: 2px; cursor: pointer; text-align: left; }
   .warn-note { margin: 6px 0 0; padding: 8px 10px; border-radius: 10px; font-size: 13px; line-height: 1.4; border: 1px solid color-mix(in srgb, var(--warning) 55%, transparent); background: color-mix(in srgb, var(--warning) 11%, var(--paper)); }
+  /* 9.2: several mailboxes */
+  .mailboxes { display: grid; gap: 8px; margin-bottom: 10px; }
+  .mailbox { display: grid; gap: 6px; padding: 10px 12px; border: 1px solid var(--line); border-radius: 12px; }
+  .mailbox-form { display: grid; gap: 8px; margin-top: 4px; }
+  /* 9.2: permissions per agent */
+  .permissions { display: grid; gap: 8px; }
+  .perm-mode { display: flex; gap: 10px; align-items: flex-start; padding: 10px 12px; border: 1px solid var(--line); border-radius: 12px; cursor: pointer; }
+  .perm-mode.on { border-color: var(--accent); background: color-mix(in srgb, var(--accent) 8%, var(--paper)); }
+  .perm-mode > span { display: grid; gap: 3px; }
+  .perm-mode small { color: var(--soft); line-height: 1.4; }
+  .perm-kinds { display: grid; gap: 4px; margin-top: 6px; }
+  .link-btn { background: none; border: 0; padding: 0; margin-top: 8px; color: color-mix(in srgb, var(--accent) 80%, var(--ink)); font: inherit; font-size: 13px; text-decoration: underline; cursor: pointer; }
+  .risks-text { margin: 6px 0 0; line-height: 1.5; }
   .warn-note.row-c { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
   .brain-warnings { display: grid; gap: 4px; }
   .fresh-start { border-color: color-mix(in srgb, var(--accent) 55%, transparent); background: color-mix(in srgb, var(--accent) 7%, var(--paper)); }
@@ -696,6 +709,15 @@
   .how-key a { color: color-mix(in srgb, var(--accent) 80%, var(--ink)); font-weight: 600; text-underline-offset: 2px; }
   #landing .landing-notice { font-size: 14px; opacity: .78; max-width: 62ch; }
   .footer { flex: none; height: var(--footer); display: flex; align-items: center; padding: 0 18px; font-size: 12px; color: var(--soft); background: var(--paper); border-top: 1px solid var(--line); }
+  /* the credit: a product by Fernando Villar Peláez for AI The Hive */
+  .footer .credit { display: inline-flex; align-items: center; gap: 8px; margin-left: 16px; color: var(--soft); text-decoration: none; min-width: 0; }
+  .footer .credit img { height: 26px; width: auto; border-radius: 6px; }
+  .footer .credit span { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .footer .credit:hover span { text-decoration: underline; }
+  @media (max-width: 640px) { .footer .credit span { display: none; } }
+  .landing-credit { display: grid; justify-items: center; gap: 10px; margin-top: 34px; font-size: 14px; opacity: .9; }
+  .landing-credit img { height: 64px; width: auto; border-radius: 10px; }
+  .landing-credit a { color: inherit; }
 
   @media (max-width: 1560px) { .top .mode { display: none; } }
   /* ---------- Mobile ---------- */
@@ -819,7 +841,8 @@
 </div>
 
 <!-- Bottom strip: leaves free the corner where Netlify puts its badge, so it doesn't cover anything -->
-<footer class="footer"><span>Fer Agent · open source · version <span id="version"></span></span></footer>
+<footer class="footer"><span>Fer Agent · open source · version <span id="version"></span></span>
+  <a class="credit" href="https://aithehive.com" target="_blank" rel="noopener"><img src="img/thehive.webp" alt="AI The Hive"><span>A product by Fernando Villar Peláez for AI The Hive</span></a></footer>
 
 <!-- Chat with an agent, full screen -->
 <section class="screen" id="chatView" hidden aria-label="Chat">

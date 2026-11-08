@@ -55,7 +55,7 @@ const HEARTBEAT_SEC = Math.max(1, Number(process.env.FER_HEARTBEAT_SEC || 20));
 const FILES = { "/": "index.html", "/index.html": "index.html", "/app.js": "app.js", "/engine.js": "engine.js", "/characters.js": "characters.js", "/languages.js": "languages.js", "/landing.js": "landing.js" };
 // the building's and the characters' pictures (only these: no other file in the folder is served)
 for (const f of ["landing", "dome", "dome2x", "storey", "storey2x", "lobby", "lobby2x", "character-boy", "character-girl", "character-grandpa", "character-grandma",
-  "character-purple", "character-green", "character-coral", "character-blue", "character-teal", "character-shirt", "logo", "mark"]) FILES["/img/" + f + ".webp"] = "img/" + f + ".webp";   // logo and mark: 9.1
+  "character-purple", "character-green", "character-coral", "character-blue", "character-teal", "character-shirt", "logo", "mark", "thehive"]) FILES["/img/" + f + ".webp"] = "img/" + f + ".webp";   // logo and mark: 9.1; thehive: the credit
 for (const f of ["boy", "girl", "grandpa", "grandma"]) FILES["/img/character-" + f + "-zones.png"] = "img/character-" + f + "-zones.png";
 // the translations in the languages/ folder (es.js…)
 try { for (const f of readdirSync(path.join(HERE, "languages"))) if (/^[a-z-]{2,8}\.js$/.test(f)) FILES["/languages/" + f] = "languages/" + f; } catch {}
@@ -82,6 +82,9 @@ async function configuration() {
   for (const [now, before] of [["key", "clave"], ["keys", "claves"], ["brainFolder", "carpetaCerebro"], ["agentsFolder", "carpetaAgentes"], ["handsVisible", "manosVisibles"]])
     if (conf[now] === undefined && conf[before] !== undefined) { conf[now] = conf[before]; delete conf[before]; }
   conf.brainFolder = movedPath(conf.brainFolder); conf.agentsFolder = movedPath(conf.agentsFolder);   // folders chosen inside datos/ before version 9
+  // 9.2: as many mailboxes as you like. The one there was before («email») becomes the first, «main».
+  if (!Array.isArray(conf.mailboxes)) conf.mailboxes = conf.email && conf.email.address ? [Object.assign({ id: "main" }, conf.email)] : [];
+  conf.email = null;
   if (process.env.OPENROUTER_API_KEY) conf.key = process.env.OPENROUTER_API_KEY;
   if (process.env.FER_PIN) conf.pin = process.env.FER_PIN;
   if (APP) {   // in the app nothing is asked: the PIN is created on its own (the window carries it) and the key is pasted in Settings
@@ -111,7 +114,7 @@ async function configuration() {
   return conf;
 }
 async function saveConfig(conf) {
-  const clean = { key: conf.key, pin: conf.pin, keys: conf.keys || {}, brainFolder: conf.brainFolder || "", agentsFolder: conf.agentsFolder || "", telegram: conf.telegram || null, handsVisible: !!conf.handsVisible, email: conf.email || null };
+  const clean = { key: conf.key, pin: conf.pin, keys: conf.keys || {}, brainFolder: conf.brainFolder || "", agentsFolder: conf.agentsFolder || "", telegram: conf.telegram || null, handsVisible: !!conf.handsVisible, mailboxes: conf.mailboxes || [], telegramAgents: conf.telegramAgents || {} };
   await fs.writeFile(CONFIG_FILE, JSON.stringify(clean, null, 1), { mode: 0o600 });
 }
 // Questions in the Terminal (keys, folder, Telegram)
@@ -148,11 +151,11 @@ async function folderCommand(conf) {
 // The mailbox (for the Email agent): address, password and servers, saved only here (config.json)
 async function emailCommand(conf) {
   const rl = readline.createInterface({ input: process.stdin, output: process.stdout });
-  const now = conf.email || {};
+  const now = (conf.mailboxes || [])[0] || {};
   console.log("\n" + L("The mailbox the Email agent reads (and sends from, each email with your yes). It's only saved in {1}.", CONFIG_FILE));
   console.log(L("Many providers (Gmail, iCloud, Yahoo…) ask for an “app password”, created in your account's security settings, instead of your usual one."));
   const address = await askQuestion(L("Address [now: {1}] (or “delete” to disconnect): ", now.address || L("none")), rl);
-  if (DELETE_WORDS.includes(address)) { conf.email = null; rl.close(); await saveConfig(conf); console.log(L("Mailbox disconnected.") + "\n"); return; }
+  if (DELETE_WORDS.includes(address)) { conf.mailboxes = (conf.mailboxes || []).slice(1); rl.close(); await saveConfig(conf); console.log(L("Mailbox disconnected.") + "\n"); return; }
   const a = address || now.address;
   if (!a || !a.includes("@")) { rl.close(); console.log(L("No address: nothing changed.") + "\n"); return; }
   const g = (a === now.address ? now : null) || emailServers(a);
@@ -162,7 +165,7 @@ async function emailCommand(conf) {
   const smtpHost = await askQuestion(L("Server to send (SMTP) [{1}]: ", g.smtpHost), rl) || g.smtpHost;
   const smtpPort = Number(await askQuestion(L("Its port [{1}]: ", g.smtpPort), rl)) || g.smtpPort;
   rl.close();
-  conf.email = { address: a, password, imapHost, imapPort, smtpHost, smtpPort, name: now.name || "" };
+  conf.mailboxes = [{ id: now.id || "main", address: a, password, imapHost, imapPort, smtpHost, smtpPort, name: now.name || "" }, ...(conf.mailboxes || []).slice(1)];   // 9.2: the first mailbox (more, in the app)
   await saveConfig(conf); console.log(L("Saved. Open Fer Home and, in Settings → Email, press “Check”.") + "\n");
 }
 // the saved building, to know its brain folder names before opening it
@@ -201,7 +204,7 @@ const AGENTS_FOLDER = conf.agentsFolder || path.join(DATA, "agent-files");
 const MEDIA = path.join(DATA, "media");
 mkdirSync(MEDIA, { recursive: true });
 // The hands: the agents' Chrome, their folder and the skills (Fer Agent's and yours in data/skills)
-const hands = createHands({ agentsFolder: AGENTS_FOLDER, chromeProfile: path.join(DATA, "agents-chrome"), skillsFolders: [path.join(HERE, "skills"), path.join(DATA, "skills")], email: () => conf.email,
+const hands = createHands({ agentsFolder: AGENTS_FOLDER, chromeProfile: path.join(DATA, "agents-chrome"), skillsFolders: [path.join(HERE, "skills"), path.join(DATA, "skills")], mailboxes: () => conf.mailboxes || [],
   visible: !!conf.handsVisible || process.env.FER_HANDS_VISIBLE === "1", channel: process.env.FER_CHROME_CHANNEL || "chrome", log: (...a) => log(...a),
   locale: () => (typeof ed !== "undefined" && ed.e && ed.e.language === "en" ? "en-US" : "es-ES") });   // websites, in the building's language
 if (COMMAND === "login") {
@@ -220,6 +223,7 @@ const ed = new Building({
   keys: () => conf.keys || {},
   apis: APIS,
   hands,
+  mailboxes: () => (conf.mailboxes || []).map(({ password, ...m }) => m),   // 9.2: the mailboxes connected, without their passwords
   // images and music are saved in data/media (they are not lost)
   saveMedia: async (id, url, type) => {
     const m = String(url).match(/^data:([^;]+);base64,(.*)$/s);
@@ -514,7 +518,8 @@ const server = http.createServer(async (req, res) => {
       if (route === "/api/state" && req.method === "GET") return json(res, 200, { state: ed.e, busyIds: [...ed.busyIds], skills: hands.catalog(),
         home: { app: APP, key: !!conf.key, data: APP ? DATA : "", telegram: !!tg, keys: Object.fromEntries([...new Set([...Object.keys(PROVIDERS), ...ed.connections().map((c) => c.id)])].filter((k) => k !== "openrouter").map((k) => [k, !!(conf.keys || {})[k]])),
           folder: { path: BRAIN_FOLDER, notes: brain.notes, library: brain.library, lastSync: brain.lastSync, error: brain.error }, agentsFolder: AGENTS_FOLDER,
-          email: conf.email && conf.email.address ? { address: conf.email.address, imapHost: conf.email.imapHost, imapPort: conf.email.imapPort, smtpHost: conf.email.smtpHost, smtpPort: conf.email.smtpPort, name: conf.email.name || "" } : null } });
+          mailboxes: (conf.mailboxes || []).map(({ password, ...m }) => m),
+          email: (conf.mailboxes || [])[0] ? (({ password, ...m }) => m)(conf.mailboxes[0]) : null } });
       // saved images and music
       if (route.startsWith("/api/media/") && req.method === "GET") {
         const id = decodeURIComponent(route.slice("/api/media/".length));
@@ -559,20 +564,23 @@ const server = http.createServer(async (req, res) => {
       // In the app: the mailbox for the Email agent (the password is only saved on this computer). In Fer Home: node fer-home.mjs email
       if (APP && route === "/api/conf/email" && req.method === "POST") {
         let d; try { d = JSON.parse((await readBody(req, 8192)).toString("utf8")); } catch { return json(res, 400, { error: L("Unreadable request.") }); }
-        if (d.remove) { conf.email = null; await saveConfig(conf); return json(res, 200, { ok: true }); }
-        const address = String(d.address || "").trim(), now = conf.email || {};
+        const list = conf.mailboxes || (conf.mailboxes = []);
+        if (d.remove) { conf.mailboxes = list.filter((m) => m.id !== (d.id || (list[0] || {}).id)); await saveConfig(conf); return json(res, 200, { ok: true }); }
+        const address = String(d.address || "").trim(), now = (d.id && list.find((m) => m.id === d.id)) || list.find((m) => m.address === address) || {};
         if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(address)) return json(res, 400, { error: L("That doesn't look like an email address.") });
         const password = String(d.password || "") || (now.address === address ? now.password : "");
         if (!password) return json(res, 400, { error: L("The mailbox's password is missing.") });
         const g = emailServers(address), host = (x) => String(x || "").trim().replace(/^[a-z]+:\/\//i, "").replace(/[/:].*$/, "");
-        conf.email = { address, password, name: String(d.name || "").trim().slice(0, 80), imapHost: host(d.imapHost) || g.imapHost, imapPort: Number(d.imapPort) || g.imapPort,
+        const box = { id: now.id || (list.length ? "mb_" + crypto.randomBytes(5).toString("hex") : "main"), address, password, name: String(d.name || "").trim().slice(0, 80), imapHost: host(d.imapHost) || g.imapHost, imapPort: Number(d.imapPort) || g.imapPort,
           smtpHost: host(d.smtpHost) || g.smtpHost, smtpPort: Number(d.smtpPort) || g.smtpPort };
+        if (now.id) list[list.findIndex((m) => m.id === now.id)] = box; else list.push(box);
         await saveConfig(conf);
-        return json(res, 200, { ok: true });
+        return json(res, 200, { ok: true, id: box.id });
       }
       // Settings → Email → «Check»: it signs in to read and to send, and changes nothing in the mailbox
       if (route === "/api/email/test" && req.method === "POST") {
-        try { const r = await hands.testMailbox(); return json(res, 200, { ok: true, emails: r.emails }); }
+        let d = {}; try { d = JSON.parse((await readBody(req, 2048)).toString("utf8") || "{}"); } catch {}
+        try { const r = await hands.testMailbox(d.id || undefined); return json(res, 200, { ok: true, emails: r.emails }); }
         catch (e) { return json(res, 400, { error: e.message || String(e) }); }
       }
       // the list of Claude's, OpenAI's or Grok's models with your key (the key doesn't leave Fer Home)

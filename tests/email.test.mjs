@@ -77,15 +77,16 @@ function building({ emails = [] } = {}) {
       if (name === "read-email") { const m = queue.shift(); return m ? { text: m, summary: "1 new emails", state: { lastUid: runs.length }, work: true } : { text: "NOTHING", state: ctx.state }; }
       if (name === "send-email") return { text: `Sent to ${data.to}: “${data.subject}”.` };
       return { text: "" };
-    }
+    },
+    email: async () => ({ text: "" })   // 9.2: listing and reading (not used here)
   };
   const fetch = async (url, init) => {
     const body = JSON.parse(init.body); calls.push(body);
     if (!body.messages) return { ok: true, status: 200, headers: { get: () => null }, json: async () => ({ answers: { decision: { choice: "go_ahead" } }, usage: { cost: 0.00002 } }) };   // JEV
     const last = body.messages.at(-1);
     const answer = (msg) => ({ ok: true, status: 200, headers: { get: () => null }, json: async () => ({ model: "m", choices: [{ message: msg }], usage: { cost: 0.0002 } }) });
-    if (last.role === "user" && /New from your skill/.test(last.content)) return answer({ content: null, tool_calls: [{ id: "c1", type: "function", function: { name: "use_skill", arguments: JSON.stringify({ skill: "send-email", reason: "reply to Ana",
-      data: { to: "ana@client.example", subject: "Re: Proposal", text: "Hello Ana, you'll have it on Friday.", in_reply_to: "<m2@client.example>" } }) } }] });
+    if (last.role === "user" && /New from your skill/.test(last.content)) return answer({ content: null, tool_calls: [{ id: "c1", type: "function", function: { name: "email_send", arguments: JSON.stringify(   // 9.2: email is a capability
+      { to: "ana@client.example", subject: "Re: Proposal", text: "Hello Ana, you'll have it on Friday.", in_reply_to: "<m2@client.example>" }) } }] });
     if (last.role === "tool") return answer({ content: "1. Ana Ruiz — wants the proposal by Friday — to answer (reply waiting in the inbox)." });
     return answer({ content: "Noted." });
   };

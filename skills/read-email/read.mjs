@@ -38,5 +38,5 @@ export default async function readEmail(data, h, ctx) {
       ].filter((x, k) => x || k === 9).join("\n")).join("\n\n");
       return { text, summary: h.L("{1} new emails", mails.length), state: { validity, lastUid: uids.at(-1) }, work: true };
     } finally { lock.release(); }
-  });
+  }, ctx && ctx.mailbox);   // 9.2: the agent's mailbox (its first one); without it, the first connected
 }
