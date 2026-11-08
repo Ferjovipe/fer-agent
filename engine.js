@@ -2482,8 +2482,11 @@ export class Building {
       if (this.asksFirst(a, kind)) {
         const host = (() => { try { return new URL(now.url).hostname; } catch { return now.url || ""; } })();
         const K = { pay: this.L("pay or buy"), send: this.L("send or publish"), delete: this.L("delete"), other: this.L("something with an effect outside") };
-        // 9.2.1: what goes out, before your yes: what the agent says it sends and what is written on the page (the page's words, not the agent's)
-        const filled = (now.elements || []).filter((e) => e.value && e.role !== "link").map((e) => `${e.label || e.role}: ${e.value}`);
+        // 9.2.1: nothing that sends, pays or deletes reaches your owner without the agent saying exactly what goes out
+        if (["send", "pay", "delete"].includes(kind) && !String(x.preview || "").trim())
+          return this.L("Before asking your owner: do this same step again, putting in «preview» exactly what goes out (to whom, the subject and the whole text; or the amount; or what gets deleted). Your owner has to read it before saying yes.");
+        // what goes out, before your yes: what the agent says it sends and what is written on the page (the page's words, not the agent's)
+        const filled = (now.filled || (now.elements || []).filter((e) => e.value && e.role !== "link")).map((e) => `${e.label || e.role || "·"}: ${e.value}`);
         const detail = [x.preview ? String(x.preview).trim() : "", filled.length ? this.L("Written on the page:") + "\n" + filled.join("\n") : "",
           this.F("Page: {1}\nAddress: {2}\nStep: {3} {4}{5}", now.title || "", now.url || "", action, what, x.text ? ` · «${x.text}»` : "")].filter(Boolean).join("\n\n");
         const ap = this.askApproval(a, this.F("On {1}: {2} {3} ({4})", host, this.L(action), it ? `«${it.label}»` : "", K[kind] || kind), detail, 0,

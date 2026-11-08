@@ -468,9 +468,18 @@ using System; using System.Runtime.InteropServices; public class M { [DllImport(
     const sel = "a[href], button, input:not([type=hidden]), textarea, select, summary, [role=button], [role=link], [role=checkbox], [role=radio], [role=tab], [role=menuitem], [role=option], [role=switch], [role=combobox], [role=textbox], [contenteditable=''], [contenteditable=true], [onclick]";
     const seen = (el) => { const r = el.getBoundingClientRect(), st = getComputedStyle(el); return r.width > 1 && r.height > 1 && st.visibility !== "hidden" && st.display !== "none" && Number(st.opacity) > 0.05; };
     document.querySelectorAll("[data-fa]").forEach((e) => e.removeAttribute("data-fa"));
+    // 9.2.1: what you're working on comes first (before, in a big page like Gmail, the new message window came after the first 160 and the agent didn't see it):
+    // open dialogs, and the box around each place to write in (the message window with its «Send» button)
+    const all = [...document.querySelectorAll(sel)].filter(seen);
+    const zones = [...document.querySelectorAll("[role=dialog], [aria-modal=true], dialog[open]")].filter(seen);
+    for (const el of all) if (el.isContentEditable || el.tagName === "TEXTAREA") {
+      let z = el.parentElement, best = null;
+      for (let i = 0; z && z !== document.body && i < 30; i++, z = z.parentElement) { if (z.querySelectorAll(sel).length > 150) break; best = z; }
+      if (best) zones.push(best);
+    }
+    const hot = (el) => zones.some((z) => z.contains(el));
     const out = []; let n = 0;
-    for (const el of document.querySelectorAll(sel)) {
-      if (!seen(el)) continue;
+    for (const el of [...all.filter(hot), ...all.filter((el) => !hot(el))]) {
       const tag = el.tagName.toLowerCase(), type = (el.getAttribute("type") || "").toLowerCase();
       const role = el.getAttribute("role") || (tag === "a" ? "link" : tag === "select" ? "select" : tag === "textarea" || el.isContentEditable ? "field"
         : tag === "input" ? (["button", "submit", "reset", "image"].includes(type) ? "button" : ["checkbox", "radio"].includes(type) ? type : "field") : "button");
@@ -490,13 +499,25 @@ using System; using System.Runtime.InteropServices; public class M { [DllImport(
       if (tag === "a") it.href = (el.getAttribute("href") || "").slice(0, 120);
       if (tag === "select") it.options = [...el.options].slice(0, 20).map((x) => x.text.trim()).filter(Boolean);
       out.push(it);
-      if (n >= 160) break;
+      if (n >= 220) break;
+    }
+    // everything that is written in the page's fields (all of them, not only the first ones): what goes out, for your owner to read
+    const filled = [];
+    for (const el of all) {
+      const tag = el.tagName.toLowerCase(), type = (el.getAttribute("type") || "").toLowerCase();
+      if (!(el.isContentEditable || tag === "textarea" || (tag === "input" && !["button", "submit", "reset", "image", "checkbox", "radio", "password", "hidden", "file"].includes(type)))) continue;
+      if (el.isContentEditable && el.parentElement && el.parentElement.isContentEditable) continue;   // the box, not each piece inside it
+      const v = String((el.isContentEditable ? el.innerText : el.value) || "").trim();
+      if (!v) continue;
+      const label = (el.getAttribute("aria-label") || el.getAttribute("placeholder") || el.getAttribute("name") || el.getAttribute("title") || "").trim().slice(0, 60);
+      filled.push({ label, value: v.slice(0, 6000) });
+      if (filled.length >= 30) break;
     }
     const text = (document.body ? document.body.innerText : "").replace(/\n{3,}/g, "\n\n").trim();
     // a link to a part of the same page (#services): where that part starts in the text
     let at = -1;
     try { const id = decodeURIComponent(location.hash.slice(1)), target = id && document.getElementById(id); const start = target ? (target.innerText || "").trim().slice(0, 60) : ""; if (start) at = text.indexOf(start); } catch {}
-    return { url: location.href, title: document.title, text: text.slice(0, 400000), at, elements: out };
+    return { url: location.href, title: document.title, text: text.slice(0, 400000), at, elements: out, filled };
   };
   // The page's text goes in pieces: «scroll down» gives the next piece (before 9.2.1 it gave the same beginning again and the agent went round in circles)
   const PIECE = 9000, STEP = PIECE - 400;   // the pieces overlap a little, so that no sentence is cut in two

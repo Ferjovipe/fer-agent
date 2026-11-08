@@ -19,7 +19,10 @@ try:
         page.fill("#drawerBody input[placeholder='sk-or-...']", "sk-or-test")
         page.click("#drawerBody .block:has(h4:text-is('Tu clave de OpenRouter')) >> text=Guardar")
         page.evaluate("""(d) => { const e = JSON.parse(localStorage.getItem('ferAgent.state')); const j = e.agents.find(a => a.role === 'boss');
-          e.approvals = [{ id: 'au_test1', ts: Date.now(), agent: j.id, name: j.name, what: 'En mail.google.com: pulsar «Enviar» (enviar o publicar)', detail: d, cost: 0,
+          const t0 = Date.now();
+          e.conversation = [{ role: 'user', content: 'Mensaje de antes', ts: t0 - 60000 }, { role: 'assistant', content: 'Respuesta de antes', ts: t0 - 50000 },
+                    { role: 'user', content: 'Mensaje de después', ts: t0 - 30000 }, { role: 'assistant', content: 'Respuesta de después', ts: t0 - 20000 }];
+          e.approvals = [{ id: 'au_test1', ts: t0 - 40000, agent: j.id, name: j.name, what: 'En mail.google.com: pulsar «Enviar» (enviar o publicar)', detail: d, cost: 0,
             action: { web: { action: 'click', element: 3, label: 'Enviar', url: 'https://mail.google.com/' }, effect: 'send' }, signature: 'x', state: 'pending', result: '', effect: 'send' }];
           localStorage.setItem('ferAgent.state', JSON.stringify(e)); }""", DETAIL)
         page.reload(); enter(page, team=False)
@@ -30,6 +33,10 @@ try:
         check(DETAIL in txt, "in the agent's own chat: exactly what goes out, in full, as it is (line breaks kept, not translated)")
         buttons = page.eval_on_selector_all(card + " .p-actions button", "bs => bs.map(b => b.textContent)")
         check(buttons == ["Enviar", "Corregir", "Rechazar"], f"with «Send», «Correct» and «Reject»: {buttons}")
+        order = page.eval_on_selector_all("#messages > .msg", "ms => ms.map(m => m.classList.contains('approval') ? 'CARD' : m.innerText.split('\\n')[0])")
+        idx = lambda t: next((i for i, x in enumerate(order) if x.startswith(t)), -1)
+        check(idx("CARD") < idx("Mensaje de después") and idx("Respuesta de antes") < idx("CARD"),
+              f"the card goes in its place, by time: your later messages come after it, in sight (before, it stayed stuck at the end): {order}")
         page.screenshot(path=os.path.join(OUTPUT, "v921-1-chat-card.png"))
         page.click(card + " button:text-is('Corregir')")
         check(page.is_visible(card + " .p-fix textarea"), "«Correct» opens a box to write what to change")

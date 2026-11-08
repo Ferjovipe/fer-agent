@@ -1444,7 +1444,7 @@ function voicePicker(a, change) {
   const selV = h("select", {});
   const fill = () => {
     const model = selM.value || aj.voiceModel || BROWSER;
-    const list = model === BROWSER ? browserVoices().map((v) => ({ id: v.voiceURI, name: `${v.name} · ${v.lang}` })) : ((voices.find((m) => m.id === model) || {}).voices || []);
+    const list = model === BROWSER ? ownLanguageVoices().map((v) => ({ id: v.voiceURI, name: `${v.name} · ${v.lang}` })) : ((voices.find((m) => m.id === model) || {}).voices || []);
     selV.replaceChildren(h("option", { value: "" }, `Different for each agent (now: ${voiceName(voiceOf(Object.assign({}, a, { voice: { model: selM.value, voice: "" } })))})`), ...list.map((v) => h("option", { value: v.id }, v.name)));
     selV.value = [...selV.options].some((o) => o.value === own.voice) ? own.voice : "";
   };
@@ -1535,7 +1535,12 @@ function renderChat(force) {
     h("p", {}, isApp() ? "So I can answer you, paste your OpenRouter key in Settings. It stays only on this computer." : mode === "home" ? "So I can reply, enter in Settings the PIN you set when you started Fer Home." : "So I can reply, paste your OpenRouter key in Settings. It stays only in this browser."),
     h("div", { class: "row-c" }, h("button", { class: "btn mini", onclick: () => openDrawer("settings") }, "Open Settings"), mode === "home" && !isApp() ? null : h("a", { class: "btn mini", href: OR_KEYS, target: "_blank", rel: "noopener" }, "Get my key at OpenRouter")))));
   const speaks = a.capabilities.includes("speak");
+  // 9.2.1: what this agent is waiting for your yes on goes in its place in the conversation, by time (before, it stayed stuck at the end
+  // and pushed your new messages up, out of sight)
+  const waiting = ed.inbox().filter((y) => y.kind === "action" && y.agent === a.id).sort((p, q) => p.ts - q.ts);
+  const cardsUpTo = (ts) => { while (waiting.length && (ts === undefined || waiting[0].ts <= ts)) m.append(h("div", { class: "msg report approval" }, requestCard(waiting.shift()))); };
   for (const x of conv) {
+    cardsUpTo(x.ts || 0);
     if (x.role === "user") m.append(h("div", { class: "msg me" }, h("div", { class: "bubble" }, raw(x.content)), x.voice ? h("div", { class: "meta" }, x.voice) : null));
     else if (x.role === "assistant") {
       const meta = h("div", { class: "meta" }, h("span", {}, x.provider ? tr(`${x.model || ""} · ${((ed.provider(x.provider) || {}).short) || x.provider}: your subscription`) + (x.subscription ? ` (≈${fmt(x.subscription)})` : "") : `${x.model || ""} · ${fmt(x.cost || 0)}`),
@@ -1561,8 +1566,7 @@ function renderChat(force) {
         author && !x.meeting ? h("div", { class: "meta" }, x.ts ? h("span", {}, date(x.ts)) : null, copyButton(() => bubble), author.role !== "boss" ? h("span", { class: "coins-msg" }, coinButton(author, "gold"), coinButton(author, "red")) : null) : null));
     }
   }
-  // 9.2.1: what this agent is waiting for your yes on, right here in its chat (the same card as in the inbox)
-  for (const x of ed.inbox().filter((y) => y.kind === "action" && y.agent === a.id)) m.append(h("div", { class: "msg report approval" }, requestCard(x)));
+  cardsUpTo();   // the ones asked after the last message
   for (const e of pendingErrors) m.append(h("div", { class: "msg error" }, h("div", { class: "bubble" }, e)));
   if (thinking) m.append(h("div", { class: "msg bot typing" }, writing ? h("div", { class: "bubble", html: markdown(writing) }) : h("div", { class: "bubble" }, h("span", { class: "thinking", "aria-label": "Thinking" }, h("i"), h("i"), h("i")))));
   $("chat").scrollTop = $("chat").scrollHeight;
@@ -1748,13 +1752,16 @@ async function voiceCost(model, chars, secs, genId, metaEl, who) {
   render();
 }
 function browserVoices() { try { return window.speechSynthesis ? speechSynthesis.getVoices() : []; } catch { return []; } }
+// 9.2.1: only the voices of the building's language (a Spanish building with an English voice spoke in English)
+function ownLanguageVoices() { const l = voiceLanguage().slice(0, 2); return browserVoices().filter((v) => (v.lang || "").slice(0, 2) === l); }
 // If an agent has no voice chosen, it's given a different one from the model's (always the same for that agent).
 const hashTxt = (t) => { let x = 0; for (const c of String(t)) x = (x * 31 + c.charCodeAt(0)) >>> 0; return x; };
 function voiceOf(a) {
   const aj = ed.e.settings, ownOne = (a && a.voice) || {};
   const model = ownOne.model || aj.voiceModel || BROWSER;
-  if (ownOne.voice) return { model, voice: ownOne.voice };
-  if (a && a.role === "boss" && !ownOne.model) return { model, voice: aj.specificVoice || "" };   // the boss keeps the voice from Settings
+  const fits = (id) => model !== BROWSER || !id || ownLanguageVoices().some((x) => x.voiceURI === id) || !browserVoices().length;   // a browser voice in another language: as if none had been chosen
+  if (ownOne.voice && fits(ownOne.voice)) return { model, voice: ownOne.voice };
+  if (a && a.role === "boss" && !ownOne.model && fits(aj.specificVoice)) return { model, voice: aj.specificVoice || "" };   // the boss keeps the voice from Settings
   const language = voiceLanguage().slice(0, 2);
   const list = model === BROWSER ? browserVoices().filter((v) => (v.lang || "").slice(0, 2) === language).map((v) => v.voiceURI) : ((voices.find((m) => m.id === model) || {}).voices || []).map((v) => v.id);
   if (!list.length) return { model, voice: "" };
@@ -2661,7 +2668,7 @@ function renderSettings() {
   const selVc = h("select", { onchange: (ev) => saveSetting({ specificVoice: ev.target.value }) });
   const fillVc = () => {
     selVc.innerHTML = "";
-    const list = selVoice.value === BROWSER ? [{ id: "", name: "Automatic (the website's language)" }, ...browserVoices().map((v) => ({ id: v.voiceURI, name: `${v.name} · ${v.lang}` }))]
+    const list = selVoice.value === BROWSER ? [{ id: "", name: "Automatic (the website's language)" }, ...ownLanguageVoices().map((v) => ({ id: v.voiceURI, name: `${v.name} · ${v.lang}` }))]
       : ((voices.find((m) => m.id === selVoice.value) || {}).voices || []);
     for (const v of (list.length ? list : [{ id: "", name: "The default model's" }])) selVc.append(h("option", { value: v.id }, v.name));
     selVc.value = [...selVc.options].some((o) => o.value === aj.specificVoice) ? aj.specificVoice : selVc.options[0].value;

@@ -22,6 +22,9 @@ const PAGES = {
   // 9.2.1: a long page (its end is far beyond the first piece) with a menu that jumps to a part of it
   "/long": `<!doctype html><title>Long page</title><nav><a href="#services">Services</a></nav><p>START OF THE PAGE</p>` + "<p>Filler about gardening and nothing else. </p>".repeat(700)
     + `<section id="services"><h2>Our services: diagnosis, automation and training</h2><p>Contact: hello@example.com</p></section><p>END OF THE PAGE</p>`,
+  "/bigmail": `<!doctype html><title>Inbox</title>` + Array.from({ length: 300 }, (_, i) => `<a href="/m${i}">Email number ${i}</a>`).join("<br>")
+    + `<div role="dialog" aria-label="New message"><input aria-label="To" value="coco@example.com"><input aria-label="Subject" value="Hello Coco">
+    <div contenteditable="true" role="textbox" aria-label="Message body">Hello Coco,<br>tell Fer a joke.</div><div role="button" aria-label="Send">Send</div></div>`,
   "/mail": `<!doctype html><title>Compose</title><input aria-label="To" value="coco@example.com"><input aria-label="Subject" value="Hello Coco">
     <div contenteditable="true" role="textbox" aria-label="Message body">Hello Coco, tell Fer a joke.</div><button onclick="document.title='SENT'">Send</button>`,
   "/ddg": `<!doctype html><title>results</title><div class="result"><a class="result__a" href="https://example.com/a">First result</a><div class="result__snippet">About steel.</div></div>
@@ -101,6 +104,14 @@ test("9.2.1 · a long page is read in pieces: «scroll down» gives the next pie
   assert.ok(last.part < s3.part, "and it can go back up");
 });
 
+test("9.2.1 · in a big page (300 emails, like Gmail) the new message window comes first, and everything written in it is read", async () => {
+  const s = await hands.web("open", { url: base + "/bigmail" }, { agent: "big1" });
+  const labels = s.elements.slice(0, 4).map((e) => e.label);
+  assert.deepEqual(labels, ["To", "Subject", "Message body", "Send"], `first, the window you're writing in: ${labels}`);
+  assert.deepEqual(s.filled.map((f) => f.label), ["To", "Subject", "Message body"]);
+  assert.equal(s.filled[2].value, "Hello Coco,\ntell Fer a joke.", "the whole message, with its line breaks");
+});
+
 test("9.2.1 · before sending, your owner reads what goes out (the agent's preview and what is written on the page); «Correct» sends it back to the agent", async () => {
   const { ed, a } = await building([
     ["web_open", { url: base + "/mail" }],
@@ -125,7 +136,7 @@ test("9.2.1 · before sending, your owner reads what goes out (the agent's previ
 test("9.2.1 · your yes after the tab closed (for example, the app was closed): it isn't lost; the agent does it again and asks you again", async () => {
   const { ed, a } = await building([
     ["web_open", { url: base + "/mail" }],
-    (b) => reply("", ["web_act", { action: "click", element: Number(String(b.messages.at(-1).content).match(/\[(\d+)\] button «Send»/)[1]), effect: "send" }]),
+    (b) => reply("", ["web_act", { action: "click", element: Number(String(b.messages.at(-1).content).match(/\[(\d+)\] button «Send»/)[1]), effect: "send", preview: "To Coco: hello" }]),
     "Waiting."
   ]);
   await ed.run({ type: "speak", text: "Write to Coco.", agent: a.id });
@@ -159,10 +170,11 @@ test("«Ask me first»: clicking «Buy now» goes to the inbox; with the owner's
     ["web_open", { url: base + "/shop" }],
     (b) => { const t = String(b.messages.at(-1).content); const n = Number(t.match(/\[(\d+)\] field «Quantity»/)[1]); return reply("", ["web_act", { action: "type", element: n, text: "3" }]); },
     (b) => { const t = String(b.messages.at(-1).content); const n = Number(t.match(/\[(\d+)\] button «Buy now»/)[1]); return reply("", ["web_act", { action: "click", element: n }]); },
+    (b) => { assert.match(String(b.messages.at(-1).content), /Before asking your owner/, "9.2.1: without saying what goes out, it can't ask"); const t = b.messages.map((m) => String(m.content)).join("\n"); const n = Number([...t.matchAll(/\[(\d+)\] button «Buy now»/g)].at(-1)[1]); return reply("", ["web_act", { action: "click", element: n, preview: "3 units, test shop" }]); },
     "I've asked my owner for permission to buy."
   ]);
   await ed.run({ type: "speak", text: "Buy 3 units in the test shop.", agent: a.id });
-  assert.match(toolResults()[2], /Permission requested from your owner \(inbox, au_/, "it doesn't buy on its own");
+  assert.match(toolResults()[3], /Permission requested from your owner \(inbox, au_/, "it doesn't buy on its own");
   const pending = ed.inbox().filter((x) => x.kind === "action");
   assert.equal(pending.length, 1);
   assert.match(pending[0].what, /«Buy now» \(pay or buy\)/);
@@ -192,7 +204,7 @@ test("«With limits» (only paying asks): sending a message goes ahead, buying w
     (b) => reply("", ["web_act", { action: "type", element: Number(String(b.messages.at(-1).content).match(/\[(\d+)\] field «Message»/)[1]), text: "hi" }]),
     (b) => reply("", ["web_act", { action: "click", element: Number(String(b.messages.at(-1).content).match(/\[(\d+)\] button «Send message»/)[1]) }]),
     ["web_open", { url: base + "/shop" }],
-    (b) => reply("", ["web_act", { action: "click", element: Number(String(b.messages.at(-1).content).match(/\[(\d+)\] button «Buy now»/)[1]) }]),
+    (b) => reply("", ["web_act", { action: "click", element: Number(String(b.messages.at(-1).content).match(/\[(\d+)\] button «Buy now»/)[1]), preview: "1 unit" }]),
     "Message sent; the purchase is waiting for you."
   ], { mode: "limits", ask: ["pay"] });
   await ed.run({ type: "speak", text: "Send hi and buy one.", agent: a.id });

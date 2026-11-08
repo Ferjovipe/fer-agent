@@ -1,4 +1,4 @@
-FER AGENT · EL EDIFICIO (versión 9.2.1)
+FER AGENT · EL EDIFICIO (versión 9.2.2)
 =====================================
 
 Tienes una empresa agéntica a tu servicio. Nosotros ponemos la base; tú decides el organigrama
@@ -37,6 +37,12 @@ Tras las primeras pruebas de Fer con el Jefe y Lupe:
     cerraste la app), tu sí no se pierde: el agente lo vuelve a hacer y te vuelve a preguntar.
   - Los agentes ya no dan por hecho que tienes sesiones abiertas, y cuentan lo que hicieron con
     palabras normales, sin los nombres de sus herramientas.
+  - Nada que envíe, pague o borre llega a pedirte permiso sin que el agente diga exactamente qué sale.
+  - En páginas enormes (Gmail) el agente ve primero la ventana en la que está escribiendo, con su botón
+    «Enviar» (antes solo veía los primeros 160 elementos y la ventana del correo quedaba fuera).
+  - En el chat, la tarjeta de permiso va en su sitio por hora: tus mensajes nuevos ya no quedan tapados.
+  - Voces del navegador: solo las del idioma del edificio (una voz inglesa elegida antes cuenta como
+    «automática»).
 
 
 Versión 9.2

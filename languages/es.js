@@ -2131,5 +2131,6 @@ export default {
   "Sent to {1}: it will make the change and ask you again.": "Enviado a {1}: hará el cambio y te volverá a preguntar.",
   "The page had closed before your yes (for example, because the app was closed): it has to be done again.": "La página se había cerrado antes de tu sí (por ejemplo, porque se cerró la app): hay que hacerlo otra vez.",
   "[…part {1} of {2} of the page's text: scroll down for the next part]": "[…parte {1} de {2} del texto de la página: desplaza hacia abajo para la parte siguiente]",
-  "[part {1} of {2}: the end of the page's text]": "[parte {1} de {2}: el final del texto de la página]"
+  "[part {1} of {2}: the end of the page's text]": "[parte {1} de {2}: el final del texto de la página]",
+  "Before asking your owner: do this same step again, putting in «preview» exactly what goes out (to whom, the subject and the whole text; or the amount; or what gets deleted). Your owner has to read it before saying yes.": "Antes de preguntar a tu dueño: repite este mismo paso poniendo en «preview» exactamente lo que sale (a quién, el asunto y el texto entero; o el importe; o lo que se borra). Tu dueño tiene que leerlo antes de decir que sí."
 };
