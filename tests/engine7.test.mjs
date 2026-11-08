@@ -211,7 +211,7 @@ test("Claude with your subscription: Anthropic API format, tools, and what it sp
   assert.equal(ed.agentSpending(s1, "today"), 0, "it comes out of your subscription: it doesn't count towards the cap");
   const today = Object.values(s1.subscription)[0];
   assert.ok(today && Math.abs(today.usd - expected) < 1e-12 && today.tokens === 1000 + 1200 + 100 + 40, "it's recorded apart: tokens and what it would cost on OpenRouter (≈)");
-  assert.ok(ed.e.log.some((r) => /tu suscripción/.test(r.text) && /no cuenta para el tope/.test(r.text)));
+  assert.ok(ed.e.log.some((r) => /tu propia clave/.test(r.text) && /no cuenta para el tope/.test(r.text)));
   assert.ok(calls.every((x) => !x.url.startsWith("https://openrouter.ai")), "it doesn't go through OpenRouter");
   assert.equal(ed.agent("Sabio 1").chat.at(-1).provider, "anthropic");
 });

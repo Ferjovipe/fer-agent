@@ -155,6 +155,26 @@ test("9.2.1 · your yes after the tab closed (for example, the app was closed): 
   } finally { ed.o.hands = hands; await fresh.close(); }
 });
 
+test("9.2.4 · the firewall lets through your own mailbox's «new email» link (Gmail, Outlook), and still blocks the rest", async () => {
+  const { ed } = await building(["ok"]);
+  ed.e.longMemory.push({ id: "n1", ts: 1, text: "Coco reads info@fernandovillarpelaez.com every morning." });
+  const body = encodeURIComponent("Hola Coco, soy Jefe.");
+  assert.deepEqual(ed.urlFirewall({ url: `https://mail.google.com/mail/?view=cm&fs=1&to=info@fernandovillarpelaez.com&su=Prueba&body=${body}` }), [], "Gmail: it opens (the email stays in your account until you say «Send»)");
+  assert.deepEqual(ed.urlFirewall({ url: "https://outlook.live.com/mail/0/deeplink/compose?to=info@fernandovillarpelaez.com&subject=Prueba" }), [], "Outlook too");
+  assert.equal(ed.urlFirewall({ url: "https://evil.example/collect?d=info@fernandovillarpelaez.com" }).length, 1, "any other address carrying your notes: blocked, as before");
+  assert.equal(ed.urlFirewall({ url: "https://mail.google.com.evil.example/mail/?to=info@fernandovillarpelaez.com" }).length, 1, "and a look-alike address doesn't fool it");
+});
+
+test("9.2.4 · a step on a website still waiting after 24 hours expires on its own (its tab was closed: it can't be done any more)", async () => {
+  const { ed, a } = await building(["ok"]);
+  const old = ed.askApproval(a, "On mail.google.com: click «Send»", "x", 0, { web: { action: "click", element: 1, label: "Send", url: "https://mail.google.com/" }, effect: "send" });
+  const fresh = ed.askApproval(a, "Write the file x.md", "y", 0, { files: { op: "write", data: { path: "/tmp/x.md", text: "y" } }, effect: "other" });
+  old.ts -= 25 * 3600e3; fresh.ts -= 25 * 3600e3;
+  const ids = ed.inbox().filter((x) => x.kind === "action").map((x) => x.id);
+  assert.deepEqual(ids, [fresh.id], "the old website step goes; anything else waits for you as long as it takes");
+  assert.equal(old.state, "expired");
+});
+
 test("what a step does outside, from its words (and the agent's own word, the most serious of the two counts)", () => {
   assert.equal(actionKind("button «Buy now»"), "pay");
   assert.equal(actionKind("button «Comprar ahora»"), "pay");
@@ -176,7 +196,7 @@ test("«Ask me first»: clicking «Buy now» goes to the inbox; with the owner's
     "I've asked my owner for permission to buy."
   ]);
   await ed.run({ type: "speak", text: "Buy 3 units in the test shop.", agent: a.id });
-  assert.match(toolResults()[3], /Permission requested from your owner \(inbox, au_/, "it doesn't buy on its own");
+  assert.match(toolResults()[3], /Permission requested from your owner: .*internal code au_/, "it doesn't buy on its own");
   const pending = ed.inbox().filter((x) => x.kind === "action");
   assert.equal(pending.length, 1);
   assert.match(pending[0].what, /«Buy now» \(pay or buy\)/);

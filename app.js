@@ -1215,7 +1215,7 @@ function profileBrain(box, a, change, { brainless }) {
   } else {
     // What it thinks with: OpenRouter (pay per use) or one of your other APIs (Settings → Other APIs), one from a subscription you already pay for
     const prov = ed.brainOf(a).provider, conx = ed.connections();
-    const options = [["openrouter", "OpenRouter (pay per use)"], ...conx.map((c) => [c.id, `${c.name} · your subscription`])];
+    const options = [["openrouter", "OpenRouter (pay per use)"], ...conx.map((c) => [c.id, (ed.provider(c.id) || {}).noKey ? `${c.name} · free, on your computer` : `${c.name} · your own key, pay per use`])];   // 9.2.4: a key is paid per use (it isn't your app plan)
     if (prov !== "openrouter" && !conx.some((c) => c.id === prov)) options.push([prov, (ed.provider(prov) || {}).name || prov]);
     const selProv = h("select", { onchange: (ev) => {
       const fresh = ev.target.value;
@@ -1224,14 +1224,14 @@ function profileBrain(box, a, change, { brainless }) {
     } }, options.map(([k, t]) => h("option", { value: k }, t)));
     selProv.value = prov;
     const block = h("div", { class: "block" }, h("h4", {}, "Brain"), field("Thinks with", selProv));
-    if (!conx.length) block.append(h("small", { class: "note" }, "Do you have a subscription that includes API access (for example, Claude or ChatGPT credits, Gemini or a model on your computer)? Add it in Settings → Other APIs and you'll be able to pick it here. Anything paid separately is better through OpenRouter."));
+    if (!conx.length) block.append(h("small", { class: "note" }, "Do you have your own key from another AI (Claude, OpenAI, Gemini…) or a model on your computer? Add it in Settings → Other APIs and you'll be able to pick it here. Each key is paid per use to its company."));
     if (prov === "openrouter") {
       block.append(field("Brain", modelPicker("text", a.brain, { onChange: (v) => change({ brain: v }) }), "All of OpenRouter's text models, from cheapest to most expensive. Or type the name with “Search all”. Prices in dollars per million tokens (input / output). “sees” = can look at images."),
         popularNote(), brainWarnings(a), proposalsFor("text"));
     } else {
       const P = ed.provider(prov) || { short: prov };
       block.append(directPicker(prov, a.brain, (v) => change({ brain: v })),
-        h("small", { class: "note" }, tr(hasApiKey(prov) ? `Comes out of your ${P.short} subscription: it doesn't count towards the spending cap (it's tracked separately, so you can see it).` : `The ${P.short} key is missing: add it in Settings → Other APIs.`) + " " +
+        h("small", { class: "note" }, tr(hasApiKey(prov) ? `Paid per use to ${P.short} with your key (it isn't your ${P.short} app plan). It doesn't count towards the spending cap: it's tracked separately, so you can see it.` : `The ${P.short} key is missing: add it in Settings → Other APIs.`) + " " +
           tr("Internet search only works with OpenRouter.")));
       const selExhausted = h("select", { onchange: (ev) => change({ onExhausted: ev.target.value }) }, h("option", { value: "openrouter" }, "Carry on with OpenRouter"), h("option", { value: "stop" }, "Stop working"));
       selExhausted.value = a.onExhausted || "openrouter";
@@ -1241,12 +1241,12 @@ function profileBrain(box, a, change, { brainless }) {
         block.append(field("Its brain on OpenRouter in the meantime", modelPicker("text", a.fallbackBrain, { empty: eq ? `The same model on OpenRouter (${eq.name || eq.id})` : "The one its role would get", onChange: (v) => change({ fallbackBrain: v }) })));
       }
       const subs = Object.entries(a.subscription || {}).sort().at(-1);
-      if (subs) block.append(h("small", { class: "note" }, tr(`From your subscription, on ${subs[0]}: ${subs[1].tokens.toLocaleString(LOCALE)} tokens`) + (subs[1].usd ? " " + tr(`(on OpenRouter it would be ≈${fmt(subs[1].usd)})`) : "") + "."));
+      if (subs) block.append(h("small", { class: "note" }, tr(`With your own key, on ${subs[0]}: ${subs[1].tokens.toLocaleString(LOCALE)} tokens`) + (subs[1].usd ? " " + tr(`(≈${fmt(subs[1].usd)}, paid apart to that company)`) : "") + "."));
     }
     const est = ed.estimateHeartbeat(a);
     // each piece is translated separately (that way each language orders it its own way)
     block.append(h("small", { class: "note" }, [tr(`When it wakes up: ${est.how}`), est.spends && est.perTime > 0 ? tr(`· ≈${fmt(est.perTime)} per heartbeat`) + (est.perDay ? " " + tr(`(≈${fmt(est.perDay)} a day)`) : "") : est.spends && est.perTask ? tr(`· ≈${fmt(est.perTask)} per task`) : "",
-      est.tokens ? tr(`· reads about ${est.tokens.toLocaleString(LOCALE)} tokens each time`) : "", est.subscription ? tr(`· from your ${est.subscription} subscription`) : est.noPrice ? tr("· no known price") : ""].filter(Boolean).join(" ")));
+      est.tokens ? tr(`· reads about ${est.tokens.toLocaleString(LOCALE)} tokens each time`) : "", est.subscription ? tr(`· paid to ${est.subscription} with your key`) : est.noPrice ? tr("· no known price") : ""].filter(Boolean).join(" ")));
     box.append(block);
   }
   box.append(h("div", { class: "block" }, h("h4", {}, "Priority"),
@@ -1543,7 +1543,7 @@ function renderChat(force) {
     cardsUpTo(x.ts || 0);
     if (x.role === "user") m.append(h("div", { class: "msg me" }, h("div", { class: "bubble" }, raw(x.content)), x.voice ? h("div", { class: "meta" }, x.voice) : null));
     else if (x.role === "assistant") {
-      const meta = h("div", { class: "meta" }, h("span", {}, x.provider ? tr(`${x.model || ""} · ${((ed.provider(x.provider) || {}).short) || x.provider}: your subscription`) + (x.subscription ? ` (≈${fmt(x.subscription)})` : "") : `${x.model || ""} · ${fmt(x.cost || 0)}`),
+      const meta = h("div", { class: "meta" }, h("span", {}, x.provider ? tr(`${x.model || ""} · ${((ed.provider(x.provider) || {}).short) || x.provider}: your own key, pay per use`) + (x.subscription ? ` (≈${fmt(x.subscription)})` : "") : `${x.model || ""} · ${fmt(x.cost || 0)}`),
         speaks ? h("button", { onclick: (ev) => { unlockAudio(); speakText(x.content, ev.target.parentElement, a); } }, "▶ Listen") : null,
         copyButton(() => bubble),
         h("span", { class: "coins-msg" }, coinButton(a, "gold"), coinButton(a, "red")));
@@ -2523,7 +2523,7 @@ function renderSpendingDrawer(dataOnly) {
     h("div", { class: "who-spends" }, list.map(({ a, auto, est }) => h("div", { class: "spender-row" + (est.spends && auto && est.perTime > 0 ? " spends" : "") },
       h("img", { src: figure(a.look), alt: "" }),
       h("span", { class: "spender-txt" }, h("b", {}, a.name), h("small", {}, `${a.off ? "off" : auto ? heartbeatText(a.heartbeat) : "on request only"} · ${est.how}`)),
-      h("span", { class: "spender-right" }, est.spends && est.perTime > 0 ? h("b", {}, `≈${fmt(est.perTime)} per heartbeat`) : h("small", {}, est.subscription ? `from your ${est.subscription} subscription` : est.spends ? (est.perTask ? `≈${fmt(est.perTask)} per task` : "—") : "doesn't spend"),
+      h("span", { class: "spender-right" }, est.spends && est.perTime > 0 ? h("b", {}, `≈${fmt(est.perTime)} per heartbeat`) : h("small", {}, est.subscription ? `paid to ${est.subscription} with your key` : est.spends ? (est.perTask ? `≈${fmt(est.perTask)} per task` : "—") : "doesn't spend"),
         est.spends && auto && est.perDay > 0 ? h("small", {}, `≈${fmt(est.perDay)} a day`) : null,
         est.spends && auto && !a.off && a.role !== "boss" ? h("button", { class: "btn mini", type: "button", onclick: () => addRequest(a) }, "On request only") : null)))),
     h("small", { class: "note" }, "Estimate (ASSUMPTION): what it reads when it wakes up, about 3.5 letters per token, plus about 400 tokens of reply, at its brain's price. Internet search adds about $0.006. You can see the real spending above.")));
@@ -2554,9 +2554,9 @@ function otherApisBlock() {
   const conx = ed.connections();
   const saveList = (list) => Motor.run({ type: "connections", connections: list }).then(() => { render(); renderSettings(); }).catch(warn);
   const currentList = () => (ed.e.settings.connections || []).map((x) => Object.assign({}, x));
-  const b = h("div", { class: "block" }, h("h4", {}, "Other APIs (your subscriptions)"),
-    h("p", { class: "note", style: { margin: 0 } }, "Each agent thinks with OpenRouter (pay per use) or with the API of a subscription you already pay for. Add yours here and, in each agent's profile → Brain, choose which one it thinks with. What comes out of your subscription doesn't count towards the spending cap: it's tracked separately, so you can see it."),
-    h("small", { class: "note" }, "Some subscriptions include API access or API credits (for example, some Claude and ChatGPT plans, or the Google Cloud credits in Google AI Pro and Ultra). Others only let you use your allowance in their own apps: don't use those here. Anything paid separately is better through OpenRouter."));
+  const b = h("div", { class: "block" }, h("h4", {}, "Other APIs (your own keys)"),
+    h("p", { class: "note", style: { margin: 0 } }, "Each agent thinks with OpenRouter or with your own key from another AI (Claude, OpenAI, Gemini…), or with a model on your computer (free). Add them here and, in each agent's profile → Brain, choose which one it thinks with. Each key is paid per use to its company and doesn't count towards the spending cap: it's tracked separately, so you can see it."),
+    h("small", { class: "note" }, "A key is not your app plan: a Claude or ChatGPT plan doesn't pay for its key. Each company charges its key apart, per use, on its own website."));
   for (const P of conx) {
     const msg = h("small", { class: "note" });
     const test = h("button", { class: "btn mini", type: "button", onclick: async () => { test.disabled = true; msg.textContent = tr("Testing…"); try { const l = await loadDirectModels(P.id); msg.textContent = tr(`It works: ${l.length} models. The first one: ${l[0] || "—"}.`); } catch (err) { msg.textContent = err.message; } test.disabled = false; } }, "Test");

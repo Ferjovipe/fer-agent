@@ -1,4 +1,4 @@
-FER AGENT · EL EDIFICIO (versión 9.2.3)
+FER AGENT · EL EDIFICIO (versión 9.2.4)
 =====================================
 
 Tienes una empresa agéntica a tu servicio. Nosotros ponemos la base; tú decides el organigrama
@@ -47,6 +47,13 @@ Tras las primeras pruebas de Fer con el Jefe y Lupe:
     correo», Para, Asunto y el texto, tomado de lo que está escrito en la página. Botones «Enviar»,
     «Corregir» y «Rechazar». Nada técnico a la vista: la página y el paso, en «Detalles». Igual en su
     chat, en la bandeja y en Telegram.
+  - (9.2.4) Correos en 1 paso: el cortafuegos deja pasar el enlace de «correo nuevo» de tu propio Gmail u
+    Outlook (abre el correo ya escrito; sigue sin salir sin tu «Enviar»). Antes, el agente rellenaba
+    casilla a casilla releyendo Gmail entero (unos 15 pasos; con Opus, unos 0,60 $ un correo de una línea).
+  - (9.2.4) Lo que antes se llamaba «tu suscripción» es lo que es: tu propia clave de otra IA, que se paga
+    por uso a esa empresa (el plan de la app de Claude o de ChatGPT no la paga).
+  - (9.2.4) Un paso en una web que lleva más de 24 horas esperando tu sí caduca solo (su pestaña ya se
+    cerró). Los agentes no te mencionan los códigos internos de los permisos.
 
 
 Versión 9.2

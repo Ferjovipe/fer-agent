@@ -1,7 +1,7 @@
 {
   "name": "fer-agent",
   "productName": "Fer Agent",
-  "version": "9.2.3",
+  "version": "9.2.4",
   "description": "Your AI agents live in a building: an open-source agentic company on your computer.",
   "author": "Fernando Villar Peláez",
   "homepage": "https://feragent.netlify.app",

@@ -1359,7 +1359,7 @@ export class Building {
     const s = ag.subscription[day] || (ag.subscription[day] = { tokens: 0, usd: 0 });
     s.tokens += uIn + uOut; s.usd += est;
     const days = Object.keys(ag.subscription).sort(); while (days.length > 62) delete ag.subscription[days.shift()];
-    this.logActivity(ag, this.F("{1} ({2}: {3} · your subscription, {4} tokens{5}; doesn't count towards the cap)", op.concept || "brain", P.short, model, (uIn + uOut).toLocaleString(LOCALE), est ? `, ≈${fmt(est)}` : ""), 0);
+    this.logActivity(ag, this.F("{1} ({2}: {3} · your own key, {4} tokens{5}; paid apart to that company, it doesn't count towards the cap)", op.concept || "brain", P.short, model, (uIn + uOut).toLocaleString(LOCALE), est ? `, ≈${fmt(est)}` : ""), 0);
     return { msg, cost: 0, subscription: est, model: replyModel, input: uIn, output: uOut, provider: prov };
   }
   // Loop with tools: the brain can ask for actions; they are run and returned to it.
@@ -1843,7 +1843,7 @@ export class Building {
       h.push(
         { name: "web_search", description: this.L("Searches the internet for free (DuckDuckGo) with the agents' Chrome. Returns titles, addresses and summaries. When you tell your owner what you did, say it in plain words (I searched, I opened, I clicked…), without the names of these tools."),
           parameters: { type: "object", properties: { query: { type: "string" } }, required: ["query"] } },
-        { name: "web_open", description: this.L("Opens a website in your own tab of the agents' Chrome. If your owner signed in to that website in this Chrome, you'll find their session open; if you find the sign-in page instead, tell your owner (don't assume they're signed in anywhere). Returns the page's text (long pages, in pieces) and a numbered list of what can be clicked or filled in."),
+        { name: "web_open", description: this.L("Opens a website in your own tab of the agents' Chrome. If your owner signed in to that website in this Chrome, you'll find their session open; if you find the sign-in page instead, tell your owner (don't assume they're signed in anywhere). Returns the page's text (long pages, in pieces) and a numbered list of what can be clicked or filled in. To write an email, open it already written: Gmail https://mail.google.com/mail/?view=cm&fs=1&to=…&su=…&body=… · Outlook https://outlook.live.com/mail/0/deeplink/compose?to=…&subject=…&body=… (outlook.office.com for work accounts), with the subject and the text URL-encoded; then just click its «Send» button."),
           parameters: { type: "object", properties: { url: { type: "string" } }, required: ["url"] } },
         { name: "web_act", description: this.L("Does one step on the page you have open, like a person: click, type, select, check, press (a key; Enter by default), scroll (down or up: the next or the previous piece of the page's text) or back. «element» is the number from the list. «effect»: what the step does outside the page: none, send (send, publish, sign up, book…), pay (buy, pay…) or delete. If the step sends, publishes, pays or deletes, put in «preview» exactly what goes out (the whole text of the message, or the amount, or what gets deleted) and, if it's a message, «to» and «subject»: your owner reads it before saying yes. Returns the page as it is afterwards."),
           parameters: { type: "object", properties: { action: { type: "string", enum: ["click", "type", "select", "check", "press", "scroll", "back"] }, element: { type: "number" }, text: { type: "string" }, effect: { type: "string", enum: ["none", "send", "pay", "delete"] }, preview: { type: "string" }, to: { type: "string" }, subject: { type: "string" } }, required: ["action"] } },
@@ -2317,6 +2317,9 @@ export class Building {
     return urls.filter((u) => {
       const k = this.urlKey(u);
       if (k && (P.all.includes(k) || owner.includes(k))) return false;   // the address is yours
+      // 9.2.4: your own mailbox's «new email» link (Gmail, Outlook): what it carries stays in your account as an email still unsent,
+      // and nothing goes out without your «Send». With it the agent writes an email in 1 step instead of 15.
+      if (/^(mail\.google\.com\/mail\/|outlook\.(live|office|office365)\.com\/(mail|owa)\/)/.test(k)) return false;
       let d = u; try { d = decodeURIComponent(u.replace(/\+/g, " ")); } catch {}
       const p = firewallWords(d);
       for (let i = 0; i + 5 <= p.length; i++) if (P.tiles.has(p.slice(i, i + 5).join(" "))) return true;
@@ -2347,7 +2350,7 @@ export class Building {
       const shown = isEmail ? [this.F("To: {1}", d.to), d.cc ? this.F("Copy: {1}", d.cc) : "", this.F("Subject: {1}", d.subject || ""), "", d.text].filter((x, i) => x || i === 3).join("\n") : detail;
       const x = this.askApproval(a, `${this.Lsi(sk.title || name)}: ${String(reason || (isEmail ? d.subject : "") || "").slice(0, 160)}`, shown, 0, { skill: name, data: d, effect: isEmail ? "send" : sk.kind || "other",
         mail: isEmail ? { to: d.to, subject: d.subject, text: d.text, from: d.mailbox || "" } : null });
-      return x.repeated ? this.F("You had already asked for that (inbox, {1}): it's still waiting for your owner.", x.id) : this.F("Permission requested from your owner (inbox, {1}). Don't take it as done: it will happen when they approve it.", x.id);
+      return x.repeated ? this.F("You had already asked for that (internal code {1}: never mention it to your owner): it's still waiting for them.", x.id) : this.F("Permission requested from your owner: they see it in your chat and in the inbox, with the button to say yes (internal code {1}: never mention it to them). Don't take it as done: it will happen when they approve it.", x.id);
     }
     const r = await this.o.hands.run(name, data || {}, { agent: a.id, name: a.name, authorized: sk.effect === "external" });   // external here: its permissions let it act without asking
     this.logActivity(a, this.F("used the skill {1}{2}", name, reason ? ": " + String(reason).slice(0, 80) : ""), 0);
@@ -2360,7 +2363,7 @@ export class Building {
     const outside = anywhere && /^(~|\/|[A-Za-z]:[\\/])/.test(String(x.path || "").trim());
     if (op === "write" && outside && this.asksFirst(a, "other")) {
       const ap = this.askApproval(a, this.F("Write the file {1}", String(x.path).slice(0, 160)), String(x.text || "").slice(0, 200000), 0, { files: { op, data: { path: x.path, text: x.text, append: !!x.append }, anywhere: true } });
-      return ap.repeated ? this.F("You had already asked for that (inbox, {1}): it's still waiting for your owner.", ap.id) : this.F("Permission requested from your owner (inbox, {1}). Don't take it as done: it will happen when they approve it.", ap.id);
+      return ap.repeated ? this.F("You had already asked for that (internal code {1}: never mention it to your owner): it's still waiting for them.", ap.id) : this.F("Permission requested from your owner: they see it in your chat and in the inbox, with the button to say yes (internal code {1}: never mention it to them). Don't take it as done: it will happen when they approve it.", ap.id);
     }
     try {
       const r = await this.o.hands.files(op, x, { agent: a.id, anywhere });
@@ -2389,7 +2392,7 @@ export class Building {
     if (op !== "look" && this.asksFirst(a, kind)) {
       const K = { pay: this.L("pay or buy"), send: this.L("send or publish"), delete: this.L("delete"), other: this.L("something with an effect outside") };
       const ap = this.askApproval(a, this.F("On the computer: {1} ({2})", what.slice(0, 160), K[kind] || kind), what, 0, { computer: { op, data: x }, effect: kind });
-      return ap.repeated ? this.F("You had already asked for that (inbox, {1}): it's still waiting for your owner.", ap.id) : this.F("Permission requested from your owner (inbox, {1}). Don't take it as done: it will happen when they approve it.", ap.id);
+      return ap.repeated ? this.F("You had already asked for that (internal code {1}: never mention it to your owner): it's still waiting for them.", ap.id) : this.F("Permission requested from your owner: they see it in your chat and in the inbox, with the button to say yes (internal code {1}: never mention it to them). Don't take it as done: it will happen when they approve it.", ap.id);
     }
     let r;
     try { r = await this.o.hands.computer(op, x, { agent: a.id }); }
@@ -2443,7 +2446,7 @@ export class Building {
     if (this.asksFirst(a, "send")) {
       const shown = [box.address ? this.F("From: {1}", box.address) : "", this.F("To: {1}", d.to), d.cc ? this.F("Copy: {1}", d.cc) : "", this.F("Subject: {1}", d.subject), "", d.text].filter((v, i) => v || i === 4).join("\n");
       const ap = this.askApproval(a, `${this.Lsi("Send an email")}: ${d.subject.slice(0, 160)}`, shown, 0, { skill: "send-email", data: d, effect: "send", mail: { to: d.to, subject: d.subject, text: d.text, from: box.address || "" } });
-      return ap.repeated ? this.F("You had already asked for that (inbox, {1}): it's still waiting for your owner.", ap.id) : this.F("Permission requested from your owner (inbox, {1}). Don't take it as done: it will happen when they approve it.", ap.id);
+      return ap.repeated ? this.F("You had already asked for that (internal code {1}: never mention it to your owner): it's still waiting for them.", ap.id) : this.F("Permission requested from your owner: they see it in your chat and in the inbox, with the button to say yes (internal code {1}: never mention it to them). Don't take it as done: it will happen when they approve it.", ap.id);
     }
     try {
       const r = await this.o.hands.run("send-email", d, { agent: a.id, name: a.name, authorized: true, mailbox: box.id });
@@ -2499,8 +2502,8 @@ export class Building {
         const ap = this.askApproval(a, this.F("On {1}: {2} {3} ({4})", host, this.L(action), it ? `«${it.label}»` : "", K[kind] || kind), detail, 0,
           { web: { action, element: Number(x.element) || 0, label: it ? it.label : "", text: x.text, url: now.url || "" }, effect: kind, mail, preview: pre.trim() });
         if (!ap.repeated && this.o.hands.web) Promise.resolve(this.o.hands.web("hold", {}, { agent: a.id })).catch(() => {});   // its tab waits open for your yes
-        return ap.repeated ? this.F("You had already asked for that (inbox, {1}): it's still waiting for your owner.", ap.id)
-          : this.F("Permission requested from your owner (inbox, {1}). Don't take it as done: when they say yes it will be done and you'll be woken up with the page as it is then. Meanwhile, carry on with anything else you can do.", ap.id);
+        return ap.repeated ? this.F("You had already asked for that (internal code {1}: never mention it to your owner): it's still waiting for them.", ap.id)
+          : this.F("Permission requested from your owner: they see it in your chat and in the inbox, with the button to say yes (internal code {1}: never mention it to them). Don't take it as done: when they say yes it will be done and you'll be woken up with the page as it is then. Meanwhile, carry on with anything else you can do.", ap.id);
       }
     }
     let r;
@@ -2600,6 +2603,8 @@ export class Building {
   inbox() {
     const e = Object.assign({ approvals: [], proposals: [], meetings: [], coins: [], lessons: [], modelProposals: [], agents: [] }, this.e || {}), items = [], name = (id) => (this.exactAgent(id) || {}).name || id;
     const creator = (this.byRoleList("creator")[0] || {}).name || this.L("The Creator"), boss = (this.boss() || {}).name || this.L("The boss");
+    // 9.2.4: a step on a website still waiting after 24 hours can't be done any more (its tab was closed): it expires on its own
+    for (const x of e.approvals) if (x.state === "pending" && x.action && x.action.web && this.now() - x.ts > 24 * 3600e3) { x.state = "expired"; x.decided = this.now(); }
     for (const x of e.approvals.filter((y) => y.state === "pending"))
       items.push({ kind: "action", id: x.id, ts: x.ts, who: x.name, what: x.what, detail: x.detail, cost: x.cost, external: true, agent: x.agent, effect: x.effect || "", mail: x.mail || null, preview: x.preview || "" });
     for (const p of e.proposals.filter((y) => y.state === "pending")) {

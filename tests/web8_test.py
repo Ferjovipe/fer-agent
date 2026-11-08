@@ -141,7 +141,7 @@ try:
         page.click("#profile .model-search .model-result:has-text('Zeta 12')"); page.wait_for_timeout(400)
         check(agent(page, "Tecno")["brain"] == "zeta/zeta-12", "you choose one from the search and it's now its brain")
         # ---------- Other APIs: any one, with its address ----------
-        page.click("#openSettings"); page.wait_for_selector("#drawerBody h4:text-is('Otras API (tus suscripciones)')")
+        page.click("#openSettings"); page.wait_for_selector("#drawerBody h4:text-is('Otras API (tus propias claves)')")
         check(personal(page.inner_text("#drawerBody")) == [], f"Settings with no personal references: {personal(page.inner_text('#drawerBody'))}")
         which = "#drawerBody .field:has(> span:text-is('O cualquier otra'))"
         page.fill(f"{which} input >> nth=0", "Mi API"); page.fill(f"{which} input >> nth=1", "ftp://mal"); page.click(f"{which} button:text-is('Añadir')")
@@ -158,16 +158,16 @@ try:
         profile(page, "Tecno", "Cerebro y gasto")
         sel_prov = "#profile .field:has(> span:text-is('Con qué piensa')) select"
         opts = page.eval_on_selector_all(sel_prov + " option", "os => os.map(o => o.textContent)")
-        check(opts == ["OpenRouter (se paga por uso)", "Mi API · tu suscripción"], f"in its profile, “Con qué piensa”: {opts}")
+        check(opts == ["OpenRouter (se paga por uso)", "Mi API · tu clave, pago por uso"], f"in its profile, “Con qué piensa”: {opts}")
         page.select_option(sel_prov, "api-mi-api"); page.wait_for_timeout(500)
         t = agent(page, "Tecno")
         check(t["provider"] == "api-mi-api" and t["brain"] == "mia-grande", f"Tecno thinks with Mi API ({t['provider']} · {t['brain']})")
-        check(page.is_visible("#profile >> text=Sale de tu suscripción de Mi API"), "the profile says so: it comes out of your subscription, it doesn't count towards the cap")
+        check(page.is_visible("#profile >> text=Se paga por uso a Mi API con tu clave"), "the profile says so: it comes out of your subscription, it doesn't count towards the cap")
         photo(page, "9-profile-other-api")
         chat_with(page, "Tecno"); send(page, "¿Qué tal todo?")
         page.wait_for_selector("#messages .msg.bot:not(.greeting) .meta", timeout=15000)
         check("Respuesta desde Mi API." in page.inner_text("#messages") and myapi_calls and myapi_calls[-1]["h"].get("authorization") == "Bearer sk-mia" and myapi_calls[-1]["b"]["model"] == "mia-grande", "it answers from Mi API, with its key and its model")
-        check("Mi API: tu suscripción" in page.inner_text("#messages .msg.bot:not(.greeting) .meta"), "below: “Mi API: tu suscripción”")
+        check("Mi API: tu clave, pago por uso" in page.inner_text("#messages .msg.bot:not(.greeting) .meta"), "below: “Mi API: tu suscripción”")
         t = agent(page, "Tecno")
         check(sum(t["spending"].values()) == 0 and sum(x["tokens"] for x in t["subscription"].values()) == 840, f"it doesn't add to the spending; it's recorded apart ({t['subscription']})")
         page.click("#closeChat")

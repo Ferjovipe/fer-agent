@@ -122,7 +122,7 @@ async function askQuestion(text, rl) { return (await rl.question(text)).trim(); 
 const DELETE_WORDS = ["delete", "borrar"];   // either language works
 async function keysCommand(conf) {
   const rl = readline.createInterface({ input: process.stdin, output: process.stdout });
-  console.log("\n" + L("Other APIs (the ones from your subscriptions). Paste each key (or press Enter to leave it as it is; type “delete” to remove it)."));
+  console.log("\n" + L("Other APIs (your own keys from other AIs, paid per use). Paste each key (or press Enter to leave it as it is; type “delete” to remove it)."));
   console.log(L("They are only saved in {1} and only travel to each API's address.", CONFIG_FILE) + "\n");
   // the known ones and the ones you added on the website (Settings → Other APIs)
   let ownOnes = [];

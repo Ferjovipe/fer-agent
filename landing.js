@@ -33,7 +33,7 @@ export function renderLanding(cont, { h, enter, figure, languages, language, cha
           // the Mac and Windows app, without asking for anything (not shown inside the app itself)
           ...(/Electron\//.test(navigator.userAgent) ? [] : [h("a", { class: "button-outline", href: DOWNLOAD_MAC, rel: "noopener" }, "Download for Mac"),
             h("a", { class: "button-outline", href: DOWNLOAD_WINDOWS, rel: "noopener" }, "Download for Windows")])),
-        h("span", { class: "small-print" }, "Open source · Free · Mac, Windows or in the browser · Works with your OpenRouter key or your subscription's API")),
+        h("span", { class: "small-print" }, "Open source · Free · Mac, Windows or in the browser · Works with your OpenRouter key or with your own key from Claude, OpenAI, Gemini…")),
       h("button", { class: "download", type: "button", onclick: () => cont.querySelector(".section-l").scrollIntoView({ behavior: "smooth" }) }, "How it works ↓")),
     h("section", { class: "section-l" },
       h("h2", {}, "How it works"),
@@ -48,7 +48,7 @@ export function renderLanding(cont, { h, enter, figure, languages, language, cha
       h("div", { class: "builtin" }, BUILT_IN.map(([p, clothes, name, text]) => { const im = h("img", { alt: "" }); figure({ p, clothes }, im); return h("div", {}, im, h("span", {}, h("b", {}, name), h("small", {}, text))); }))),
     h("section", { class: "section-l" },
       h("h2", {}, "Spending, under control"),
-      h("p", {}, "Pay-per-use goes through your OpenRouter key, so everything is visible and everything has a brake. What comes out of your subscription is tracked separately."),
+      h("p", {}, "Pay-per-use goes through your OpenRouter key, so everything is visible and everything has a brake. What you spend with other companies' keys is tracked separately."),
       h("div", { class: "control" },
         h("div", {}, h("b", {}, "Caps that freeze"), h("span", {}, "A daily cap and a monthly one. As they get close, the least important agents are frozen first.")),
         h("div", {}, h("b", {}, "JEV before spending"), h("span", {}, "Before searching, retrying or creating another agent, JEV decides whether it's worth it.")),
