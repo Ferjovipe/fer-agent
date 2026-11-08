@@ -1525,7 +1525,8 @@ function renderChat(force) {
   namesUpToDate();
   const a = chatAgent(); if (!a) return;
   const conv = ed.chatOf(a);
-  const signature = [a.id, conv.length, (conv.at(-1) || {}).ts, thinking, pendingErrors.length, hasAccess(), (ed.e.proposals || []).map((y) => y.state[0]).join(""), (ed.e.meetings || []).map((r) => r.state[0]).join(""), a.name, a.capabilities.join()].join("|");
+  const signature = [a.id, conv.length, (conv.at(-1) || {}).ts, thinking, pendingErrors.length, hasAccess(), (ed.e.proposals || []).map((y) => y.state[0]).join(""), (ed.e.meetings || []).map((r) => r.state[0]).join(""), a.name, a.capabilities.join(),
+    (ed.e.approvals || []).filter((y) => y.agent === a.id && y.state === "pending").map((y) => y.id).join()].join("|");
   if (!force && signature === lastChat) return;
   lastChat = signature;
   const m = $("messages"); m.innerHTML = "";
@@ -1560,6 +1561,8 @@ function renderChat(force) {
         author && !x.meeting ? h("div", { class: "meta" }, x.ts ? h("span", {}, date(x.ts)) : null, copyButton(() => bubble), author.role !== "boss" ? h("span", { class: "coins-msg" }, coinButton(author, "gold"), coinButton(author, "red")) : null) : null));
     }
   }
+  // 9.2.1: what this agent is waiting for your yes on, right here in its chat (the same card as in the inbox)
+  for (const x of ed.inbox().filter((y) => y.kind === "action" && y.agent === a.id)) m.append(h("div", { class: "msg report approval" }, requestCard(x)));
   for (const e of pendingErrors) m.append(h("div", { class: "msg error" }, h("div", { class: "bubble" }, e)));
   if (thinking) m.append(h("div", { class: "msg bot typing" }, writing ? h("div", { class: "bubble", html: markdown(writing) }) : h("div", { class: "bubble" }, h("span", { class: "thinking", "aria-label": "Thinking" }, h("i"), h("i"), h("i")))));
   $("chat").scrollTop = $("chat").scrollHeight;
@@ -1981,7 +1984,7 @@ function requestCard(x) {
   const decide = (yes, extra, button) => {
     if (button) button.disabled = true;
     return Motor.run(Object.assign({ type: "inbox.decide", kind: x.kind, id: x.id, yes }, extra || {}))
-      .then((r) => { if (r && r.state) toast(r.state === "done" ? `Done: ${String(r.result || "").slice(0, 160)}` : `It couldn't be done: ${String(r.result || "").slice(0, 160)}`); render(); renderInbox(true); })
+      .then((r) => { if (r && r.state) toast(r.state === "corrected" ? tr(`Sent to ${x.who}: it will make the change and ask you again.`) : r.state === "done" ? `Done: ${String(r.result || "").slice(0, 160)}` : `It couldn't be done: ${String(r.result || "").slice(0, 160)}`); render(); renderInbox(true); renderChat(true); })
       .catch((err) => { if (button) button.disabled = false; warn(err); });
   };
   const b = (txt, f, primary) => { const el = h("button", { class: "btn mini" + (primary ? " primary" : ""), type: "button" }, txt); el.onclick = () => f(el); return el; };
@@ -2012,9 +2015,20 @@ function requestCard(x) {
     parts.push(h("p", { class: "p-detail" }, inQuotes(x.detail)), h("p", { class: "note-dark", style: { margin: 0 } }, "Meanwhile it won't move on alone towards its objective (it doesn't spend). Give it what it asks for in its profile, or change its objective."));
     const a = ed.exactAgent(x.id);
     acc = [b("It has it now", (el) => decide(true, null, el), true), a ? b("See their profile", () => { closeScreen(); profileTab = "capabilities"; choose(a); }) : null];
+  } else if (x.kind === "action") {
+    // 9.2.1: you read exactly what goes out, and then «Send» (or «Pay», «Delete»…), «Correct» or «Reject»
+    if (x.detail) parts.push(h("div", { class: "p-detail p-outgoing" }, raw(x.detail)));   // as it is: it's what goes out (not translated, line breaks kept)
+    const fixText = h("textarea", { rows: "3", maxlength: "4000", "aria-label": "What to change", placeholder: tr("What should it change? For example: shorter, more formal, add the date…") });
+    const fixBox = h("div", { class: "p-fix", hidden: true }, fixText,
+      h("div", { class: "row-c" }, b("Send the correction", (el) => { const t = fixText.value.trim(); if (!t) { fixText.focus(); return; } decide(false, { fix: t }, el); }, true)));
+    acc = [b({ send: "Send", pay: "Pay", delete: "Delete" }[x.effect] || "Approve and do it", (el) => decide(true, null, el), true),
+      b("Correct", () => { fixBox.hidden = !fixBox.hidden; if (!fixBox.hidden) fixText.focus(); }),
+      b("Reject", (el) => decide(false, null, el))];
+    parts.push(h("div", { class: "p-actions" }, acc), fixBox);
+    return h("article", { class: "request" + (x.external ? " external" : "") }, parts);
   } else {
     if (x.detail) parts.push(h("p", { class: "p-detail" }, x.detail));
-    acc = [b(x.kind === "action" ? "Approve and do it" : x.kind === "coin" ? "Confirm" : "Accept", (el) => decide(true, null, el), true), b(x.kind === "action" ? "Reject" : "Dismiss", (el) => decide(false, null, el))];
+    acc = [b(x.kind === "coin" ? "Confirm" : "Accept", (el) => decide(true, null, el), true), b("Dismiss", (el) => decide(false, null, el))];
   }
   parts.push(h("div", { class: "p-actions" }, acc.filter(Boolean)));
   return h("article", { class: "request" + (x.external ? " external" : "") }, parts);

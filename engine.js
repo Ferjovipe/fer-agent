@@ -1841,12 +1841,12 @@ export class Building {
     // like a person, and a look at the screen only when the text isn't enough (it's the expensive part)
     if (a.capabilities.includes("internet") && this.o.hands && this.o.hands.web) {
       h.push(
-        { name: "web_search", description: this.L("Searches the internet for free (DuckDuckGo) with the agents' Chrome. Returns titles, addresses and summaries."),
+        { name: "web_search", description: this.L("Searches the internet for free (DuckDuckGo) with the agents' Chrome. Returns titles, addresses and summaries. When you tell your owner what you did, say it in plain words (I searched, I opened, I clicked…), without the names of these tools."),
           parameters: { type: "object", properties: { query: { type: "string" } }, required: ["query"] } },
-        { name: "web_open", description: this.L("Opens a website in your own tab of the agents' Chrome, where your owner's sessions are open (their email, bank, social networks…). Returns the page's text and a numbered list of what can be clicked or filled in."),
+        { name: "web_open", description: this.L("Opens a website in your own tab of the agents' Chrome. If your owner signed in to that website in this Chrome, you'll find their session open; if you find the sign-in page instead, tell your owner (don't assume they're signed in anywhere). Returns the page's text (long pages, in pieces) and a numbered list of what can be clicked or filled in."),
           parameters: { type: "object", properties: { url: { type: "string" } }, required: ["url"] } },
-        { name: "web_act", description: this.L("Does one step on the page you have open, like a person: click, type, select, check, press (a key; Enter by default), scroll (down or up) or back. «element» is the number from the list. «effect»: what the step does outside the page: none, send (send, publish, sign up, book…), pay (buy, pay…) or delete. Returns the page as it is afterwards."),
-          parameters: { type: "object", properties: { action: { type: "string", enum: ["click", "type", "select", "check", "press", "scroll", "back"] }, element: { type: "number" }, text: { type: "string" }, effect: { type: "string", enum: ["none", "send", "pay", "delete"] } }, required: ["action"] } },
+        { name: "web_act", description: this.L("Does one step on the page you have open, like a person: click, type, select, check, press (a key; Enter by default), scroll (down or up: the next or the previous piece of the page's text) or back. «element» is the number from the list. «effect»: what the step does outside the page: none, send (send, publish, sign up, book…), pay (buy, pay…) or delete. If the step sends, publishes, pays or deletes, put in «preview» exactly what goes out (to whom, the subject and the whole text, or the amount): your owner reads it before saying yes. Returns the page as it is afterwards."),
+          parameters: { type: "object", properties: { action: { type: "string", enum: ["click", "type", "select", "check", "press", "scroll", "back"] }, element: { type: "number" }, text: { type: "string" }, effect: { type: "string", enum: ["none", "send", "pay", "delete"] }, preview: { type: "string" } }, required: ["action"] } },
         { name: "web_look", description: this.L("Looks at a picture of your tab, only if the text isn't enough (it's more expensive). Say what you want to know."),
           parameters: { type: "object", properties: { question: { type: "string" } } } });
       executors.web_search = (x) => this.webStep(a, "search", x);
@@ -2345,7 +2345,7 @@ export class Building {
     if (sk.effect === "external" && this.asksFirst(a, sk.kind || "other")) {   // it has an effect outside the website: your yes first (unless its permissions say otherwise)
       const d = data || {}, isEmail = typeof d.to === "string" && typeof d.text === "string";   // an email: shown as an email (who it goes to, subject and text)
       const shown = isEmail ? [this.F("To: {1}", d.to), d.cc ? this.F("Copy: {1}", d.cc) : "", this.F("Subject: {1}", d.subject || ""), "", d.text].filter((x, i) => x || i === 3).join("\n") : detail;
-      const x = this.askApproval(a, `${this.Lsi(sk.title || name)}: ${String(reason || (isEmail ? d.subject : "") || "").slice(0, 160)}`, shown, 0, { skill: name, data: d });
+      const x = this.askApproval(a, `${this.Lsi(sk.title || name)}: ${String(reason || (isEmail ? d.subject : "") || "").slice(0, 160)}`, shown, 0, { skill: name, data: d, effect: isEmail ? "send" : sk.kind || "other" });
       return x.repeated ? this.F("You had already asked for that (inbox, {1}): it's still waiting for your owner.", x.id) : this.F("Permission requested from your owner (inbox, {1}). Don't take it as done: it will happen when they approve it.", x.id);
     }
     const r = await this.o.hands.run(name, data || {}, { agent: a.id, name: a.name, authorized: sk.effect === "external" });   // external here: its permissions let it act without asking
@@ -2387,7 +2387,7 @@ export class Building {
     }
     if (op !== "look" && this.asksFirst(a, kind)) {
       const K = { pay: this.L("pay or buy"), send: this.L("send or publish"), delete: this.L("delete"), other: this.L("something with an effect outside") };
-      const ap = this.askApproval(a, this.F("On the computer: {1} ({2})", what.slice(0, 160), K[kind] || kind), what, 0, { computer: { op, data: x } });
+      const ap = this.askApproval(a, this.F("On the computer: {1} ({2})", what.slice(0, 160), K[kind] || kind), what, 0, { computer: { op, data: x }, effect: kind });
       return ap.repeated ? this.F("You had already asked for that (inbox, {1}): it's still waiting for your owner.", ap.id) : this.F("Permission requested from your owner (inbox, {1}). Don't take it as done: it will happen when they approve it.", ap.id);
     }
     let r;
@@ -2441,7 +2441,7 @@ export class Building {
     if (box.id) d.mailbox = box.id;
     if (this.asksFirst(a, "send")) {
       const shown = [box.address ? this.F("From: {1}", box.address) : "", this.F("To: {1}", d.to), d.cc ? this.F("Copy: {1}", d.cc) : "", this.F("Subject: {1}", d.subject), "", d.text].filter((v, i) => v || i === 4).join("\n");
-      const ap = this.askApproval(a, `${this.Lsi("Send an email")}: ${d.subject.slice(0, 160)}`, shown, 0, { skill: "send-email", data: d });
+      const ap = this.askApproval(a, `${this.Lsi("Send an email")}: ${d.subject.slice(0, 160)}`, shown, 0, { skill: "send-email", data: d, effect: "send" });
       return ap.repeated ? this.F("You had already asked for that (inbox, {1}): it's still waiting for your owner.", ap.id) : this.F("Permission requested from your owner (inbox, {1}). Don't take it as done: it will happen when they approve it.", ap.id);
     }
     try {
@@ -2456,7 +2456,8 @@ export class Building {
     if (!r || !Array.isArray(r.elements)) return String((r && r.text) || "");
     const els = r.elements.map((e) => `[${e.n}] ${e.role} «${e.label}»` + (e.type ? ` (${e.type})` : "") + (e.value ? ` = “${e.value}”` : "") + (e.checked !== undefined ? (e.checked ? " ✓" : " ☐") : "")
       + (e.options && e.options.length ? ` {${e.options.join(" | ")}}` : "") + (e.href && e.role === "link" ? ` → ${e.href}` : ""));
-    return this.F("Page: {1}\nAddress: {2}", r.title || "", r.url || "") + "\n\n" + String(r.text || "") + (r.more ? "\n" + this.L("[…the text goes on: scroll down to see more]") : "")
+    const where = r.parts > 1 ? "\n" + (r.more ? this.F("[…part {1} of {2} of the page's text: scroll down for the next part]", r.part, r.parts) : this.F("[part {1} of {2}: the end of the page's text]", r.part, r.parts)) : "";
+    return this.F("Page: {1}\nAddress: {2}", r.title || "", r.url || "") + "\n\n" + String(r.text || "") + where
       + "\n\n" + this.L("What can be used (its number goes in web_act):") + "\n" + (els.join("\n") || this.L("(nothing)"));
   }
   async webStep(a, op, x) {
@@ -2481,9 +2482,13 @@ export class Building {
       if (this.asksFirst(a, kind)) {
         const host = (() => { try { return new URL(now.url).hostname; } catch { return now.url || ""; } })();
         const K = { pay: this.L("pay or buy"), send: this.L("send or publish"), delete: this.L("delete"), other: this.L("something with an effect outside") };
-        const ap = this.askApproval(a, this.F("On {1}: {2} {3} ({4})", host, this.L(action), it ? `«${it.label}»` : "", K[kind] || kind),
-          this.F("Page: {1}\nAddress: {2}\nStep: {3} {4}{5}", now.title || "", now.url || "", action, what, x.text ? ` · «${x.text}»` : ""), 0,
-          { web: { action, element: Number(x.element) || 0, label: it ? it.label : "", text: x.text, url: now.url || "" } });
+        // 9.2.1: what goes out, before your yes: what the agent says it sends and what is written on the page (the page's words, not the agent's)
+        const filled = (now.elements || []).filter((e) => e.value && e.role !== "link").map((e) => `${e.label || e.role}: ${e.value}`);
+        const detail = [x.preview ? String(x.preview).trim() : "", filled.length ? this.L("Written on the page:") + "\n" + filled.join("\n") : "",
+          this.F("Page: {1}\nAddress: {2}\nStep: {3} {4}{5}", now.title || "", now.url || "", action, what, x.text ? ` · «${x.text}»` : "")].filter(Boolean).join("\n\n");
+        const ap = this.askApproval(a, this.F("On {1}: {2} {3} ({4})", host, this.L(action), it ? `«${it.label}»` : "", K[kind] || kind), detail, 0,
+          { web: { action, element: Number(x.element) || 0, label: it ? it.label : "", text: x.text, url: now.url || "" }, effect: kind });
+        if (!ap.repeated && this.o.hands.web) Promise.resolve(this.o.hands.web("hold", {}, { agent: a.id })).catch(() => {});   // its tab waits open for your yes
         return ap.repeated ? this.F("You had already asked for that (inbox, {1}): it's still waiting for your owner.", ap.id)
           : this.F("Permission requested from your owner (inbox, {1}). Don't take it as done: when they say yes it will be done and you'll be woken up with the page as it is then. Meanwhile, carry on with anything else you can do.", ap.id);
       }
@@ -2542,7 +2547,7 @@ export class Building {
     if (already) return Object.assign({}, already, { repeated: true });
     // the detail goes in full: you approve exactly what is going to be done
     const x = { id: uid("au_"), ts: this.now(), agent: ag.id, name: ag.name, what: String(what).slice(0, 300), detail: String(detail || "").slice(0, 200000),
-      cost: Math.max(0, Number(cost) || 0), action: action || null, signature, state: "pending", result: "" };
+      cost: Math.max(0, Number(cost) || 0), action: action || null, signature, state: "pending", result: "", effect: (action && action.effect) || "" };
     this.e.approvals.push(x); this.e.approvals = trimApprovals(this.e.approvals);
     this.logActivity(ag, this.L("asks for your permission: ") + x.what, 0);
     this.notice("inbox", { kind: "action", id: x.id });
@@ -2569,7 +2574,11 @@ export class Building {
         const r = await this.o.hands.run(x.action.skill, x.action.data || {}, { agent: x.agent, name: x.name, authorized: true, mailbox: (x.action.data || {}).mailbox });
         x.state = "done"; x.result = String((r && r.text) || this.L("done")).slice(0, 4000);
       }
-    } catch (err) { x.state = "error"; x.result = err.message; }
+    } catch (err) {
+      x.state = "error"; x.result = err.message;
+      // 9.2.1: a step on a website whose tab had closed (for example, the app was closed): the agent does it again and asks you again
+      if (x.action && x.action.web && a && a.brain) this.assignTask(a, this.F("Your owner said yes to “{1}”, but it couldn't be done: {2}\nOpen the page again, redo the steps and ask for permission again, showing exactly what will go out.\n\nWhat you had prepared:\n{3}", x.what.slice(0, 160), err.message, String(x.detail || "").slice(0, 6000)), "", true, 9000);
+    }
     if (a) {
       this.rememberShort(a, this.F("Your owner approved “{1}”: {2}", x.what.slice(0, 80), x.result.slice(0, 400)), "result");
       (a.chat || (a.chat = [])).push({ role: "report", agent: a.id, name: a.name, content: this.F("Approved: {1}\n\n{2}", x.what, x.result), ts: this.now() });
@@ -2581,7 +2590,7 @@ export class Building {
     const e = Object.assign({ approvals: [], proposals: [], meetings: [], coins: [], lessons: [], modelProposals: [], agents: [] }, this.e || {}), items = [], name = (id) => (this.exactAgent(id) || {}).name || id;
     const creator = (this.byRoleList("creator")[0] || {}).name || this.L("The Creator"), boss = (this.boss() || {}).name || this.L("The boss");
     for (const x of e.approvals.filter((y) => y.state === "pending"))
-      items.push({ kind: "action", id: x.id, ts: x.ts, who: x.name, what: x.what, detail: x.detail, cost: x.cost, external: true });
+      items.push({ kind: "action", id: x.id, ts: x.ts, who: x.name, what: x.what, detail: x.detail, cost: x.cost, external: true, agent: x.agent, effect: x.effect || "" });
     for (const p of e.proposals.filter((y) => y.state === "pending")) {
       const f = p.profile, est = this.estimateHeartbeat(baseAgent(Object.assign({}, f, { brain: f.brain || chooseModel(f.level || "budget", this.models) })));
       items.push({ kind: "agent", id: p.id, ts: p.ts, who: creator, what: this.F("Create {1}", f.name || this.L("a new agent")), detail: spendingSummary(f, this.models) + (f.personality ? this.F(" Personality: {1}", f.personality) : ""), cost: est.perDay, perDay: true });
@@ -2605,7 +2614,20 @@ export class Building {
     if (kind === "action") {
       const x = e.approvals.find((y) => y.id === id);
       if (!x || x.state !== "pending") throw Object.assign(new Error(this.L("That's no longer pending.")), { shown: true });
-      if (!yes) { x.state = "rejected"; x.decided = this.now(); this.logActivity(this.agent(x.agent) || { id: x.agent, name: x.name }, this.L("you didn't give it permission: ") + x.what.slice(0, 80), 0); return { ok: true }; }
+      const ag = this.agent(x.agent);
+      // 9.2.1 «Correct»: it doesn't go out; the agent gets your correction, makes the change and asks you again
+      const fix = String(extra.fix || "").trim();
+      if (!yes && fix) {
+        x.state = "corrected"; x.decided = this.now(); x.result = fix;
+        this.logActivity(ag || { id: x.agent, name: x.name }, this.L("you asked for a change before it goes out: ") + fix.slice(0, 80), 0);
+        if (ag && ag.brain) this.assignTask(ag, this.F("Your owner read “{1}” and wants a change before it goes out: «{2}». Make the change (on the page, if it's a website) and ask for permission again, showing exactly what will go out.\n\nWhat you had prepared:\n{3}", x.what.slice(0, 160), fix, String(x.detail || "").slice(0, 6000)), "", true, 9000);
+        return { ok: true, state: "corrected" };
+      }
+      if (!yes) {
+        x.state = "rejected"; x.decided = this.now(); this.logActivity(ag || { id: x.agent, name: x.name }, this.L("you didn't give it permission: ") + x.what.slice(0, 80), 0);
+        if (ag) this.rememberShort(ag, this.F("Your owner said no to “{1}”: it wasn't done.", x.what.slice(0, 160)), "result");
+        return { ok: true };
+      }
       await this.runApproval(x); return { ok: true, result: x.result, state: x.state };
     }
     if (kind === "agent") return await this.run({ type: yes ? "acceptProposal" : "discardProposal", proposal: id });
@@ -3241,7 +3263,7 @@ export class Building {
         await this.save(); return { ok: true, connections: list };
       }
       case "objectives": { e.objectives = cleanObjectives(acc.text); await this.save(); return { ok: true, objectives: e.objectives }; }
-      case "inbox.decide": { const r = await this.decideInbox(acc.kind, acc.id, !!acc.yes, { rounds: acc.rounds, text: acc.text }); await this.save(); return Object.assign({ ok: true }, r || {}); }
+      case "inbox.decide": { const r = await this.decideInbox(acc.kind, acc.id, !!acc.yes, { rounds: acc.rounds, text: acc.text, fix: acc.fix }); await this.save(); return Object.assign({ ok: true }, r || {}); }
       case "memory.import": {   // what you corrected by hand in Obsidian (a whole topic note) replaces what there was for that topic
         const topic = cleanTopic(acc.topic);
         const newOnes = readMemoryMd(acc.text, topic, this.now());

@@ -335,6 +335,14 @@
   .request textarea, .request input { background: rgba(255, 255, 255, .1); color: #FFE7B8; border: 1px solid rgba(255, 205, 130, .35); border-radius: 10px; padding: 6px 10px; width: 100%; }
   .request input[type="number"] { width: 72px; }
   .request .p-actions { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
+  /* 9.2.1: what goes out, readable in full, and the box to ask for a change */
+  .request.external .p-detail.p-outgoing { max-height: 420px; font-size: 14px; line-height: 1.45; color: #E8ECFF; }
+  .request .p-fix { display: grid; gap: 8px; }
+  /* the same card inside an agent's chat */
+  .msg.approval { max-width: 100%; }
+  .msg.approval .request { background: #1E2547; color: #E8ECFF; text-align: left; }
+  .msg.approval .request .btn { background: rgba(255, 255, 255, .07); color: #FFE7B8; border-color: rgba(255, 205, 130, .45); }
+  .msg.approval .request .btn.primary { background: #FFC56B; color: #2B1A04; border-color: transparent; }
   .request-kind { font-size: 11.5px; padding: 1px 9px; border-radius: 999px; background: rgba(255, 255, 255, .1); color: #C9D1F3; }
   .inbox-empty { text-align: center; padding: 40px 10px; color: #AEB8E6; }
   .builtin-list { display: grid; grid-template-columns: repeat(auto-fill, minmax(360px, 1fr)); gap: 12px; }

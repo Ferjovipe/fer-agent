@@ -410,9 +410,11 @@ function buttonsFor(x, noOnly) {
   const k = Math.random().toString(36).slice(2, 10);
   buttonKeys.set(k, { kind: x.kind, id: x.id, rounds: x.rounds });
   if (buttonKeys.size > 500) buttonKeys.delete(buttonKeys.keys().next().value);
-  const yes = L({ action: "Approve and do it", meeting: "Start the meeting", missing: "It has it now", coin: "Confirm", agent: "Create" }[x.kind] || "Approve");
+  const yes = L((x.kind === "action" && { send: "Send", pay: "Pay", delete: "Delete" }[x.effect]) || { action: "Approve and do it", meeting: "Start the meeting", missing: "It has it now", coin: "Confirm", agent: "Create" }[x.kind] || "Approve");
   const no = { text: "✖️ " + L(x.kind === "missing" ? "Later" : "Reject"), callback_data: "no:" + k };
-  return [noOnly ? [no] : [{ text: "✅ " + yes, callback_data: "yes:" + k }, no]];
+  if (noOnly) return [[no]];
+  // 9.2.1: an action also has «Correct»: you write what to change and the agent asks you again
+  return x.kind === "action" ? [[{ text: "✅ " + yes, callback_data: "yes:" + k }, { text: "✏️ " + L("Correct"), callback_data: "fix:" + k }], [no]] : [[{ text: "✅ " + yes, callback_data: "yes:" + k }, no]];
 }
 // A request to the phone. If it's a long action, what is going to be done goes in several messages before the buttons
 // (up to 6; if there's more, it says how much is missing, and it's all in the website's inbox).
@@ -436,6 +438,7 @@ async function notifyInbox() {
     await sendRequest(x);
   }
 }
+let awaitingFix = null;   // 9.2.1: after «Correct» on Telegram, your next message is the correction
 async function listenTelegram() {
   if (!tg) return;
   let since = 0;
@@ -470,6 +473,7 @@ async function listenTelegram() {
           if (x) {
             buttonKeys.delete(k);
             if (x.kind === "missing" && r === "no") res = L("It stays in the inbox.");
+            else if (r === "fix") { awaitingFix = { id: x.id, who: (ed.inbox().find((y) => y.id === x.id) || {}).who || "" }; res = L("Write in your next message what it should change."); }
             else {
               const out = await ed.run({ type: "inbox.decide", kind: x.kind, id: x.id, yes: r === "yes", rounds: x.rounds });
               res = r === "yes" ? (out && out.state === "error" ? L("It couldn't be done: {1}", out.result) : L("Done.") + (out && out.result ? "\n" + String(out.result).slice(0, 1500) : "")) : L("Rejected.");
@@ -477,6 +481,10 @@ async function listenTelegram() {
           }
           await telegram("answerCallbackQuery", { callback_query_id: cb.id, text: res.slice(0, 180) });
           await telegram("editMessageText", { chat_id: chat, message_id: cb.message.message_id, text: (cb.message.text || "") + "\n\n→ " + res });
+        } else if (msg && msg.text && awaitingFix && !msg.text.trim().startsWith("/")) {   // the correction for the agent
+          const f = awaitingFix; awaitingFix = null;
+          await ed.run({ type: "inbox.decide", kind: "action", id: f.id, yes: false, fix: msg.text.trim() });
+          await telegramSend(L("Sent to {1}: it will make the change and ask you again.", f.who));
         } else if (msg && msg.text) {
           const t = msg.text.trim().toLowerCase();
           // the commands, in English or in Spanish

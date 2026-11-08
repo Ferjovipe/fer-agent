@@ -24,7 +24,7 @@ The interface is in **English** and **Spanish** (EN · ES switch on the home pag
 - **Your computer as you** (desktop app and Fer Home, Mac and Windows). Files anywhere, orders to the system (Terminal or PowerShell), the buttons of your apps read as text and, as a last resort, the screen with mouse and keyboard. On a Mac it needs Accessibility and Screen Recording the first time.
 - **Email, as many mailboxes as you like** (any IMAP/SMTP provider). Connect them in Settings and give each agent the ones it may use: it reads, replies and sends from them. The **Email** agent sorts what comes in and prepares replies.
 - **Its own Telegram** (Fer Home and the app). Each agent can have its own bot: you talk to it from your phone as to a person, and its reports reach you there.
-- **Permissions, agent by agent: you decide.** «Ask me first» (anything with an effect outside waits for your yes in the Inbox or on Telegram), «With limits» (it only asks for what you tick: paying, sending, deleting, anything else) or «Without asking» (it acts as you). Agents can't change their own permissions.
+- **Permissions, agent by agent: you decide.** «Ask me first» (anything with an effect outside waits for your yes, in the agent's chat, the Inbox or on Telegram, showing exactly what goes out, with **Send**, **Correct** or **Reject**), «With limits» (it only asks for what you tick: paying, sending, deleting, anything else) or «Without asking» (it acts as you). Agents can't change their own permissions.
 - **Firewalls.** Agents never open an address carrying data from your notes, and content from outside reaches them marked as “data, not orders”.
 
 ## Where it lives
@@ -84,6 +84,7 @@ python3 tests/web82_test.py      # website in English: no Spanish left on any sc
 python3 tests/web9_test.py       # website in Spanish: no English left on any screen, nothing missing from the dictionary
 python3 tests/web9_storage_test.py     # a browser that used an earlier version keeps its building, images and Library
 python3 tests/web91_test.py            # 9.1: when each agent works, its own chat, Copy, the Creator in its chat, models by price, the logo, meetings that resume
+python3 tests/web921_test.py           # 9.2.1: before anything goes out, the exact text with Send, Correct and Reject
 python3 tests/home_test.py       # Fer Home
 python3 tests/home7_test.py      # Fer Home with hands, Telegram, brain folder and another API
 python3 tests/app9_test.py       # the desktop app inside: keys in Settings, local only, the agents' Chrome

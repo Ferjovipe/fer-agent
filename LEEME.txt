@@ -1,4 +1,4 @@
-FER AGENT · EL EDIFICIO (versión 9.2)
+FER AGENT · EL EDIFICIO (versión 9.2.1)
 =====================================
 
 Tienes una empresa agéntica a tu servicio. Nosotros ponemos la base; tú decides el organigrama
@@ -20,6 +20,23 @@ fer-home.mjs              Fer Casa: el mismo edificio encendido las 24 horas en 
 hands.mjs, skills/        Las manos de los agentes (app y Fer Casa): su Chrome, tus archivos, tu ordenador, el
                           correo y las skills.
 tests/                    Las pruebas automáticas (no hacen falta para usarlo).
+
+
+Versión 9.2.1
+-------------
+Tras las primeras pruebas de Fer con el Jefe y Lupe:
+  - Antes de que algo salga (un correo, un mensaje, un pago…), el agente te enseña exactamente lo que
+    sale: lo que él dice que envía y lo que de verdad está escrito en la página. Lo ves en su propio
+    chat y en la bandeja, con «Enviar» (o «Pagar», «Borrar»), «Corregir» y «Rechazar». «Corregir»: le
+    escribes qué cambiar, lo cambia y te vuelve a preguntar. En Telegram, igual: ✏️ Corregir y tu
+    siguiente mensaje es la corrección.
+  - Las páginas largas se leen por partes: «bajar» da la parte siguiente del texto (antes daba otra
+    vez el principio y el agente daba vueltas). Un enlace del menú a una parte de la página (#servicios)
+    lleva a esa parte.
+  - La pestaña que espera tu sí no se cierra (hasta 24 horas). Si aun así se cerró (por ejemplo,
+    cerraste la app), tu sí no se pierde: el agente lo vuelve a hacer y te vuelve a preguntar.
+  - Los agentes ya no dan por hecho que tienes sesiones abiertas, y cuentan lo que hicieron con
+    palabras normales, sin los nombres de sus herramientas.
 
 
 Versión 9.2
@@ -504,6 +521,7 @@ Pruebas (para quien quiera comprobarlo)
   python3 tests/web8_test.py       la web, lo nuevo de la versión 8
   python3 tests/web82_test.py      la web en inglés: ninguna pantalla con restos de español
   python3 tests/web9_storage_test.py     un navegador que usó una versión anterior conserva su edificio, sus imágenes y su Biblioteca
+  python3 tests/web921_test.py           9.2.1: antes de enviar, el texto exacto con «Enviar», «Corregir» y «Rechazar»
   python3 tests/web91_test.py            9.1: cuándo trabaja, su propio chat, «Copiar», la Creadora en su chat, modelos por precio, el logo
   python3 tests/home_test.py       Fer Casa
   python3 tests/home7_test.py      Fer Casa con manos, Telegram, carpeta del cerebro y otra API

@@ -447,17 +447,21 @@ using System; using System.Runtime.InteropServices; public class M { [DllImport(
   }
 
   // ---------------- 9.2 · Internet as you: each agent has its own tab, the page is read as text and what can be used comes numbered ----------------
-  const tabs = new Map();   // agent → { page, last }
+  // agent → { page, last, from (where the piece of text it reads starts), len, url, hold (waiting for its owner's yes) }
+  const tabs = new Map();
   async function tabOf(agent, fresh) {
     const t = tabs.get(agent);
     if (t && !t.page.isClosed() && !fresh) { t.last = Date.now(); return t.page; }
     const ctx = await browser();
     const page = await ctx.newPage();
     await internetOnly(page);
-    tabs.set(agent, { page, last: Date.now() });
+    tabs.set(agent, { page, last: Date.now(), from: 0, len: 0, url: "", hold: 0 });
     return page;
   }
-  const sweep = setInterval(() => { for (const [k, t] of tabs) if (Date.now() - t.last > 15 * 60e3) { tabs.delete(k); t.page.close().catch(() => {}); } }, 60e3);   // tabs unused for 15 minutes
+  // tabs unused for 15 minutes are closed (your sessions stay in the agents' Chrome); one waiting for your yes, not for 24 hours
+  const sweep = setInterval(() => {
+    for (const [k, t] of tabs) if (Date.now() - t.last > 15 * 60e3 && !(t.hold && Date.now() - t.hold < 24 * 3600e3)) { tabs.delete(k); t.page.close().catch(() => {}); }
+  }, 60e3);
   if (sweep.unref) sweep.unref();
   // What there is on the page: its text (the beginning) and everything that can be clicked or filled in, with a number
   const COLLECT = () => {
@@ -476,7 +480,12 @@ using System; using System.Runtime.InteropServices; public class M { [DllImport(
       label = (label || el.getAttribute("placeholder") || el.getAttribute("title") || el.getAttribute("name") || (type === "submit" || type === "button" ? el.value : "") || (el.querySelector("img[alt]") || {}).alt || "").trim().replace(/\s+/g, " ").slice(0, 90);
       n++; el.setAttribute("data-fa", String(n));
       const it = { n, role, label };
-      if (role === "field" || role === "select" || role === "combobox" || role === "textbox") { if (type) it.type = type; if (el.value && type !== "password") it.value = String(el.value).slice(0, 80); }
+      if (role === "field" || role === "select" || role === "combobox" || role === "textbox") {
+        if (type) it.type = type;
+        // what's written in it (the whole text of a message box, so that your owner sees what goes out before saying yes)
+        const v = el.isContentEditable ? el.innerText : el.value;
+        if (v && type !== "password") it.value = String(v).trim().slice(0, tag === "input" ? 300 : 4000);
+      }
       if (role === "checkbox" || role === "radio" || role === "switch") it.checked = !!el.checked || el.getAttribute("aria-checked") === "true";
       if (tag === "a") it.href = (el.getAttribute("href") || "").slice(0, 120);
       if (tag === "select") it.options = [...el.options].slice(0, 20).map((x) => x.text.trim()).filter(Boolean);
@@ -484,12 +493,31 @@ using System; using System.Runtime.InteropServices; public class M { [DllImport(
       if (n >= 160) break;
     }
     const text = (document.body ? document.body.innerText : "").replace(/\n{3,}/g, "\n\n").trim();
-    return { url: location.href, title: document.title, text: text.slice(0, 7000), more: text.length > 7000, elements: out };
+    // a link to a part of the same page (#services): where that part starts in the text
+    let at = -1;
+    try { const id = decodeURIComponent(location.hash.slice(1)), target = id && document.getElementById(id); const start = target ? (target.innerText || "").trim().slice(0, 60) : ""; if (start) at = text.indexOf(start); } catch {}
+    return { url: location.href, title: document.title, text: text.slice(0, 400000), at, elements: out };
   };
-  async function snapshot(page) {
+  // The page's text goes in pieces: «scroll down» gives the next piece (before 9.2.1 it gave the same beginning again and the agent went round in circles)
+  const PIECE = 9000, STEP = PIECE - 400;   // the pieces overlap a little, so that no sentence is cut in two
+  async function snapshot(page, agent) {
     await page.waitForLoadState("domcontentloaded", { timeout: 15000 }).catch(() => {});
     await page.waitForTimeout(700);
-    return await page.evaluate(COLLECT).catch(async () => { await page.waitForTimeout(1500); return await page.evaluate(COLLECT); });
+    const r = await page.evaluate(COLLECT).catch(async () => { await page.waitForTimeout(1500); return await page.evaluate(COLLECT); });
+    const t = agent ? tabs.get(agent) : null, all = String(r.text || "");
+    let from = 0;
+    if (t) {
+      const base = (u) => String(u || "").split("#")[0];
+      if (base(t.url) !== base(r.url)) t.from = 0;                        // another page: from its beginning
+      else if (t.url !== r.url && r.at >= 0) t.from = Math.max(0, r.at - 200);   // the same page, another part of it (#…): from there
+      t.url = r.url;
+      t.from = Math.max(0, Math.min(t.from, Math.max(0, all.length - 1))); t.len = all.length; from = t.from;
+    }
+    r.text = all.slice(from, from + PIECE);
+    r.more = from + PIECE < all.length;
+    r.part = Math.floor(from / STEP) + 1;
+    r.parts = all.length <= PIECE ? 1 : 1 + Math.ceil((all.length - PIECE) / STEP);
+    return r;
   }
   async function webSearch(query) {
     const q = String(query || "").trim();
@@ -512,15 +540,20 @@ using System; using System.Runtime.InteropServices; public class M { [DllImport(
     if (!/^https?:\/\//i.test(u)) throw Object.assign(new Error(L("Give me a web address that starts with http:// or https://")), { shown: true });
     if (!(await isPublicAddress(u))) throw Object.assign(new Error(L("That address is on your home network, this computer or internal: the agents only use websites on the internet.")), { shown: true });
     const page = await tabOf(agent);
+    const t = tabs.get(agent); t.from = 0; t.url = ""; t.hold = 0;   // a page opened again is read from its beginning
     await page.goto(u, { waitUntil: "domcontentloaded", timeout: 45000 });
-    return await snapshot(page);
+    return await snapshot(page, agent);
   }
   // A step on the page: «click», «type», «select», «check», «press» (a key, Enter by default), «scroll» («down»/«up»), «back».
   // The element goes by its number; if the page was reloaded meanwhile (for example, while it waited for your permission), it's found by its words.
-  async function webAct(agent, d) {
+  async function webAct(agent, d, ctx) {
     const t = tabs.get(agent);
-    if (!t || t.page.isClosed() || t.page.url() === "about:blank") throw Object.assign(new Error(L("First open a page (web_open).")), { shown: true });
-    let page = t.page; t.last = Date.now();
+    if (!t || t.page.isClosed() || t.page.url() === "about:blank") {
+      // with your yes, but the tab is gone (for example, the app was closed meanwhile): it has to be done again
+      if (ctx && ctx.authorized) throw Object.assign(new Error(L("The page had closed before your yes (for example, because the app was closed): it has to be done again.")), { shown: true, closed: true });
+      throw Object.assign(new Error(L("First open a page (web_open).")), { shown: true });
+    }
+    let page = t.page; t.last = Date.now(); t.hold = 0;
     const action = String(d.action || "click").toLowerCase(), n = Number(d.element);
     const find = async () => {
       if (n > 0) { const l = page.locator(`[data-fa="${n}"]`); if (await l.count()) return l.first(); }
@@ -534,12 +567,16 @@ using System; using System.Runtime.InteropServices; public class M { [DllImport(
     else if (action === "type") { try { await el.fill(String(d.text ?? ""), { timeout: 12000 }); } catch { await el.click({ timeout: 8000 }); await page.keyboard.type(String(d.text ?? "")); } }
     else if (action === "select") { try { await el.selectOption({ label: String(d.text ?? "") }, { timeout: 12000 }); } catch { await el.selectOption(String(d.text ?? ""), { timeout: 12000 }); } }
     else if (action === "press") { if (el) await el.focus().catch(() => {}); await page.keyboard.press(String(d.text || "Enter")); }
-    else if (action === "scroll") await page.mouse.wheel(0, /up|arriba/i.test(String(d.text || "")) ? -900 : 900);
+    else if (action === "scroll") {   // the next (or the previous) piece of the text; the page also moves, for the ones that load more as you go down
+      const up = /up|arriba/i.test(String(d.text || ""));
+      t.from = Math.max(0, Math.min(t.from + (up ? -STEP : STEP), Math.max(0, (t.len || 0) - 1)));
+      await page.mouse.wheel(0, up ? -900 : 900);
+    }
     else if (action === "back") await page.goBack({ timeout: 20000 }).catch(() => {});
     else throw Object.assign(new Error(L("I don't know the step “{1}”.", action)), { shown: true });
     const np = action === "click" ? await popup : null;   // a link that opens in a new tab: the agent carries on there
-    if (np) { await np.waitForLoadState("domcontentloaded", { timeout: 15000 }).catch(() => {}); tabs.set(agent, { page: np, last: Date.now() }); page = np; }
-    return await snapshot(page);
+    if (np) { await np.waitForLoadState("domcontentloaded", { timeout: 15000 }).catch(() => {}); tabs.set(agent, { page: np, last: Date.now(), from: 0, len: 0, url: "", hold: 0 }); page = np; }
+    return await snapshot(page, agent);
   }
   async function webLook(agent) {
     const t = tabs.get(agent);
@@ -568,7 +605,9 @@ using System; using System.Runtime.InteropServices; public class M { [DllImport(
     // 9.2: «search» (free, DuckDuckGo), «open» (a website in its tab), «act» (a step on the page), «look» (a picture of its tab)
     web(op, data, ctx) {
       const agent = String((ctx && ctx.agent) || "_"), d = data || {};
-      const f = op === "search" ? () => webSearch(d.query) : op === "open" ? () => webOpen(agent, d.url) : op === "act" ? () => webAct(agent, d) : op === "look" ? () => webLook(agent) : null;
+      // «hold»: its tab is waiting for your yes: it isn't closed for being unused (up to 24 hours)
+      if (op === "hold") { const t = tabs.get(agent); if (t) t.hold = Date.now(); return Promise.resolve({ ok: !!t }); }
+      const f = op === "search" ? () => webSearch(d.query) : op === "open" ? () => webOpen(agent, d.url) : op === "act" ? () => webAct(agent, d, ctx) : op === "look" ? () => webLook(agent) : null;
       if (!f) return Promise.reject(new Error(L("I don't know the step “{1}”.", op)));
       return enqueue("web", 120, f);
     },

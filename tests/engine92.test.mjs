@@ -19,6 +19,11 @@ const PAGES = {
     <form action="/sent"><textarea name="m" aria-label="Message"></textarea><button>Send message</button></form>
     <select aria-label="Colour"><option>Red</option><option>Blue</option></select></body></html>`,
   "/news": `<!doctype html><title>News</title><p>Today's news: the shop is open.</p>`,
+  // 9.2.1: a long page (its end is far beyond the first piece) with a menu that jumps to a part of it
+  "/long": `<!doctype html><title>Long page</title><nav><a href="#services">Services</a></nav><p>START OF THE PAGE</p>` + "<p>Filler about gardening and nothing else. </p>".repeat(700)
+    + `<section id="services"><h2>Our services: diagnosis, automation and training</h2><p>Contact: hello@example.com</p></section><p>END OF THE PAGE</p>`,
+  "/mail": `<!doctype html><title>Compose</title><input aria-label="To" value="coco@example.com"><input aria-label="Subject" value="Hello Coco">
+    <div contenteditable="true" role="textbox" aria-label="Message body">Hello Coco, tell Fer a joke.</div><button onclick="document.title='SENT'">Send</button>`,
   "/ddg": `<!doctype html><title>results</title><div class="result"><a class="result__a" href="https://example.com/a">First result</a><div class="result__snippet">About steel.</div></div>
     <div class="result"><a class="result__a" href="https://example.com/b">Second result</a><div class="result__snippet">More steel.</div></div>`
 };
@@ -78,6 +83,63 @@ test("the hands: a website read as text with what can be used numbered; typing, 
   const r = await hands.web("search", { query: "steel" }, { agent: "t1" });
   assert.equal(r.results.length, 2, "the free search");
   await assert.rejects(hands.web("act", { action: "click", element: 1 }, { agent: "nobody" }), /web_open/);
+});
+
+test("9.2.1 · a long page is read in pieces: «scroll down» gives the next piece (not the same one), and a menu link jumps to its part", async () => {
+  const s = await hands.web("open", { url: base + "/long" }, { agent: "long1" });
+  assert.match(s.text, /START OF THE PAGE/);
+  assert.ok(s.more && s.part === 1 && s.parts > 3, `in pieces: ${s.part}/${s.parts}`);
+  assert.doesNotMatch(s.text, /END OF THE PAGE/);
+  const s2 = await hands.web("act", { action: "scroll" }, { agent: "long1" });
+  assert.equal(s2.part, 2, "the next piece");
+  assert.doesNotMatch(s2.text, /START OF THE PAGE/, "not the beginning again");
+  const s3 = await hands.web("act", { action: "click", element: s.elements.find((e) => e.label === "Services").n }, { agent: "long1" });
+  assert.match(s3.text, /Our services: diagnosis, automation and training/, "the menu link: from its part of the page");
+  assert.match(s3.text, /END OF THE PAGE/);
+  assert.ok(!s3.more, "and it says it's the end");
+  let last = s3; for (let i = 0; i < 3; i++) last = await hands.web("act", { action: "scroll", text: "up" }, { agent: "long1" });
+  assert.ok(last.part < s3.part, "and it can go back up");
+});
+
+test("9.2.1 · before sending, your owner reads what goes out (the agent's preview and what is written on the page); «Correct» sends it back to the agent", async () => {
+  const { ed, a } = await building([
+    ["web_open", { url: base + "/mail" }],
+    (b) => reply("", ["web_act", { action: "click", element: Number(String(b.messages.at(-1).content).match(/\[(\d+)\] button «Send»/)[1]), effect: "send", preview: "To: coco@example.com\nSubject: Hello Coco\n\nHello Coco, tell Fer a joke." }]),
+    "Waiting for your yes.",
+    "I'll make it shorter and ask again."
+  ]);
+  await ed.run({ type: "speak", text: "Write to Coco.", agent: a.id });
+  const it = ed.inbox().find((x) => x.kind === "action");
+  assert.equal(it.effect, "send", "it's a sending: the button says «Send»");
+  assert.equal(it.agent, a.id, "and it shows in the agent's own chat");
+  assert.match(it.detail, /^To: coco@example\.com\nSubject: Hello Coco\n\nHello Coco, tell Fer a joke\./, "first, what the agent says goes out");
+  assert.match(it.detail, /Written on the page:\n(.|\n)*Subject: Hello Coco(.|\n)*Message body: Hello Coco, tell Fer a joke\./, "and what is really written on the page (also the message box)");
+  const before = a.tasks.length;
+  const r = await ed.run({ type: "inbox.decide", kind: "action", id: it.id, yes: false, fix: "Shorter, please" });
+  assert.equal(r.state, "corrected");
+  assert.equal(ed.inbox().filter((x) => x.kind === "action").length, 0, "nothing goes out");
+  assert.equal(a.tasks.length, before + 1, "the agent gets the correction");
+  assert.match(a.tasks.at(-1).text, /wants a change before it goes out: «Shorter, please»(.|\n)*Hello Coco, tell Fer a joke/);
+});
+
+test("9.2.1 · your yes after the tab closed (for example, the app was closed): it isn't lost; the agent does it again and asks you again", async () => {
+  const { ed, a } = await building([
+    ["web_open", { url: base + "/mail" }],
+    (b) => reply("", ["web_act", { action: "click", element: Number(String(b.messages.at(-1).content).match(/\[(\d+)\] button «Send»/)[1]), effect: "send" }]),
+    "Waiting."
+  ]);
+  await ed.run({ type: "speak", text: "Write to Coco.", agent: a.id });
+  const it = ed.inbox().find((x) => x.kind === "action");
+  const fresh = createHands({ agentsFolder: fs.mkdtempSync(path.join(os.tmpdir(), "fa92b-")), chromeProfile: fs.mkdtempSync(path.join(os.tmpdir(), "fa92c-")), skillsFolders: [], channel: "none" });
+  ed.o.hands = fresh;   // like reopening the app: a new Chrome, without that tab
+  try {
+    const before = a.tasks.length;
+    const r = await ed.run({ type: "inbox.decide", kind: "action", id: it.id, yes: true });
+    assert.equal(r.state, "error");
+    assert.match(r.result, /closed before your yes/);
+    assert.equal(a.tasks.length, before + 1);
+    assert.match(a.tasks.at(-1).text, /Open the page again, redo the steps and ask for permission again/);
+  } finally { ed.o.hands = hands; await fresh.close(); }
 });
 
 test("what a step does outside, from its words (and the agent's own word, the most serious of the two counts)", () => {
