@@ -1,4 +1,4 @@
-FER AGENT · EL EDIFICIO (versión 9.2.2)
+FER AGENT · EL EDIFICIO (versión 9.2.3)
 =====================================
 
 Tienes una empresa agéntica a tu servicio. Nosotros ponemos la base; tú decides el organigrama
@@ -43,6 +43,10 @@ Tras las primeras pruebas de Fer con el Jefe y Lupe:
   - En el chat, la tarjeta de permiso va en su sitio por hora: tus mensajes nuevos ya no quedan tapados.
   - Voces del navegador: solo las del idioma del edificio (una voz inglesa elegida antes cuenta como
     «automática»).
+  - (9.2.3) Lo que un agente quiere enviar sale como un correo de verdad: «Jefe quiere enviar este
+    correo», Para, Asunto y el texto, tomado de lo que está escrito en la página. Botones «Enviar»,
+    «Corregir» y «Rechazar». Nada técnico a la vista: la página y el paso, en «Detalles». Igual en su
+    chat, en la bandeja y en Telegram.
 
 
 Versión 9.2

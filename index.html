@@ -335,14 +335,26 @@
   .request textarea, .request input { background: rgba(255, 255, 255, .1); color: #FFE7B8; border: 1px solid rgba(255, 205, 130, .35); border-radius: 10px; padding: 6px 10px; width: 100%; }
   .request input[type="number"] { width: 72px; }
   .request .p-actions { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
-  /* 9.2.1: what goes out, readable in full, and the box to ask for a change */
-  .request.external .p-detail.p-outgoing { max-height: 420px; font-size: 14px; line-height: 1.45; color: #E8ECFF; }
-  .request .p-fix { display: grid; gap: 8px; }
-  /* the same card inside an agent's chat */
+  /* 9.2.2: what an agent wants to send, like an email waiting to go out (in its chat, in the inbox) */
   .msg.approval { max-width: 100%; }
-  .msg.approval .request { background: #1E2547; color: #E8ECFF; text-align: left; }
-  .msg.approval .request .btn { background: rgba(255, 255, 255, .07); color: #FFE7B8; border-color: rgba(255, 205, 130, .45); }
-  .msg.approval .request .btn.primary { background: #FFC56B; color: #2B1A04; border-color: transparent; }
+  .request.mailcard { background: #FFFFFF; color: #1B2130; border: 1px solid #D5DBEA; border-radius: 16px; padding: 16px 18px; box-shadow: 0 6px 22px rgba(20, 30, 60, .14); text-align: left; max-width: 680px; width: 100%; box-sizing: border-box; display: grid; gap: 12px; }
+  .request.mailcard .mc-head { display: flex; flex-wrap: wrap; gap: 4px 10px; align-items: baseline; }
+  .request.mailcard .mc-head b { font-size: 16px; font-weight: 650; }
+  .request.mailcard .mc-head small { color: #5B6478; font-size: 13px; }
+  .request.mailcard .mc-mail { border: 1px solid #E3E7F0; border-radius: 12px; overflow: hidden; background: #FBFCFE; }
+  .request.mailcard .mc-row { display: flex; gap: 12px; padding: 9px 14px; border-bottom: 1px solid #EEF1F6; font-size: 14px; overflow-wrap: anywhere; }
+  .request.mailcard .mc-row b { color: #5B6478; font-weight: 500; min-width: 56px; }
+  .request.mailcard .mc-what { font-weight: 600; }
+  .request.mailcard .mc-body { padding: 14px; white-space: pre-wrap; line-height: 1.55; font-size: 15px; max-height: 440px; overflow: auto; overflow-wrap: anywhere; }
+  .request.mailcard .p-actions { display: flex; gap: 10px; flex-wrap: wrap; align-items: center; }
+  .request.mailcard .btn, .screen.dark .request.mailcard .btn { background: #FFFFFF; color: #1B2130; border: 1px solid #C9D0E0; font-size: 15px; padding: 8px 18px; }
+  .request.mailcard .btn.primary, .screen.dark .request.mailcard .btn.primary { background: #1A73E8; color: #FFFFFF; border-color: transparent; }
+  .request.mailcard .mc-reject { background: none; border: none; color: #6B7488; text-decoration: underline; cursor: pointer; font-size: 14px; padding: 6px; }
+  .request.mailcard .p-fix { display: grid; gap: 8px; }
+  .request.mailcard textarea { width: 100%; box-sizing: border-box; border: 1px solid #C9D0E0; border-radius: 10px; padding: 10px; font: inherit; color: #1B2130; background: #FFFFFF; }
+  .request.mailcard .mc-tech { font-size: 12px; color: #5B6478; }
+  .request.mailcard .mc-tech summary { cursor: pointer; }
+  .request.mailcard .mc-tech pre { white-space: pre-wrap; overflow-wrap: anywhere; font-size: 12px; margin: 6px 0 0; font-family: inherit; }
   .request-kind { font-size: 11.5px; padding: 1px 9px; border-radius: 999px; background: rgba(255, 255, 255, .1); color: #C9D1F3; }
   .inbox-empty { text-align: center; padding: 40px 10px; color: #AEB8E6; }
   .builtin-list { display: grid; grid-template-columns: repeat(auto-fill, minmax(360px, 1fr)); gap: 12px; }

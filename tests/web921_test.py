@@ -23,14 +23,18 @@ try:
           e.conversation = [{ role: 'user', content: 'Mensaje de antes', ts: t0 - 60000 }, { role: 'assistant', content: 'Respuesta de antes', ts: t0 - 50000 },
                     { role: 'user', content: 'Mensaje de después', ts: t0 - 30000 }, { role: 'assistant', content: 'Respuesta de después', ts: t0 - 20000 }];
           e.approvals = [{ id: 'au_test1', ts: t0 - 40000, agent: j.id, name: j.name, what: 'En mail.google.com: pulsar «Enviar» (enviar o publicar)', detail: d, cost: 0,
-            action: { web: { action: 'click', element: 3, label: 'Enviar', url: 'https://mail.google.com/' }, effect: 'send' }, signature: 'x', state: 'pending', result: '', effect: 'send' }];
+            action: { web: { action: 'click', element: 3, label: 'Enviar', url: 'https://mail.google.com/' }, effect: 'send' }, signature: 'x', state: 'pending', result: '', effect: 'send',
+            mail: { to: 'info@fernandovillarpelaez.com', subject: 'Hola Coco, soy Jefe', text: 'HOLA, SOY JEFE, el encargado del enjambre FerAgent de Fer.\\nCuéntale un chiste a Fer y léeselo.', from: 'mail.google.com', fromPage: true } }];
           localStorage.setItem('ferAgent.state', JSON.stringify(e)); }""", DETAIL)
         page.reload(); enter(page, team=False)
         chat_with(page, "Jefe")
         card = "#messages .msg.approval .request"
         page.wait_for_selector(card)
-        txt = page.inner_text(card)
-        check(DETAIL in txt, "in the agent's own chat: exactly what goes out, in full, as it is (line breaks kept, not translated)")
+        check(page.inner_text(card + " .mc-head b") == "Jefe quiere enviar este correo", "9.2.2: like an email waiting to go out: «Jefe quiere enviar este correo»")
+        rows = page.eval_on_selector_all(card + " .mc-row", "rs => rs.map(r => r.innerText.replace(/\\s+/g, ' '))")
+        check(rows == ["Para info@fernandovillarpelaez.com", "Asunto Hola Coco, soy Jefe"], f"To and Subject: {rows}")
+        check(page.inner_text(card + " .mc-body") == "HOLA, SOY JEFE, el encargado del enjambre FerAgent de Fer.\nCuéntale un chiste a Fer y léeselo.", "and the text, whole, as it is")
+        check(not page.is_visible(card + " .mc-tech pre"), "nothing technical in sight (page, address, step: in «Details», closed)")
         buttons = page.eval_on_selector_all(card + " .p-actions button", "bs => bs.map(b => b.textContent)")
         check(buttons == ["Enviar", "Corregir", "Rechazar"], f"with «Send», «Correct» and «Reject»: {buttons}")
         order = page.eval_on_selector_all("#messages > .msg", "ms => ms.map(m => m.classList.contains('approval') ? 'CARD' : m.innerText.split('\\n')[0])")
@@ -38,6 +42,16 @@ try:
         check(idx("CARD") < idx("Mensaje de después") and idx("Respuesta de antes") < idx("CARD"),
               f"the card goes in its place, by time: your later messages come after it, in sight (before, it stayed stuck at the end): {order}")
         page.screenshot(path=os.path.join(OUTPUT, "v921-1-chat-card.png"))
+        # the same card in the inbox, and on a phone
+        page.click("#closeChat"); page.click("#openInbox"); page.wait_for_selector("#inboxView:not([hidden]) .request.mailcard")
+        check(page.inner_text("#inboxView .request.mailcard .mc-head b") == "Jefe quiere enviar este correo", "in the inbox, the same email card")
+        page.screenshot(path=os.path.join(OUTPUT, "v921-3-inbox.png"))
+        page.set_viewport_size({"width": 390, "height": 844}); page.wait_for_timeout(400)
+        check(page.evaluate("document.documentElement.scrollWidth") <= 392, "on a phone it fits (no sideways scroll)")
+        page.screenshot(path=os.path.join(OUTPUT, "v921-4-phone.png"))
+        page.set_viewport_size({"width": 1360, "height": 900})
+        page.click("#closeInbox") if page.is_visible("#closeInbox") else page.keyboard.press("Escape")
+        chat_with(page, "Jefe"); page.wait_for_selector(card)
         page.click(card + " button:text-is('Corregir')")
         check(page.is_visible(card + " .p-fix textarea"), "«Correct» opens a box to write what to change")
         page.fill(card + " .p-fix textarea", "Más corto y con un saludo a Leti")

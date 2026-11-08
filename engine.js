@@ -1845,8 +1845,8 @@ export class Building {
           parameters: { type: "object", properties: { query: { type: "string" } }, required: ["query"] } },
         { name: "web_open", description: this.L("Opens a website in your own tab of the agents' Chrome. If your owner signed in to that website in this Chrome, you'll find their session open; if you find the sign-in page instead, tell your owner (don't assume they're signed in anywhere). Returns the page's text (long pages, in pieces) and a numbered list of what can be clicked or filled in."),
           parameters: { type: "object", properties: { url: { type: "string" } }, required: ["url"] } },
-        { name: "web_act", description: this.L("Does one step on the page you have open, like a person: click, type, select, check, press (a key; Enter by default), scroll (down or up: the next or the previous piece of the page's text) or back. «element» is the number from the list. «effect»: what the step does outside the page: none, send (send, publish, sign up, book…), pay (buy, pay…) or delete. If the step sends, publishes, pays or deletes, put in «preview» exactly what goes out (to whom, the subject and the whole text, or the amount): your owner reads it before saying yes. Returns the page as it is afterwards."),
-          parameters: { type: "object", properties: { action: { type: "string", enum: ["click", "type", "select", "check", "press", "scroll", "back"] }, element: { type: "number" }, text: { type: "string" }, effect: { type: "string", enum: ["none", "send", "pay", "delete"] }, preview: { type: "string" } }, required: ["action"] } },
+        { name: "web_act", description: this.L("Does one step on the page you have open, like a person: click, type, select, check, press (a key; Enter by default), scroll (down or up: the next or the previous piece of the page's text) or back. «element» is the number from the list. «effect»: what the step does outside the page: none, send (send, publish, sign up, book…), pay (buy, pay…) or delete. If the step sends, publishes, pays or deletes, put in «preview» exactly what goes out (the whole text of the message, or the amount, or what gets deleted) and, if it's a message, «to» and «subject»: your owner reads it before saying yes. Returns the page as it is afterwards."),
+          parameters: { type: "object", properties: { action: { type: "string", enum: ["click", "type", "select", "check", "press", "scroll", "back"] }, element: { type: "number" }, text: { type: "string" }, effect: { type: "string", enum: ["none", "send", "pay", "delete"] }, preview: { type: "string" }, to: { type: "string" }, subject: { type: "string" } }, required: ["action"] } },
         { name: "web_look", description: this.L("Looks at a picture of your tab, only if the text isn't enough (it's more expensive). Say what you want to know."),
           parameters: { type: "object", properties: { question: { type: "string" } } } });
       executors.web_search = (x) => this.webStep(a, "search", x);
@@ -2345,7 +2345,8 @@ export class Building {
     if (sk.effect === "external" && this.asksFirst(a, sk.kind || "other")) {   // it has an effect outside the website: your yes first (unless its permissions say otherwise)
       const d = data || {}, isEmail = typeof d.to === "string" && typeof d.text === "string";   // an email: shown as an email (who it goes to, subject and text)
       const shown = isEmail ? [this.F("To: {1}", d.to), d.cc ? this.F("Copy: {1}", d.cc) : "", this.F("Subject: {1}", d.subject || ""), "", d.text].filter((x, i) => x || i === 3).join("\n") : detail;
-      const x = this.askApproval(a, `${this.Lsi(sk.title || name)}: ${String(reason || (isEmail ? d.subject : "") || "").slice(0, 160)}`, shown, 0, { skill: name, data: d, effect: isEmail ? "send" : sk.kind || "other" });
+      const x = this.askApproval(a, `${this.Lsi(sk.title || name)}: ${String(reason || (isEmail ? d.subject : "") || "").slice(0, 160)}`, shown, 0, { skill: name, data: d, effect: isEmail ? "send" : sk.kind || "other",
+        mail: isEmail ? { to: d.to, subject: d.subject, text: d.text, from: d.mailbox || "" } : null });
       return x.repeated ? this.F("You had already asked for that (inbox, {1}): it's still waiting for your owner.", x.id) : this.F("Permission requested from your owner (inbox, {1}). Don't take it as done: it will happen when they approve it.", x.id);
     }
     const r = await this.o.hands.run(name, data || {}, { agent: a.id, name: a.name, authorized: sk.effect === "external" });   // external here: its permissions let it act without asking
@@ -2441,7 +2442,7 @@ export class Building {
     if (box.id) d.mailbox = box.id;
     if (this.asksFirst(a, "send")) {
       const shown = [box.address ? this.F("From: {1}", box.address) : "", this.F("To: {1}", d.to), d.cc ? this.F("Copy: {1}", d.cc) : "", this.F("Subject: {1}", d.subject), "", d.text].filter((v, i) => v || i === 4).join("\n");
-      const ap = this.askApproval(a, `${this.Lsi("Send an email")}: ${d.subject.slice(0, 160)}`, shown, 0, { skill: "send-email", data: d, effect: "send" });
+      const ap = this.askApproval(a, `${this.Lsi("Send an email")}: ${d.subject.slice(0, 160)}`, shown, 0, { skill: "send-email", data: d, effect: "send", mail: { to: d.to, subject: d.subject, text: d.text, from: box.address || "" } });
       return ap.repeated ? this.F("You had already asked for that (inbox, {1}): it's still waiting for your owner.", ap.id) : this.F("Permission requested from your owner (inbox, {1}). Don't take it as done: it will happen when they approve it.", ap.id);
     }
     try {
@@ -2489,8 +2490,14 @@ export class Building {
         const filled = (now.filled || (now.elements || []).filter((e) => e.value && e.role !== "link")).map((e) => `${e.label || e.role || "·"}: ${e.value}`);
         const detail = [x.preview ? String(x.preview).trim() : "", filled.length ? this.L("Written on the page:") + "\n" + filled.join("\n") : "",
           this.F("Page: {1}\nAddress: {2}\nStep: {3} {4}{5}", now.title || "", now.url || "", action, what, x.text ? ` · «${x.text}»` : "")].filter(Boolean).join("\n\n");
+        // 9.2.2: the message as a message (to, subject, text), from what is written on the page; what the agent said, where the page doesn't say it
+        const fields = now.filled || [], field = (re) => (fields.find((f) => re.test(f.label || "")) || {}).value || "";
+        const body = fields.filter((f) => !/^(to|para|cc|bcc|cco|subject|asunto|search|buscar)/i.test(f.label || "")).sort((p, q) => q.value.length - p.value.length)[0];
+        const pre = String(x.preview || ""), said = (re) => ((pre.match(re) || [])[1] || "").trim();
+        const mail = kind === "send" ? { to: field(/^(to|para|recipients|destinatarios)/i) || String(x.to || "").trim() || said(/^(?:to|para)\s*:\s*(.+)$/im), subject: field(/^(subject|asunto)/i) || String(x.subject || "").trim() || said(/^(?:subject|asunto)\s*:\s*(.+)$/im),
+          text: body ? body.value : pre.replace(/^(?:(?:to|para|subject|asunto|from|de)\s*:.*\n)+\s*/i, "").trim(), from: host, fromPage: !!body } : null;
         const ap = this.askApproval(a, this.F("On {1}: {2} {3} ({4})", host, this.L(action), it ? `«${it.label}»` : "", K[kind] || kind), detail, 0,
-          { web: { action, element: Number(x.element) || 0, label: it ? it.label : "", text: x.text, url: now.url || "" }, effect: kind });
+          { web: { action, element: Number(x.element) || 0, label: it ? it.label : "", text: x.text, url: now.url || "" }, effect: kind, mail, preview: pre.trim() });
         if (!ap.repeated && this.o.hands.web) Promise.resolve(this.o.hands.web("hold", {}, { agent: a.id })).catch(() => {});   // its tab waits open for your yes
         return ap.repeated ? this.F("You had already asked for that (inbox, {1}): it's still waiting for your owner.", ap.id)
           : this.F("Permission requested from your owner (inbox, {1}). Don't take it as done: when they say yes it will be done and you'll be woken up with the page as it is then. Meanwhile, carry on with anything else you can do.", ap.id);
@@ -2507,7 +2514,7 @@ export class Building {
       this.logActivity(a, this.F("looked at its tab: {1}", r.url || ""), res.cost || 0);
       return this.outsideText(String(res.msg.content || ""));
     }
-    if (Array.isArray(r.elements)) web.set(a.id, { url: r.url, title: r.title, elements: r.elements });
+    if (Array.isArray(r.elements)) web.set(a.id, { url: r.url, title: r.title, elements: r.elements, filled: r.filled });
     this.logActivity(a, op === "search" ? this.F("searched the internet: {1}", String(x.query || "").slice(0, 80)) : op === "open" ? this.F("opened {1}", r.url || x.url || "") : this.F("on the page {1}: {2}", r.url || "", String(x.action || "")), 0);
     return this.outsideText(this.pageText(r));
   }
@@ -2550,7 +2557,8 @@ export class Building {
     if (already) return Object.assign({}, already, { repeated: true });
     // the detail goes in full: you approve exactly what is going to be done
     const x = { id: uid("au_"), ts: this.now(), agent: ag.id, name: ag.name, what: String(what).slice(0, 300), detail: String(detail || "").slice(0, 200000),
-      cost: Math.max(0, Number(cost) || 0), action: action || null, signature, state: "pending", result: "", effect: (action && action.effect) || "" };
+      cost: Math.max(0, Number(cost) || 0), action: action || null, signature, state: "pending", result: "", effect: (action && action.effect) || "",
+      mail: (action && action.mail) || null, preview: (action && action.preview) || "" };
     this.e.approvals.push(x); this.e.approvals = trimApprovals(this.e.approvals);
     this.logActivity(ag, this.L("asks for your permission: ") + x.what, 0);
     this.notice("inbox", { kind: "action", id: x.id });
@@ -2593,7 +2601,7 @@ export class Building {
     const e = Object.assign({ approvals: [], proposals: [], meetings: [], coins: [], lessons: [], modelProposals: [], agents: [] }, this.e || {}), items = [], name = (id) => (this.exactAgent(id) || {}).name || id;
     const creator = (this.byRoleList("creator")[0] || {}).name || this.L("The Creator"), boss = (this.boss() || {}).name || this.L("The boss");
     for (const x of e.approvals.filter((y) => y.state === "pending"))
-      items.push({ kind: "action", id: x.id, ts: x.ts, who: x.name, what: x.what, detail: x.detail, cost: x.cost, external: true, agent: x.agent, effect: x.effect || "" });
+      items.push({ kind: "action", id: x.id, ts: x.ts, who: x.name, what: x.what, detail: x.detail, cost: x.cost, external: true, agent: x.agent, effect: x.effect || "", mail: x.mail || null, preview: x.preview || "" });
     for (const p of e.proposals.filter((y) => y.state === "pending")) {
       const f = p.profile, est = this.estimateHeartbeat(baseAgent(Object.assign({}, f, { brain: f.brain || chooseModel(f.level || "budget", this.models) })));
       items.push({ kind: "agent", id: p.id, ts: p.ts, who: creator, what: this.F("Create {1}", f.name || this.L("a new agent")), detail: spendingSummary(f, this.models) + (f.personality ? this.F(" Personality: {1}", f.personality) : ""), cost: est.perDay, perDay: true });

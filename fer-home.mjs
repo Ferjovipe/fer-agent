@@ -401,6 +401,9 @@ function telegramSend(text, buttons) {
 }
 const KIND = { action: "Action outside the website", agent: "New agent", meeting: "Meeting", coin: "Coin", lesson: "New lesson", model: "Recommended model", missing: "Missing something" };
 function requestText(x) {
+  // 9.2.2: an email waiting to go out, as an email: who wants to send it, To, Subject and the text
+  if (x.kind === "action" && x.mail && (x.mail.text || x.mail.subject))
+    return `${L("{1} wants to send this email", x.who)}\n\n${L("To")}: ${x.mail.to || "—"}\n${L("Subject")}: ${x.mail.subject || "—"}\n\n${String(x.mail.text || "").slice(0, 3500)}`;
   const cost = ["missing", "coin", "lesson", "model"].includes(x.kind) ? "" : x.cost > 0 ? " · " + (x.perDay ? L("≈{1} a day", fmt(x.cost)) : `≈${fmt(x.cost)}`) : "";
   return `${L(KIND[x.kind] || x.kind)} · ${x.who}${cost}\n${x.what}${x.detail ? "\n\n" + String(x.detail).slice(0, 1200) : ""}`;
 }

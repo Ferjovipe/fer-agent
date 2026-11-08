@@ -2023,16 +2023,27 @@ function requestCard(x) {
     const a = ed.exactAgent(x.id);
     acc = [b("It has it now", (el) => decide(true, null, el), true), a ? b("See their profile", () => { closeScreen(); profileTab = "capabilities"; choose(a); }) : null];
   } else if (x.kind === "action") {
-    // 9.2.1: you read exactly what goes out, and then «Send» (or «Pay», «Delete»…), «Correct» or «Reject»
-    if (x.detail) parts.push(h("div", { class: "p-detail p-outgoing" }, raw(x.detail)));   // as it is: it's what goes out (not translated, line breaks kept)
+    // 9.2.2: like an email waiting to go out: who wants to send it, the email itself (To, Subject, the text) and «Send» or «Correct».
+    // Nothing technical in sight: the page, the address and the step are in «Details». The text is shown as it is (not translated).
+    const mail = x.mail && (x.mail.text || x.mail.subject) ? x.mail : null;
+    const head = mail ? tr(`${x.who} wants to send this email`) : x.effect === "pay" ? tr(`${x.who} wants to pay`) : x.effect === "delete" ? tr(`${x.who} wants to delete`) : x.effect === "send" ? tr(`${x.who} wants to send this`) : tr(`${x.who} wants to do this`);
+    const sub = [date(x.ts), mail && mail.from ? tr(`from ${mail.from}`) : "", x.cost > 0 ? `≈${fmt(x.cost)}` : ""].filter(Boolean).join(" · ");
+    const paper = mail
+      ? h("div", { class: "mc-mail" },
+          h("div", { class: "mc-row" }, h("b", {}, "To"), h("span", {}, raw(mail.to || "—"))),
+          h("div", { class: "mc-row" }, h("b", {}, "Subject"), h("span", {}, raw(mail.subject || "—"))),
+          h("div", { class: "mc-body" }, raw(mail.text || "")))
+      : h("div", { class: "mc-mail" }, h("div", { class: "mc-row mc-what" }, raw(x.what)), x.preview ? h("div", { class: "mc-body" }, raw(x.preview)) : null);
     const fixText = h("textarea", { rows: "3", maxlength: "4000", "aria-label": "What to change", placeholder: tr("What should it change? For example: shorter, more formal, add the date…") });
     const fixBox = h("div", { class: "p-fix", hidden: true }, fixText,
       h("div", { class: "row-c" }, b("Send the correction", (el) => { const t = fixText.value.trim(); if (!t) { fixText.focus(); return; } decide(false, { fix: t }, el); }, true)));
-    acc = [b({ send: "Send", pay: "Pay", delete: "Delete" }[x.effect] || "Approve and do it", (el) => decide(true, null, el), true),
+    const reject = h("button", { class: "mc-reject", type: "button" }, "Reject"); reject.onclick = () => decide(false, null, reject);
+    const actions = h("div", { class: "p-actions" },
+      b({ send: "Send", pay: "Pay", delete: "Delete" }[x.effect] || "Approve and do it", (el) => decide(true, null, el), true),
       b("Correct", () => { fixBox.hidden = !fixBox.hidden; if (!fixBox.hidden) fixText.focus(); }),
-      b("Reject", (el) => decide(false, null, el))];
-    parts.push(h("div", { class: "p-actions" }, acc), fixBox);
-    return h("article", { class: "request" + (x.external ? " external" : "") }, parts);
+      reject);
+    const tech = x.detail ? h("details", { class: "mc-tech" }, h("summary", {}, "Details"), h("pre", {}, raw(x.detail))) : null;
+    return h("article", { class: "request mailcard" }, h("div", { class: "mc-head" }, h("b", {}, head), h("small", {}, sub)), paper, actions, fixBox, tech);
   } else {
     if (x.detail) parts.push(h("p", { class: "p-detail" }, x.detail));
     acc = [b(x.kind === "coin" ? "Confirm" : "Accept", (el) => decide(true, null, el), true), b("Dismiss", (el) => decide(false, null, el))];

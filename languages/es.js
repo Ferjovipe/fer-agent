@@ -2132,5 +2132,14 @@ export default {
   "The page had closed before your yes (for example, because the app was closed): it has to be done again.": "La página se había cerrado antes de tu sí (por ejemplo, porque se cerró la app): hay que hacerlo otra vez.",
   "[…part {1} of {2} of the page's text: scroll down for the next part]": "[…parte {1} de {2} del texto de la página: desplaza hacia abajo para la parte siguiente]",
   "[part {1} of {2}: the end of the page's text]": "[parte {1} de {2}: el final del texto de la página]",
-  "Before asking your owner: do this same step again, putting in «preview» exactly what goes out (to whom, the subject and the whole text; or the amount; or what gets deleted). Your owner has to read it before saying yes.": "Antes de preguntar a tu dueño: repite este mismo paso poniendo en «preview» exactamente lo que sale (a quién, el asunto y el texto entero; o el importe; o lo que se borra). Tu dueño tiene que leerlo antes de decir que sí."
+  "Before asking your owner: do this same step again, putting in «preview» exactly what goes out (to whom, the subject and the whole text; or the amount; or what gets deleted). Your owner has to read it before saying yes.": "Antes de preguntar a tu dueño: repite este mismo paso poniendo en «preview» exactamente lo que sale (a quién, el asunto y el texto entero; o el importe; o lo que se borra). Tu dueño tiene que leerlo antes de decir que sí.",
+  "{1} wants to send this email": "{1} quiere enviar este correo",
+  "{1} wants to pay": "{1} quiere pagar",
+  "{1} wants to delete": "{1} quiere borrar",
+  "{1} wants to send this": "{1} quiere enviar esto",
+  "{1} wants to do this": "{1} quiere hacer esto",
+  "To": "Para",
+  "Subject": "Asunto",
+  "Details": "Detalles",
+  "Does one step on the page you have open, like a person: click, type, select, check, press (a key; Enter by default), scroll (down or up: the next or the previous piece of the page's text) or back. «element» is the number from the list. «effect»: what the step does outside the page: none, send (send, publish, sign up, book…), pay (buy, pay…) or delete. If the step sends, publishes, pays or deletes, put in «preview» exactly what goes out (the whole text of the message, or the amount, or what gets deleted) and, if it's a message, «to» and «subject»: your owner reads it before saying yes. Returns the page as it is afterwards.": "Da un paso en la página que tienes abierta, como una persona: pulsar (click), escribir (type), elegir (select), marcar (check), pulsar una tecla (press; Intro si no dices otra), desplazar (scroll: abajo o arriba, la parte siguiente o la anterior del texto de la página) o volver atrás (back). «element» es el número de la lista. «effect»: lo que hace el paso fuera de la página: none (nada), send (enviar, publicar, apuntarse, reservar…), pay (comprar, pagar…) o delete (borrar). Si el paso envía, publica, paga o borra, pon en «preview» exactamente lo que sale (el texto entero del mensaje, o el importe, o lo que se borra) y, si es un mensaje, «to» (a quién) y «subject» (el asunto): tu dueño lo lee antes de decir que sí. Devuelve la página tal como queda."
 };

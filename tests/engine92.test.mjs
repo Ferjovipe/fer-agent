@@ -125,6 +125,8 @@ test("9.2.1 · before sending, your owner reads what goes out (the agent's previ
   assert.equal(it.agent, a.id, "and it shows in the agent's own chat");
   assert.match(it.detail, /^To: coco@example\.com\nSubject: Hello Coco\n\nHello Coco, tell Fer a joke\./, "first, what the agent says goes out");
   assert.match(it.detail, /Written on the page:\n(.|\n)*Subject: Hello Coco(.|\n)*Message body: Hello Coco, tell Fer a joke\./, "and what is really written on the page (also the message box)");
+  assert.deepEqual({ to: it.mail.to, subject: it.mail.subject, text: it.mail.text, fromPage: it.mail.fromPage }, { to: "coco@example.com", subject: "Hello Coco", text: "Hello Coco, tell Fer a joke.", fromPage: true },
+    "9.2.2: the email as an email (To, Subject, the text), taken from what is written on the page");
   const before = a.tasks.length;
   const r = await ed.run({ type: "inbox.decide", kind: "action", id: it.id, yes: false, fix: "Shorter, please" });
   assert.equal(r.state, "corrected");
