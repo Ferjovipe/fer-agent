@@ -91,6 +91,7 @@ export function insideOf(base, relPath) {
 export function createHands(op) {
   const o = Object.assign({ visible: false, log: () => {} }, op);
   mkdirSync(o.agentsFolder, { recursive: true });
+  o.docsFolder = o.docsFolder || path.join(path.dirname(o.agentsFolder), "agent-documents");   // 9.3: the documents you add to each agent in the app
   mkdirSync(o.chromeProfile, { recursive: true });
   let skills = new Map(), context = null, opening = null, queue = Promise.resolve();
 
@@ -606,7 +607,107 @@ using System; using System.Runtime.InteropServices; public class M { [DllImport(
     return { image: "data:image/jpeg;base64," + buf.toString("base64"), url: t.page.url() };
   }
 
+
+  // ---------------- 9.3 · Its documents (each agent's RAG): read on this computer and searched by words ----------------
+  // Each agent consults two places: the documents you add to it in the app (o.docsFolder/<agent>) and, if you chose one,
+  // a folder of yours on this computer. It reads PDF, Word (.docx; .doc and .rtf on the Mac) and text. What has been read
+  // is kept (o.docsFolder/.index) so that it isn't read again unless the file changes.
+  const DOC_EXT = /\.(pdf|docx|doc|rtf|txt|md|markdown|csv|tsv|json|html?|xml|ya?ml|log)$/i;
+  const docsIndex = new Map();   // agent → { key, at, files: [{ path, name, mtime, size, chunks, error }] }
+  const safeName = (s) => String(s || "").replace(/[^\w.\- áéíóúñüÁÉÍÓÚÑÜ()]/g, "_").replace(/^\.+/, "").slice(0, 120) || "document";
+  function ownDocs(agent) { const f = path.join(o.docsFolder, safeName(agent)); mkdirSync(f, { recursive: true }); return f; }
+  function docChunks(text) {
+    const t = String(text || "").replace(/\r/g, "").replace(/[ \t]+\n/g, "\n").replace(/\n{3,}/g, "\n\n").trim(), out = [];
+    for (let i = 0; i < t.length && out.length < 4000; i += 1100) out.push(t.slice(Math.max(0, i - 100), i + 1100));   // pieces of ~1,200 characters that overlap a little
+    return out;
+  }
+  async function readDocument(p) {
+    const ext = path.extname(p).toLowerCase();
+    if (ext === ".pdf") {
+      const pdfjs = await import("pdfjs-dist/legacy/build/pdf.mjs");
+      const doc = await pdfjs.getDocument({ data: new Uint8Array(await fs.readFile(p)), isEvalSupported: false, useSystemFonts: true, verbosity: 0 }).promise;
+      let text = "";
+      for (let i = 1; i <= Math.min(doc.numPages, 1500); i++) {
+        const c = await (await doc.getPage(i)).getTextContent();
+        text += c.items.map((it) => (it.str || "") + (it.hasEOL ? "\n" : " ")).join("") + "\n\n";
+      }
+      await doc.destroy().catch(() => {});
+      if (!text.trim()) throw new Error(L("it has no text (a scanned PDF: it would need reading the image)"));
+      return text;
+    }
+    if (ext === ".docx") { const mammoth = (await import("mammoth")).default; return (await mammoth.extractRawText({ path: p })).value; }
+    if (ext === ".doc" || ext === ".rtf") {
+      if (process.platform !== "darwin") throw new Error(L("old Word format: save it as .docx"));
+      return await new Promise((ok, ko) => execFile("textutil", ["-convert", "txt", "-stdout", p], { maxBuffer: 64e6, timeout: 60000 }, (e, out) => e ? ko(e) : ok(String(out))));
+    }
+    const raw = await fs.readFile(p, "utf8");
+    return /\.html?$/i.test(ext) ? raw.replace(/<(script|style)[\s\S]*?<\/\1>/gi, " ").replace(/<[^>]+>/g, " ").replace(/&nbsp;/g, " ").replace(/&amp;/g, "&") : raw;
+  }
+  async function walkDocs(folder, out, depth = 0) {
+    if (depth > 6 || out.length >= 3000) return;
+    let items = []; try { items = await fs.readdir(folder, { withFileTypes: true }); } catch { return; }
+    for (const it of items) {
+      if (it.name.startsWith(".") || it.name === "node_modules") continue;
+      const p = path.join(folder, it.name);
+      if (it.isDirectory()) await walkDocs(p, out, depth + 1);
+      else if (DOC_EXT.test(it.name)) out.push(p);
+      if (out.length >= 3000) return;
+    }
+  }
+  async function docsOf(agent, folder) {
+    const folders = [ownDocs(agent), folder && path.isAbsolute(String(folder)) ? path.resolve(String(folder)) : ""].filter(Boolean), key = folders.join("|");
+    let ix = docsIndex.get(agent);
+    if (!ix) { try { ix = JSON.parse(readFileSync(path.join(o.docsFolder, ".index", safeName(agent) + ".json"), "utf8")); ix.at = 0; } catch { ix = { key, at: 0, files: [] }; } docsIndex.set(agent, ix); }
+    if (ix.key === key && Date.now() - ix.at < 30e3) return ix;   // looked at less than 30 seconds ago
+    const paths = []; for (const f of folders) await walkDocs(f, paths);
+    const before = new Map(ix.files.map((f) => [f.path, f])), files = [];
+    let changed = ix.key !== key;
+    for (const p of paths) {
+      let st; try { st = await fs.stat(p); } catch { continue; }
+      const old = before.get(p);
+      if (old && old.mtime === st.mtimeMs && old.size === st.size) { files.push(old); continue; }
+      changed = true;
+      const f = { path: p, name: path.basename(p), mtime: st.mtimeMs, size: st.size, chunks: [], error: "" };
+      if (st.size > 40e6) f.error = L("too big (more than 40 MB)");
+      else try { f.chunks = docChunks(await readDocument(p)); } catch (e) { f.error = String(e.message || e).slice(0, 160); }
+      files.push(f);
+    }
+    if (files.length !== ix.files.length) changed = true;
+    Object.assign(ix, { key, at: Date.now(), files });
+    if (changed) { try { mkdirSync(path.join(o.docsFolder, ".index"), { recursive: true }); await fs.writeFile(path.join(o.docsFolder, ".index", safeName(agent) + ".json"), JSON.stringify({ key, files })); } catch {} }
+    return ix;
+  }
+  const STOP = new Set("de la el en los las del que con por para una uno unos unas como mas pero sus les este esta esto ese esa son ser fue han hay sin sobre entre cuando donde muy tambien the and for with that this from are was were have has not you your its our their what which who how about into than then them they will would can could".split(" "));
+  const words = (t) => String(t || "").toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g, "").split(/[^a-z0-9ñ]+/).filter((w) => w.length >= 3 && !STOP.has(w));
+  async function docsSearch(agent, d) {
+    const ix = await docsOf(agent, d.folder), q = [...new Set(words(d.query))];
+    if (!q.length) return { found: [], files: ix.files.length };
+    const pieces = ix.files.flatMap((f) => f.chunks.map((text) => ({ file: f.name, text, w: words(text) })));
+    const df = new Map(q.map((t) => [t, pieces.filter((p) => p.w.includes(t)).length]));
+    const found = pieces.map((p) => {
+      let s = 0;
+      for (const t of q) { const tf = p.w.filter((w) => w === t).length; if (tf) s += (1 + Math.log(tf)) * Math.log(1 + pieces.length / (df.get(t) || 1)); }
+      if (s && q.some((t) => words(p.file).includes(t))) s *= 1.3;   // its name says it too
+      return { file: p.file, text: p.text, score: s };
+    }).filter((p) => p.score > 0).sort((a, b) => b.score - a.score).slice(0, Math.min(12, Number(d.k) || 6));
+    return { found: found.map(({ file, text }) => ({ file, text })), files: ix.files.length };
+  }
+  function docsList(agent, d) {
+    return docsOf(agent, d.folder).then((ix) => ({ own: ownDocs(agent), files: ix.files.map((f) => ({ name: f.name, path: f.path, size: f.size, pieces: f.chunks.length, error: f.error, own: f.path.startsWith(ownDocs(agent) + path.sep) })) }));
+  }
+
   return {
+    // 9.3: its documents («search» the pieces that fit a question, «list» what it has, «add» and «remove» the ones added in the app)
+    docs(op, d, ctx) {
+      const agent = (ctx && ctx.agent) || "", x = d || {};
+      if (!agent) return Promise.reject(new Error("no agent"));
+      if (op === "search") return docsSearch(agent, x);
+      if (op === "list") return docsList(agent, x);
+      if (op === "add") { const name = safeName(path.basename(String(x.name || ""))); return fs.writeFile(path.join(ownDocs(agent), name), x.bytes).then(() => { const ix = docsIndex.get(agent); if (ix) ix.at = 0; return { ok: true, name }; }); }
+      if (op === "remove") { const name = safeName(path.basename(String(x.name || ""))); return fs.unlink(path.join(ownDocs(agent), name)).catch(() => {}).then(() => { const ix = docsIndex.get(agent); if (ix) ix.at = 0; return { ok: true }; }); }
+      if (op === "folder") return Promise.resolve({ path: ownDocs(agent) });
+      return Promise.reject(new Error("docs: " + op));
+    },
     // 9.2: files («list», «read», «write»): its folder; with ctx.anywhere (Your computer as you), any path
     files(op, data, ctx) { return enqueue("files", 60, () => files(op, data || {}, ctx || {}), "files:" + Math.random()); },   // they don't wait for anything
     // 9.2: the computer: «command» (an order to the system), «look» (the app in front as text; {screen: true}: a picture), «act» (mouse and keyboard)

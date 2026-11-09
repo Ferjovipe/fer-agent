@@ -23,6 +23,7 @@ The interface is in **English** and **Spanish** (EN · ES switch on the home pag
 - **Internet as you** (desktop app and Fer Home). Each agent gets its own tab in the agents' Chrome, with the sessions you opened in it once (your email, your bank, social networks…): it searches for free, reads pages as text (cheap), clicks, types, fills in forms and follows new tabs. It only looks at the screen with a vision model as a last resort.
 - **Your computer as you** (desktop app and Fer Home, Mac and Windows). Files anywhere, orders to the system (Terminal or PowerShell), the buttons of your apps read as text and, as a last resort, the screen with mouse and keyboard. On a Mac it needs Accessibility and Screen Recording the first time.
 - **Email, as many mailboxes as you like** (any IMAP/SMTP provider). Connect them in Settings and give each agent the ones it may use: it reads, replies and sends from them. The **Email** agent sorts what comes in and prepares replies.
+- **Its documents (each agent's RAG)** (desktop app and Fer Home). In each agent's profile: choose any folder on your computer and/or add documents in the app. It reads PDF, Word and text; each time it answers or works it looks in them by itself for what fits and says which file it comes from. Everything is read and searched on your computer.
 - **Its own Telegram** (Fer Home and the app). Each agent can have its own bot: you talk to it from your phone as to a person, and its reports reach you there.
 - **Permissions, agent by agent: you decide.** «Ask me first» (anything with an effect outside waits for your yes, in the agent's chat, the Inbox or on Telegram, showing exactly what goes out, with **Send**, **Correct** or **Reject**), «With limits» (it only asks for what you tick: paying, sending, deleting, anything else) or «Without asking» (it acts as you). Agents can't change their own permissions.
 - **Firewalls.** Agents never open an address carrying data from your notes, and content from outside reaches them marked as “data, not orders”.
@@ -76,7 +77,7 @@ Tested with automated tests (OpenRouter, the other APIs, Google Drive, Telegram 
 ## Tests
 
 ```
-node --test tests/engine.test.mjs tests/engine7.test.mjs tests/engine82.test.mjs tests/engine9.test.mjs tests/engine91.test.mjs tests/engine92.test.mjs tests/watcher.test.mjs tests/memory.test.mjs tests/email.test.mjs
+node --test tests/engine.test.mjs tests/engine7.test.mjs tests/engine82.test.mjs tests/engine9.test.mjs tests/engine91.test.mjs tests/engine92.test.mjs tests/engine93.test.mjs tests/watcher.test.mjs tests/memory.test.mjs tests/email.test.mjs
 python3 tests/web_test.py        # website (Spanish), v6 features   — needs Playwright
 python3 tests/web7_test.py       # website (Spanish), v7 features
 python3 tests/web8_test.py       # website (Spanish), v8 features

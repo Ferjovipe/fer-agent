@@ -1,4 +1,4 @@
-FER AGENT · EL EDIFICIO (versión 9.2.4)
+FER AGENT · EL EDIFICIO (versión 9.3)
 =====================================
 
 Tienes una empresa agéntica a tu servicio. Nosotros ponemos la base; tú decides el organigrama
@@ -20,6 +20,23 @@ fer-home.mjs              Fer Casa: el mismo edificio encendido las 24 horas en 
 hands.mjs, skills/        Las manos de los agentes (app y Fer Casa): su Chrome, tus archivos, tu ordenador, el
                           correo y las skills.
 tests/                    Las pruebas automáticas (no hacen falta para usarlo).
+
+
+Versión 9.3
+-----------
+Sus documentos (el RAG de cada agente):
+  - En la ficha de cada agente → Capacidades → «Sus documentos»: «Elegir carpeta» (cualquier carpeta de
+    tu ordenador, la que tú digas; lee también lo que metas después) y «Añadir documentos» (los subes
+    desde la app; se guardan en los datos de la app, en agent-documents). «Abrir» los enseña en el Finder.
+  - Lee PDF, Word (.docx; en el Mac también .doc y .rtf) y texto (txt, md, csv, html…). Los PDF
+    escaneados (solo imagen) no tienen texto: la ficha lo dice.
+  - Cada vez que el agente responde o trabaja, busca por su cuenta en sus documentos los trozos que
+    vienen al caso y los usa, diciendo de qué archivo sale cada cosa. También tiene una herramienta para
+    buscar más.
+  - Todo se lee y se busca en tu ordenador: los documentos no se mandan a ningún sitio para buscar
+    (solo los trozos elegidos van al cerebro del agente, como el resto de lo que le pides).
+  - La búsqueda es por palabras: funciona mejor si preguntas en el idioma de los documentos.
+  - Cada agente, los suyos.
 
 
 Versión 9.2.1
@@ -530,6 +547,7 @@ Pruebas (para quien quiera comprobarlo)
   node --test tests/engine82.test.mjs    el motor en inglés
   node --test tests/engine9.test.mjs     los edificios de versiones anteriores pasan a la 9 sin perder nada
   node --test tests/engine91.test.mjs    9.1: lo del latido en su chat, «Despertar ahora», cerebro saturado, empezar de cero, la Creadora y la sala
+  node --test tests/engine93.test.mjs    9.3: sus documentos (PDF, Word y texto) y la consulta automática
   node --test tests/engine92.test.mjs    9.2: permisos, Internet como tú (contra una tienda de prueba), archivos y órdenes
   node --test tests/memory.test.mjs     la memoria automática: Memory archiva sola lo importante de cada conversación
   node --test tests/email.test.mjs      el correo: lee lo que entra, prepara las respuestas y envía solo con tu sí

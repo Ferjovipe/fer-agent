@@ -1,7 +1,7 @@
 {
   "name": "fer-agent",
   "productName": "Fer Agent",
-  "version": "9.2.4",
+  "version": "9.3.0",
   "description": "Your AI agents live in a building: an open-source agentic company on your computer.",
   "author": "Fernando Villar Peláez",
   "homepage": "https://feragent.netlify.app",
@@ -16,7 +16,9 @@
   "dependencies": {
     "imapflow": "2.9.1",
     "mailparser": "3.12.4",
+    "mammoth": "1.13.0",
     "nodemailer": "10.2.1",
+    "pdfjs-dist": "4.10.38",
     "playwright-core": "1.63.0"
   },
   "devDependencies": {
@@ -49,7 +51,14 @@
       "skills/**",
       "build/icon.png",
       "package.json",
-      "LICENSE"
+      "LICENSE",
+      "!node_modules/pdfjs-dist/build/**",
+      "!node_modules/pdfjs-dist/web/**",
+      "!node_modules/pdfjs-dist/image_decoders/**",
+      "!node_modules/pdfjs-dist/types/**",
+      "!node_modules/pdfjs-dist/legacy/web/**",
+      "!node_modules/pdfjs-dist/legacy/image_decoders/**",
+      "!**/*.map"
     ],
     "mac": {
       "target": [

@@ -1310,7 +1310,62 @@ function profileCapabilities(box, a, change, { brainless }) {
   }
   box.append(permissionsBlock(a));
   box.append(h("div", { class: "block" }, h("h4", {}, "Capabilities"), caps));
+  box.append(docsBlock(a));
   if (mode === "home") box.append(telegramBlock(a));
+}
+// 9.3 · Its documents (its RAG): a folder of yours and/or documents added here; it consults them by itself each time it answers or works
+function docsBlock(a) {
+  const box = h("div", { class: "block docs-block" }, h("h4", {}, "Its documents"),
+    h("p", { class: "note", style: { margin: 0 } }, "PDF, Word and text. Each time it answers or works, it looks in them by itself for what fits and says which file it comes from. They're read on this computer: they don't go anywhere to be searched."));
+  if (mode !== "home") { box.append(h("small", { class: "note" }, "Needs the app (or Fer Home): the documents are read on your computer.")); return box; }
+  const list = h("div", { class: "docs-list" }, h("small", { class: "note" }, "Reading its documents…"));
+  const folder = (a.docs || {}).folder || "";
+  const setFolder = async (f) => { try { await Motor.run({ type: "editAgent", id: a.id, changes: { docs: { folder: f } } }); renderProfile(true); } catch (e) { warn(e); } };
+  const pathInput = h("input", { type: "text", placeholder: "/Users/you/Documents/…", value: folder, "aria-label": "Folder" });
+  box.append(h("div", { class: "docs-folder" },
+    h("b", {}, "A folder of yours"),
+    h("small", { class: "note" }, folder ? tr(`It also reads everything in ${folder} (and in the folders inside it).`) : "Choose any folder on this computer: it reads everything in it, and what you add to it later."),
+    h("div", { class: "row-c" },
+      window.ferApp && window.ferApp.chooseFolder ? h("button", { class: "btn mini", type: "button", onclick: async () => { const f = await window.ferApp.chooseFolder(); if (f) setFolder(f); } }, folder ? "Choose another folder" : "Choose folder")
+        : h("span", { class: "row-c" }, pathInput, h("button", { class: "btn mini", type: "button", onclick: () => setFolder(pathInput.value.trim()) }, "Use this folder")),
+      folder ? h("button", { class: "btn mini", type: "button", onclick: async () => { try { await callApp("/api/docs/open", { agent: a.id, which: "folder" }); } catch (e) { warn(e); } } }, "Open") : null,
+      folder ? h("button", { class: "btn mini danger", type: "button", onclick: () => setFolder("") }, "Stop using it") : null)));
+  const picker = h("input", { type: "file", multiple: true, hidden: true, accept: ".pdf,.docx,.doc,.rtf,.txt,.md,.markdown,.csv,.tsv,.json,.html,.htm,.xml,.yaml,.yml,.log" });
+  picker.onchange = async () => {
+    const files = [...picker.files]; picker.value = "";
+    for (const f of files) {
+      try {
+        const r = await fetch(`./api/docs/add?agent=${encodeURIComponent(a.id)}&name=${encodeURIComponent(f.name)}`, { method: "POST", headers: { "X-Fer-Pin": pin, "Content-Type": "application/octet-stream" }, body: f });
+        const d = await r.json().catch(() => ({}));
+        if (!r.ok) throw Object.assign(new Error(d.error || "It couldn't be done."), { shown: true });
+      } catch (e) { warn(e); }
+    }
+    if (files.length) toast(tr(`Added: ${files.length}. It reads them now.`));
+    load();
+  };
+  box.append(h("div", { class: "docs-own" },
+    h("b", {}, "Documents added here"),
+    h("div", { class: "row-c" }, picker, h("button", { class: "btn mini primary", type: "button", onclick: () => picker.click() }, "Add documents"),
+      h("button", { class: "btn mini", type: "button", onclick: async () => { try { await callApp("/api/docs/open", { agent: a.id, which: "own" }); } catch (e) { warn(e); } } }, "Open")),
+    list));
+  async function load() {
+    try {
+      const r = await fetch(`./api/docs?agent=${encodeURIComponent(a.id)}`, { headers: { "X-Fer-Pin": pin }, cache: "no-store" });
+      const d = await r.json();
+      if (!r.ok) throw new Error(d.error || "");
+      list.replaceChildren();
+      if (!d.files.length) { list.append(h("small", { class: "note" }, "No documents yet.")); return; }
+      const read = d.files.filter((f) => !f.error), bad = d.files.filter((f) => f.error);
+      list.append(h("small", { class: "note" }, tr(`${read.length} documents read`) + (bad.length ? " · " + tr(`${bad.length} couldn't be read`) : "")));
+      const ul = h("ul", { class: "docs-files" });
+      for (const f of d.files.slice(0, 200)) ul.append(h("li", { class: f.error ? "bad" : "" }, raw(f.name), f.error ? h("small", {}, " — ", raw(f.error)) : null,
+        f.own ? h("button", { class: "link-btn", type: "button", "aria-label": "Remove", onclick: async () => { try { await callApp("/api/docs/remove", { agent: a.id, name: f.name }); load(); } catch (e) { warn(e); } } }, "Remove") : null));
+      if (d.files.length > 200) ul.append(h("li", {}, tr(`and ${d.files.length - 200} more`)));
+      list.append(ul);
+    } catch (e) { list.replaceChildren(h("small", { class: "note" }, tr("Its documents couldn't be read: ") + (e.message || ""))); }
+  }
+  load();
+  return box;
 }
 // 9.2 · Its own Telegram: you talk to it from your phone as to a person
 function telegramBlock(a) {

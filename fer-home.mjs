@@ -19,7 +19,8 @@
 // =====================================================================
 import http from "node:http";
 import fs from "node:fs/promises";
-import { readFileSync, existsSync, mkdirSync, readdirSync, renameSync } from "node:fs";
+import { readFileSync, existsSync, mkdirSync, readdirSync, renameSync, statSync } from "node:fs";
+import { execFile } from "node:child_process";
 import path from "node:path";
 import os from "node:os";
 import crypto from "node:crypto";
@@ -633,6 +634,31 @@ const server = http.createServer(async (req, res) => {
         if (now.id) list[list.findIndex((m) => m.id === now.id)] = box; else list.push(box);
         await saveConfig(conf);
         return json(res, 200, { ok: true, id: box.id });
+      }
+      // 9.3: an agent's documents (its RAG): the list; adding one (the file itself, ?agent=…&name=…); removing one; opening its folder here
+      if (route.startsWith("/api/docs")) {
+        const DOC = /\.(pdf|docx|doc|rtf|txt|md|markdown|csv|tsv|json|html?|xml|ya?ml|log)$/i;
+        let d = {};
+        if (route !== "/api/docs/add" && req.method === "POST") { try { d = JSON.parse((await readBody(req, 8192)).toString("utf8") || "{}"); } catch { return json(res, 400, { error: L("Unreadable request.") }); } }
+        const a = ed.agent(String(d.agent || url.searchParams.get("agent") || ""));
+        if (!a) return json(res, 400, { error: L("There is no such agent.") });
+        const folder = (a.docs || {}).folder || "";
+        if (route === "/api/docs" && req.method === "GET") return json(res, 200, Object.assign({ folder }, await hands.docs("list", { folder }, { agent: a.id })));
+        if (route === "/api/docs/add" && req.method === "POST") {
+          const name = String(url.searchParams.get("name") || "");
+          if (!DOC.test(name)) return json(res, 400, { error: L("That kind of file can't be read: PDF, Word or text.") });
+          let bytes; try { bytes = await readBody(req, 41e6); } catch { return json(res, 413, { error: L("Too big: up to 40 MB per document.") }); }
+          return json(res, 200, await hands.docs("add", { name, bytes }, { agent: a.id }));
+        }
+        if (route === "/api/docs/remove" && req.method === "POST") return json(res, 200, await hands.docs("remove", { name: String(d.name || "") }, { agent: a.id }));
+        if (route === "/api/docs/open" && req.method === "POST") {   // on this computer: the Finder (Mac), the Explorer (Windows)
+          const where = d.which === "folder" ? folder : (await hands.docs("folder", {}, { agent: a.id })).path;
+          let ok = false; try { ok = !!where && statSync(where).isDirectory(); } catch {}
+          if (!ok) return json(res, 400, { error: L("That folder doesn't exist on this computer.") });
+          execFile(process.platform === "darwin" ? "open" : process.platform === "win32" ? "explorer" : "xdg-open", [where], () => {});
+          return json(res, 200, { ok: true });
+        }
+        return json(res, 404, { error: L("Not found.") });
       }
       // 9.2: an agent's own Telegram (its bot's token, from @BotFather). {agent, token} or {agent, remove: true}
       if (route === "/api/conf/telegram-agent" && req.method === "POST") {

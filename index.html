@@ -335,6 +335,13 @@
   .request textarea, .request input { background: rgba(255, 255, 255, .1); color: #FFE7B8; border: 1px solid rgba(255, 205, 130, .35); border-radius: 10px; padding: 6px 10px; width: 100%; }
   .request input[type="number"] { width: 72px; }
   .request .p-actions { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
+  /* 9.3: an agent's documents */
+  .docs-block .docs-folder, .docs-block .docs-own { display: grid; gap: 6px; margin-top: 10px; }
+  .docs-block .docs-files { list-style: none; margin: 6px 0 0; padding: 0; max-height: 260px; overflow: auto; font-size: 14px; }
+  .docs-block .docs-files li { display: flex; gap: 8px; align-items: baseline; padding: 4px 0; border-bottom: 1px solid var(--line, rgba(0,0,0,.08)); overflow-wrap: anywhere; }
+  .docs-block .docs-files li.bad { opacity: .7; }
+  .docs-block .docs-files li .link-btn { margin-left: auto; }
+  .docs-block input[type=text] { min-width: 0; flex: 1; }
   /* 9.2.2: what an agent wants to send, like an email waiting to go out (in its chat, in the inbox) */
   .msg.approval { max-width: 100%; }
   .request.mailcard { background: #FFFFFF; color: #1B2130; border: 1px solid #D5DBEA; border-radius: 16px; padding: 16px 18px; box-shadow: 0 6px 22px rgba(20, 30, 60, .14); text-align: left; max-width: 680px; width: 100%; box-sizing: border-box; display: grid; gap: 12px; }
