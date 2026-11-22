@@ -10,7 +10,12 @@ The token is kept only on your computer. It works while the app (or Fer Home) is
 
 ## The building's Telegram (approvals)
 
-Approvals (Send / Correct / Reject) can also reach you on Telegram, with the building's bot. For now it's set up with Fer Home: node fer-home.mjs telegram. Commands: /inbox (what's waiting for your yes), /pause (stops everything automatic), /resume (starts it again).
+Approvals (Send / Correct / Reject) can also reach you on Telegram, with the building's bot. It's set up in **Settings → Telegram: the inbox on your phone** (in the app or in Fer Home):
+1. In Telegram, talk to @BotFather, send /newbot and follow the steps. It gives you a token.
+2. Paste the token in Settings and press «Connect».
+3. Press «Open @your_bot» (or find it in Telegram) and send it /start. The first private chat that writes to it becomes yours; nobody else can give it orders.
+
+Settings shows «Connected» when your /start arrives. To remove it: «Disconnect». Use a different bot from any agent's. Commands: /inbox (what's waiting for your yes), /pause (stops everything automatic), /resume (starts it again). It still works from the Terminal too: node fer-home.mjs telegram.
 
 ## From the phone, without Telegram
 

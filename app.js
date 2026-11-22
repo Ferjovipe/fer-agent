@@ -1377,6 +1377,45 @@ function docsBlock(a) {
   load();
   return box;
 }
+// 9.4 · The building's Telegram: the inbox and the alerts on your phone, with buttons to approve or reject. Before, only from the Terminal
+let telegramWait = null;
+function buildingTelegramBlock() {
+  const t = homeInfo.telegramBot;
+  const box = h("div", { class: "block telegram-building" }, h("h4", {}, "Telegram: the inbox on your phone"),
+    h("p", { class: "note", style: { margin: 0 } }, "What's waiting for your yes and the alerts reach you on Telegram, with buttons to approve, correct or reject. Commands: /inbox, /pause, /resume."));
+  const remove = (label) => h("button", { class: "btn mini danger", type: "button", onclick: (ev) => confirm(ev.target, "Disconnect Telegram? Press again", async () => {
+    try { await callApp("/api/conf/telegram", { remove: true }); await refreshHome(); renderSettings(); } catch (e) { warn(e); }
+  }) }, label);
+  clearTimeout(telegramWait);
+  if (t && t.linked) {
+    box.append(h("p", { class: "telegram-ok" }, "✓ ", tr(`Connected: @${t.username || "your bot"}. It only listens to your chat.`)), h("div", { class: "row-c" }, remove("Disconnect")));
+  } else if (t) {
+    const link = t.username ? h("a", { class: "btn primary mini", href: `https://t.me/${encodeURIComponent(t.username)}`, target: "_blank", rel: "noopener" }, tr(`Open @${t.username}`)) : null;
+    box.append(h("p", { class: "telegram-wait" }, tr(`Last step: open @${t.username || "your bot"} in Telegram and send it /start. The first chat that writes to it becomes yours.`)),
+      h("div", { class: "row-c" }, link, remove("Cancel")), h("small", { class: "note" }, "Waiting for your /start…"));
+    const check = async () => {   // it notices when your /start arrives
+      if (drawerType !== "settings") return;
+      await refreshHome();
+      if (homeInfo.telegramBot && homeInfo.telegramBot.linked) { toast("Telegram connected."); if (!inUse($("drawerBody"))) renderSettings(); }
+      else telegramWait = setTimeout(check, 3000);
+    };
+    telegramWait = setTimeout(check, 3000);
+  } else {
+    const tok = h("input", { type: "password", autocomplete: "off", placeholder: "123456789:ABC…", "aria-label": "Your bot's token" });
+    const connect = async (ev) => {
+      ev.target.disabled = true;
+      try { await callApp("/api/conf/telegram", { token: tok.value.trim() }); await refreshHome(); renderSettings(); }
+      catch (e) { ev.target.disabled = false; warn(e); }
+    };
+    box.append(h("ol", { class: "telegram-steps" },
+        h("li", {}, "In Telegram, talk to ", h("a", { href: "https://t.me/BotFather", target: "_blank", rel: "noopener" }, "@BotFather"), ", send /newbot and follow the steps. It gives you a token."),
+        h("li", {}, "Paste the token here and press «Connect»."),
+        h("li", {}, "Open your new bot and send it /start.")),
+      h("div", { class: "row-c" }, tok, h("button", { class: "btn primary mini", type: "button", onclick: connect }, "Connect")),
+      h("small", { class: "note" }, "The token stays only on this computer. Use a different bot from the ones of your agents."));
+  }
+  return box;
+}
 // 9.2 · Its own Telegram: you talk to it from your phone as to a person
 function telegramBlock(a) {
   const now = (homeInfo.telegramAgents || {})[a.id];
@@ -2046,7 +2085,7 @@ function renderInbox(force) {
   v.replaceChildren(screenHeader("What's waiting for your yes"), h("div", { class: "inbox" },
     h("h1", {}, "Approval inbox"),
     h("p", { class: "note-dark" }, "Everything waiting for your yes arrives here: who asks for it, what it is and what it costs. None of this happens without you."),
-    h("p", { class: "note-dark" }, mode === "home" ? (homeInfo.telegram ? "With Fer Home and Telegram, it also reaches your phone with buttons to approve or reject." : "From your phone: open the Fer Home address on your home network, or connect Telegram (README) to approve from anywhere.")
+    h("p", { class: "note-dark" }, mode === "home" ? (homeInfo.telegram ? "With Fer Home and Telegram, it also reaches your phone with buttons to approve or reject." : "From your phone: open the Fer Home address on your home network, or connect Telegram (Settings → Telegram) to approve from anywhere.")
       : "From your phone: with the brain folder in Google Drive connected on both devices, the phone sees the same inbox."),
     items.length ? items.map(requestCard) : h("p", { class: "inbox-empty" }, "Nothing pending. When an agent wants to do something involving money or outside the website, or there's something to approve, it will show up here.")));
   v.scrollTop = sc;
@@ -2878,6 +2917,7 @@ function renderSettings() {
   }
   c.append(otherApisBlock());
   c.append(emailBlock());
+  if (mode === "home" && pin && !pinRejected) c.append(buildingTelegramBlock());   // 9.4
   c.append(skillsSettingsBlock());
   // the building's name and objectives
   const nom = h("input", { value: ed.e.name || "" });

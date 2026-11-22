@@ -10,7 +10,12 @@ El token se guarda solo en tu ordenador. Funciona mientras la aplicación (o Fer
 
 ## El Telegram del edificio (aprobaciones)
 
-Las aprobaciones (Enviar / Corregir / Rechazar) también pueden llegarte por Telegram, con el bot del edificio. Por ahora se configura con Fer Casa: node fer-home.mjs telegram. Comandos: /inbox (lo que espera tu sí), /pause (para todo lo automático), /resume (lo vuelve a poner).
+Las aprobaciones (Enviar / Corregir / Rechazar) también pueden llegarte por Telegram, con el bot del edificio. Se configura en **Ajustes → Telegram: la bandeja en tu móvil** (en la app o en Fer Casa):
+1. En Telegram, habla con @BotFather, envíale /newbot y sigue los pasos. Te da un token.
+2. Pega el token en Ajustes y pulsa «Conectar».
+3. Pulsa «Abrir @tu_bot» (o búscalo en Telegram) y envíale /start. El primer chat privado que le escriba queda como el tuyo; los demás no le mandan nada.
+
+En Ajustes verás «Conectado» cuando llegue tu /start. Para quitarlo: «Desconectar». Usa un bot distinto del de cualquier agente. Órdenes: /bandeja (o /inbox: lo que espera tu sí), /pausa (para todo lo automático), /marcha (lo vuelve a poner). También sigue funcionando desde la Terminal: node fer-home.mjs telegram.
 
 ## Desde el móvil, sin Telegram
 

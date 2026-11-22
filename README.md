@@ -59,6 +59,7 @@ You move the building from one to another with **Save backup** and **Load a back
 - **The Helper:** a built-in agent whose documents are the manual. It answers how to install, set up and use Fer Agent.
 - **Floors in a file:** *Save to a file* on any floor (no memory, tasks, spending, documents, mailboxes, Telegram or keys). *Create floor* → *Load a floor from a file* and *Community floors*. Loaded agents start with *Ask me first*.
 - **Updates** from GitHub Releases, and the Apple signature ready for when the secrets are set.
+- **The building's Telegram from Settings:** paste the @BotFather token, send /start to your bot, and it's connected (no Terminal, no restart).
 
 ## Getting started
 
@@ -104,6 +105,7 @@ python3 tests/web9_storage_test.py     # a browser that used an earlier version 
 python3 tests/web91_test.py            # 9.1: when each agent works, its own chat, Copy, the Creator in its chat, models by price, the logo, meetings that resume
 python3 tests/web921_test.py           # 9.2.1: before anything goes out, the exact text with Send, Correct and Reject
 python3 tests/web94_test.py            # 9.4: first steps, floors saved to and loaded from a file, community floors
+python3 tests/home94_test.py           # 9.4: the building's Telegram from Settings
 python3 tests/home_test.py       # Fer Home
 python3 tests/home7_test.py      # Fer Home with hands, Telegram, brain folder and another API
 python3 tests/app9_test.py       # the desktop app inside: keys in Settings, local only, the agents' Chrome

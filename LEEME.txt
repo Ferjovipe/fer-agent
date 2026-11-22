@@ -54,6 +54,8 @@ Versión 9.4
   - Firma de Apple preparada: cuando estén en GitHub los secretos CSC_LINK, CSC_KEY_PASSWORD, APPLE_ID,
     APPLE_APP_SPECIFIC_PASSWORD y APPLE_TEAM_ID, el instalador del Mac sale firmado y notarizado por
     Apple (build/mac-signing.mjs). Sin ellos sale como hasta ahora.
+  - Telegram del edificio desde Ajustes → Telegram: pegas el token de @BotFather, envías /start a tu bot y
+    queda conectado, sin Terminal y sin reiniciar. Se desconecta desde el mismo sitio.
   - Probado por Fer en su Mac: «abre Notas y crea una nota que diga hola» funciona con una orden directa
     a Notas. Usar el teclado y el ratón necesita el permiso de Accesibilidad. Mientras la app no esté
     firmada por Apple, ese permiso hay que volver a darlo con cada versión nueva: en Ajustes del Sistema →
@@ -406,7 +408,7 @@ Una sola vez:
   f) Escribe:   node fer-home.mjs entrar https://x.com/login
      Se abre el Chrome de los agentes: entra con la cuenta NUEVA de X y cierra esa ventana. La sesión
      queda guardada en data/agents-chrome (separada de tu Chrome).
-  g) Si quieres Telegram:   node fer-home.mjs telegram   y sigue los pasos (con @BotFather).
+  g) Si quieres Telegram:   en Ajustes → Telegram (o node fer-home.mjs telegram) y sigue los pasos (con @BotFather).
   h) Si quieres el cerebro en Drive y Obsidian:   node fer-home.mjs carpeta   y elige una carpeta dentro
      de Google Drive para ordenador (en un Mac suele estar en
      /Users/TU_USUARIO/Library/CloudStorage/GoogleDrive-…/Mi unidad/Fer Agent).

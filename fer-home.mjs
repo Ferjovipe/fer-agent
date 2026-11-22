@@ -385,17 +385,19 @@ async function startAgentBot(id) {
 }
 
 // ---------------- Telegram: the inbox on your phone (it only listens to your chat) ----------------
-const tg = conf.telegram && conf.telegram.token && conf.telegram.chat ? conf.telegram : null;
+// 9.4: it can be connected (and changed or removed) from the app, Settings → Telegram, without restarting: tg changes and the loop starts again.
+// While chat is still empty, the first private chat that writes to the bot (your /start) becomes its chat.
+let tg = conf.telegram && conf.telegram.token ? conf.telegram : null, tgGen = 0;
 const notified = new Set();
 async function telegram(method, body) {
-  if (!tg) return null;
+  if (!tg || !tg.token) return null;
   try {
     const r = await fetch(`${TELEGRAM}/bot${tg.token}/${method}`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body || {}) });
     return await r.json();
   } catch (e) { log("Telegram: " + e.message); return null; }
 }
 function telegramSend(text, buttons) {
-  if (!tg) return;
+  if (!tg || !tg.chat) return;
   const b = { chat_id: tg.chat, text: String(text).slice(0, 4000), disable_web_page_preview: true };
   if (buttons) b.reply_markup = { inline_keyboard: buttons };
   return telegram("sendMessage", b);
@@ -432,7 +434,7 @@ async function sendRequest(x) {
 }
 const noticeKey = (x) => x.kind + ":" + x.id + ":" + (x.ts || 0);   // with the time: if an agent says again that it's missing something, it's notified again
 async function notifyInbox() {
-  if (!tg) return;
+  if (!tg || !tg.chat) return;   // not linked yet: nothing is marked as sent
   const now = ed.inbox(), stillThere = new Set(now.map(noticeKey));
   for (const k of [...notified]) if (!stillThere.has(k)) notified.delete(k);   // what has been decided is forgotten
   for (const x of now) {
@@ -445,19 +447,23 @@ async function notifyInbox() {
 let awaitingFix = null;   // 9.2.1: after «Correct» on Telegram, your next message is the correction
 async function listenTelegram() {
   if (!tg) return;
+  const gen = ++tgGen, mine = tg;
   let since = 0;
-  log(L("Telegram connected: the inbox and the alerts reach your phone."));
+  if (!mine.username) { const me = await botCall(mine.token, "getMe"); if (me && me.ok) { mine.username = me.result.username || ""; await saveConfig(conf); } }
+  log(mine.chat ? L("Telegram connected: the inbox and the alerts reach your phone.") : L("Telegram: waiting for your /start to @{1}.", mine.username || "bot"));
   for (const x of ed.inbox()) notified.add(noticeKey(x));   // what was already pending isn't repeated on start
   let wait = 0, lastFailure = "";
   const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
   for (;;) {
+    if (gen !== tgGen || tg !== mine) return;   // it was changed or removed in Settings: this loop ends (a new one starts if there's another bot)
     let d = null;
     const t0 = Date.now();
-    try { d = await (await fetch(`${TELEGRAM}/bot${tg.token}/getUpdates?timeout=50&offset=${since}`)).json(); } catch { d = null; }
+    try { d = await (await fetch(`${TELEGRAM}/bot${mine.token}/getUpdates?timeout=50&offset=${since}`)).json(); } catch { d = null; }
+    if (gen !== tgGen || tg !== mine) return;
     if (!d || d.ok === false) {
       // If Telegram says no (bad token, another program reading the same bot…) or there's no network: it waits longer each time (up to 5 min), without hammering
       const reason = d ? `${d.error_code || ""} ${d.description || ""}`.trim() : L("no connection");
-      if (reason !== lastFailure) log(`Telegram: ${reason}. ` + (d && d.error_code === 401 ? L("The token isn't valid: run node fer-home.mjs telegram again.") : d && d.error_code === 409 ? L("Another program is reading this same bot.") : L("I'll retry on my own.")));
+      if (reason !== lastFailure) log(`Telegram: ${reason}. ` + (d && d.error_code === 401 ? L("The token isn't valid: connect it again in Settings → Telegram.") : d && d.error_code === 409 ? L("Another program is reading this same bot.") : L("I'll retry on my own.")));
       lastFailure = reason; wait = Math.min(300000, wait ? wait * 2 : 5000);
       await sleep(wait); continue;
     }
@@ -468,7 +474,14 @@ async function listenTelegram() {
       since = u.update_id + 1;
       const cb = u.callback_query, msg = u.message;
       const chat = cb ? cb.message && cb.message.chat && cb.message.chat.id : msg && msg.chat && msg.chat.id;
-      if (String(chat) !== String(tg.chat)) continue;   // only your chat
+      if (!mine.chat) {   // 9.4: the first private chat that writes (your /start) becomes the building's chat
+        if (!msg || !msg.chat || msg.chat.type !== "private") continue;
+        mine.chat = msg.chat.id; conf.telegram = mine; await saveConfig(conf);
+        for (const x of ed.inbox()) notified.add(noticeKey(x));
+        log(L("Telegram connected: the inbox and the alerts reach your phone."));
+        await telegramSend(L("Fer Home connected. The inbox and the alerts will reach you here. Commands: /inbox, /pause, /resume."));
+      }
+      if (String(chat) !== String(mine.chat)) continue;   // only your chat
       try {
         if (cb) {
           const [r, k] = String(cb.data || "").split(":");
@@ -573,7 +586,7 @@ const server = http.createServer(async (req, res) => {
     if (route.startsWith("/api/")) {
       if (!validPin(req)) { await new Promise((r) => setTimeout(r, 400)); return json(res, 401, { error: L("Wrong PIN") }); }
       if (route === "/api/state" && req.method === "GET") return json(res, 200, { state: ed.e, busyIds: [...ed.busyIds], skills: hands.catalog(),
-        home: { app: APP, key: !!conf.key, data: APP ? DATA : "", telegram: !!tg, keys: Object.fromEntries([...new Set([...Object.keys(PROVIDERS), ...ed.connections().map((c) => c.id)])].filter((k) => k !== "openrouter").map((k) => [k, !!(conf.keys || {})[k]])),
+        home: { app: APP, key: !!conf.key, data: APP ? DATA : "", telegram: !!(tg && tg.chat), telegramBot: tg ? { username: tg.username || "", linked: !!tg.chat } : null, keys: Object.fromEntries([...new Set([...Object.keys(PROVIDERS), ...ed.connections().map((c) => c.id)])].filter((k) => k !== "openrouter").map((k) => [k, !!(conf.keys || {})[k]])),
           folder: { path: BRAIN_FOLDER, notes: brain.notes, library: brain.library, lastSync: brain.lastSync, error: brain.error }, agentsFolder: AGENTS_FOLDER,
           mailboxes: (conf.mailboxes || []).map(({ password, ...m }) => m),
           telegramAgents: Object.fromEntries(Object.entries(conf.telegramAgents || {}).map(([k, v]) => [k, { username: v.username || "", linked: !!v.chat }])),
@@ -700,6 +713,20 @@ const server = http.createServer(async (req, res) => {
           return json(res, 200, { ok: true });
         }
         return json(res, 404, { error: L("Not found.") });
+      }
+      // 9.4: the building's Telegram (the inbox and the alerts on your phone), from Settings. {token} or {remove: true}
+      if (route === "/api/conf/telegram" && req.method === "POST") {
+        let d; try { d = JSON.parse((await readBody(req, 4096)).toString("utf8")); } catch { return json(res, 400, { error: L("Unreadable request.") }); }
+        if (d.remove) { conf.telegram = null; tg = null; tgGen++; await saveConfig(conf); log(L("Telegram disconnected.")); return json(res, 200, { ok: true }); }
+        const token = String(d.token || "").trim();
+        if (!/^\d{5,}:[\w-]{20,}$/.test(token)) return json(res, 400, { error: L("That doesn't look like a bot token (it looks like 123456789:ABC…).") });
+        if (Object.values(conf.telegramAgents || {}).some((b) => b && b.token === token)) return json(res, 400, { error: L("That bot is already an agent's Telegram: create another one for the building.") });
+        const me = await botCall(token, "getMe");
+        if (!me || !me.ok) return json(res, 400, { error: L("Telegram didn't accept that token.") });
+        conf.telegram = { token, chat: null, username: me.result.username || "" };
+        tg = conf.telegram; tgGen++; await saveConfig(conf);
+        setTimeout(() => listenTelegram(), 300);
+        return json(res, 200, { ok: true, username: tg.username });
       }
       // 9.2: an agent's own Telegram (its bot's token, from @BotFather). {agent, token} or {agent, remove: true}
       if (route === "/api/conf/telegram-agent" && req.method === "POST") {
