@@ -95,6 +95,10 @@ try:
         page.wait_for_timeout(1500)
         page.click("#landing .button-big >> nth=0")
         page.wait_for_selector("#drawer:not([hidden]) #drawerBody h4", timeout=15000)
+        # 9.4: the first time, the guided first steps (here we go to all of Settings, which this test checks)
+        check(page.inner_text("#drawerTitle") == "First steps" and page.is_visible("#drawerBody .welcome-step h4:text-is('Your key')") and "only on this computer" in page.inner_text("#drawerBody"),
+              "9.4: the first time, «First steps» (step 1: your key, saved on this computer)")
+        page.click("#drawerBody button:text-is('All settings')"); page.wait_for_selector("#drawerBody .where")
         check(page.inner_text("#mode") == "In this app · works while it's open", f"arriba: «{page.inner_text('#mode')}»")
         aj = page.inner_text("#drawerBody")
         check("In this app" in aj and page.is_visible("#drawerBody .where .here:has-text('In this app')") and data in aj, "Settings → where it lives: “In this app”, marked, with the data folder")
@@ -207,6 +211,50 @@ try:
             check(not os.path.exists(os.path.join(data, "agent-documents", "boss", "proveedores.txt")), "«Remove» takes it out")
             e = json.loads(ask("/api/state", pin=PIN)[1])["state"]
             check(next(x for x in e["agents"] if x["id"] == "boss")["docs"]["folder"] == fixtures, "the folder is saved in its profile")
+            # 9.4 · Settings → Skills: add one (a folder, then a ZIP), see which are yours, remove one
+            import zipfile
+            skill_dir = os.path.join(ROOT, "tests", "skill-fixtures", "skill-saludo")
+            zpath = os.path.join(data, "otra.zip")
+            with zipfile.ZipFile(zpath, "w") as z:
+                z.writestr("otra-skill/SKILL.md", "---\nname: resumen-corto\ndescription: Resume en tres frases.\n---\nResume en tres frases.")
+                z.writestr("../fuera.txt", "x")   # a name that tries to leave its folder
+            page.click("#openSettings"); page.wait_for_selector("#drawerBody .skills-settings")
+            sk = page.locator("#drawerBody .skills-settings")
+            sk.locator("input[type=text]").fill(skill_dir); sk.locator("button:text-is('Add this folder')").click()
+            page.wait_for_function("() => /saludo-formal/.test(document.querySelector('#drawerBody .skills-settings')?.innerText || '')", timeout=15000)
+            sk = page.locator("#drawerBody .skills-settings")
+            sk.locator("input[type=file]").set_input_files(zpath)
+            page.wait_for_function("() => /resumen-corto/.test(document.querySelector('#drawerBody .skills-settings')?.innerText || '')", timeout=15000)
+            rows = page.eval_on_selector_all("#drawerBody .skills-all li", "ls => ls.map(l => l.innerText.replace(/\\s+/g, ' '))")
+            check(any(r.startswith("saludo-formal yours instructions") for r in rows) and any(r.startswith("resumen-corto yours instructions") for r in rows) and any(r.startswith("X Watcher built-in") for r in rows),
+                  f"9.4: Settings → Skills: the built-in ones and yours, added from a folder and from a ZIP ({rows})")
+            check(os.path.exists(os.path.join(data, "skills", "saludo-formal", "plantilla.txt")) and not os.path.exists(os.path.join(data, "fuera.txt")) and not os.path.exists(os.path.join(data, "skills", "fuera.txt")),
+                  "copied into the app's data, with its files; nothing from the ZIP lands outside its folder")
+            page.screenshot(path=os.path.join(OUTPUT, "app94-skills.png"))
+            page.locator("#drawerBody .skills-all li:has-text('resumen-corto') button:text-is('Remove')").click()
+            page.wait_for_function("() => !/resumen-corto/.test(document.querySelector('#drawerBody .skills-settings')?.innerText || '')", timeout=15000)
+            check(not os.path.exists(os.path.join(data, "skills", "resumen-corto")), "«Remove» takes one of yours out")
+            page.click("#closeDrawer")
+            # 9.4 · The Helper: installed from «Built-in agents» with the brain you choose; its documents are the Fer Agent manual
+            page.click("#openBuiltIn"); page.wait_for_selector("#builtInView .builtin-agent")
+            card = "#builtInView .builtin-agent:has(.builtin-name:text-is('Helper'))"
+            page.click(card + " button:text-is('Install')"); page.wait_for_timeout(300)
+            check(page.is_visible(card + " .install-brain") and page.is_visible(card + " button:text-is('Install with this brain')"), "9.4: the Helper is in «Built-in agents» and «Install» asks for its brain")
+            # (here the page doesn't get OpenRouter's list, so the brain is chosen the way the page sends it)
+            st, _, _ = ask("/api/action", "POST", {"type": "installBuiltIn", "id": "helper", "brain": "openai/gpt-6-luna", "provider": "openrouter"}, pin=PIN)
+            check(st == 200, f"installed with the brain chosen ({st})")
+            e = json.loads(ask("/api/state", pin=PIN)[1])["state"]
+            hp = next((x for x in e["agents"] if x["id"] == "helper"), None)
+            check(hp and hp["docs"] == {"folder": "", "manual": True} and hp["floor"] == "lobby" and hp["heartbeat"]["unit"] == "on_request", f"9.4: the Helper is installed in the lobby, only works when asked ({hp and (hp['floor'], hp['docs'])})")
+            page.click("#builtInView .back-btn"); page.wait_for_selector("#builtInView", state="hidden")
+            page.wait_for_selector(".fig[data-id='helper']", timeout=20000)   # the page sees it on its own
+            page.locator(".fig[data-id='helper']").first.click(); page.wait_for_selector("#profile .profile-tabs")
+            page.click(".profile-tabs button:text-is('Capabilities')")
+            page.wait_for_function("() => /16 chapters read/.test(document.querySelector('#profile .docs-block')?.innerText || '')", timeout=30000)
+            txt = page.inner_text("#profile .docs-block")
+            check("The Fer Agent manual" in txt and "Nothing of yours added" in txt and page.locator("#profile .docs-files li").count() == 0,
+                  "9.4: the Helper reads the Fer Agent manual (16 chapters), shown on its own line, not mixed with yours")
+            page.screenshot(path=os.path.join(OUTPUT, "app94-helper.png"))
         finally:
             mail.stdin.close(); mail.wait(timeout=10)
         check(not errors, f"no errors on the page: {errors[:3]}")

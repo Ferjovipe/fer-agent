@@ -205,7 +205,7 @@ const AGENTS_FOLDER = conf.agentsFolder || path.join(DATA, "agent-files");
 const MEDIA = path.join(DATA, "media");
 mkdirSync(MEDIA, { recursive: true });
 // The hands: the agents' Chrome, their folder and the skills (Fer Agent's and yours in data/skills)
-const hands = createHands({ agentsFolder: AGENTS_FOLDER, chromeProfile: path.join(DATA, "agents-chrome"), skillsFolders: [path.join(HERE, "skills"), path.join(DATA, "skills")], mailboxes: () => conf.mailboxes || [],
+const hands = createHands({ agentsFolder: AGENTS_FOLDER, chromeProfile: path.join(DATA, "agents-chrome"), skillsFolders: [path.join(HERE, "skills"), path.join(DATA, "skills")], manualFolder: path.join(HERE, "manual"), mailboxes: () => conf.mailboxes || [],
   visible: !!conf.handsVisible || process.env.FER_HANDS_VISIBLE === "1", channel: process.env.FER_CHROME_CHANNEL || "chrome", log: (...a) => log(...a),
   locale: () => (typeof ed !== "undefined" && ed.e && ed.e.language === "en" ? "en-US" : "es-ES") });   // websites, in the building's language
 if (COMMAND === "login") {
@@ -635,6 +635,47 @@ const server = http.createServer(async (req, res) => {
         await saveConfig(conf);
         return json(res, 200, { ok: true, id: box.id });
       }
+      // 9.4: skills: add one (a folder on this computer, or a ZIP: the SKILL.md format of Claude, OpenClaw and Hermes), remove one of yours, open the folder of yours
+      if (route.startsWith("/api/skills/") && req.method === "POST") {
+        const mine = path.join(DATA, "skills"); mkdirSync(mine, { recursive: true });
+        const slug = (t) => String(t || "").toLowerCase().replace(/[^a-z0-9-]/g, "-").replace(/-+/g, "-").replace(/^-|-$/g, "").slice(0, 40);
+        const nameIn = (md, fallback) => slug(((String(md).match(/^name:\s*["']?([^"'\n]+)/m) || [])[1] || "").trim() || fallback);
+        const installed = (name) => { hands.reload(); const k = hands.catalog().find((x) => x.name === name); return k ? json(res, 200, { ok: true, name, skill: k }) : json(res, 400, { error: L("That folder has no valid SKILL.md (it needs a «name» of letters, numbers and dashes).") }); };
+        if (route === "/api/skills/add-zip") {
+          let bytes; try { bytes = await readBody(req, 30e6); } catch { return json(res, 413, { error: L("Too big: up to 30 MB.") }); }
+          let zip; try { zip = await (await import("jszip")).default.loadAsync(bytes); } catch { return json(res, 400, { error: L("That isn't a ZIP file.") }); }
+          const md = Object.keys(zip.files).filter((n) => /(^|\/)SKILL\.md$/.test(n) && !zip.files[n].dir).sort((p1, p2) => p1.split("/").length - p2.split("/").length)[0];
+          if (!md) return json(res, 400, { error: L("There's no SKILL.md in that ZIP.") });
+          const base = md.slice(0, -"SKILL.md".length), name = nameIn(await zip.file(md).async("string"), slug(base.split("/").filter(Boolean).pop() || url.searchParams.get("name") || "skill"));
+          if (!/^[a-z0-9-]{2,40}$/.test(name)) return json(res, 400, { error: L("That folder has no valid SKILL.md (it needs a «name» of letters, numbers and dashes).") });
+          const dest = path.join(mine, name); await fs.rm(dest, { recursive: true, force: true }); mkdirSync(dest, { recursive: true });
+          for (const [n, f] of Object.entries(zip.files)) {
+            if (f.dir || !n.startsWith(base) || n.includes("__MACOSX/")) continue;
+            const to = path.resolve(dest, n.slice(base.length));
+            if (!to.startsWith(dest + path.sep)) continue;   // nothing outside its folder
+            mkdirSync(path.dirname(to), { recursive: true }); await fs.writeFile(to, await f.async("nodebuffer"));
+          }
+          return installed(name);
+        }
+        let d = {}; try { d = JSON.parse((await readBody(req, 8192)).toString("utf8") || "{}"); } catch { return json(res, 400, { error: L("Unreadable request.") }); }
+        if (route === "/api/skills/add-folder") {
+          const src = path.resolve(String(d.path || "")), mdPath = path.join(src, "SKILL.md");
+          if (!existsSync(mdPath)) return json(res, 400, { error: L("There's no SKILL.md in that folder.") });
+          const name = nameIn(readFileSync(mdPath, "utf8"), slug(path.basename(src)));
+          if (!/^[a-z0-9-]{2,40}$/.test(name)) return json(res, 400, { error: L("That folder has no valid SKILL.md (it needs a «name» of letters, numbers and dashes).") });
+          const dest = path.join(mine, name);
+          if (path.resolve(src) !== dest) { await fs.rm(dest, { recursive: true, force: true }); await fs.cp(src, dest, { recursive: true, filter: (f) => !/(^|[\\/])(node_modules|\.git)([\\/]|$)/.test(path.relative(src, f)) }); }
+          return installed(name);
+        }
+        if (route === "/api/skills/remove") {
+          const k = hands.catalog().find((x) => x.name === String(d.name || ""));
+          if (!k || !k.own) return json(res, 400, { error: L("Only the skills you added can be removed.") });
+          await fs.rm(path.join(mine, k.name), { recursive: true, force: true }); hands.reload();
+          return json(res, 200, { ok: true });
+        }
+        if (route === "/api/skills/open") { execFile(process.platform === "darwin" ? "open" : process.platform === "win32" ? "explorer" : "xdg-open", [mine], () => {}); return json(res, 200, { ok: true }); }
+        return json(res, 404, { error: L("Not found.") });
+      }
       // 9.3: an agent's documents (its RAG): the list; adding one (the file itself, ?agent=…&name=…); removing one; opening its folder here
       if (route.startsWith("/api/docs")) {
         const DOC = /\.(pdf|docx|doc|rtf|txt|md|markdown|csv|tsv|json|html?|xml|ya?ml|log)$/i;
@@ -642,8 +683,8 @@ const server = http.createServer(async (req, res) => {
         if (route !== "/api/docs/add" && req.method === "POST") { try { d = JSON.parse((await readBody(req, 8192)).toString("utf8") || "{}"); } catch { return json(res, 400, { error: L("Unreadable request.") }); } }
         const a = ed.agent(String(d.agent || url.searchParams.get("agent") || ""));
         if (!a) return json(res, 400, { error: L("There is no such agent.") });
-        const folder = (a.docs || {}).folder || "";
-        if (route === "/api/docs" && req.method === "GET") return json(res, 200, Object.assign({ folder }, await hands.docs("list", { folder }, { agent: a.id })));
+        const folder = (a.docs || {}).folder || "", manual = !!(a.docs || {}).manual;
+        if (route === "/api/docs" && req.method === "GET") return json(res, 200, Object.assign({ folder, manual }, await hands.docs("list", { folder, manual }, { agent: a.id })));
         if (route === "/api/docs/add" && req.method === "POST") {
           const name = String(url.searchParams.get("name") || "");
           if (!DOC.test(name)) return json(res, 400, { error: L("That kind of file can't be read: PDF, Word or text.") });

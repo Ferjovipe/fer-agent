@@ -10,7 +10,7 @@ src = open(os.path.join(os.path.dirname(os.path.abspath(__file__)), "web_test.py
 exec(src[:src.index("server = subprocess.Popen")].replace("PORT = 8811", "PORT = 8814"))
 
 # ---------- More text models, so that “Buscar entre todos” is needed ----------
-EXTRA = [m(f"zeta/zeta-{i}", f"Zeta {i}", "0.000001", "0.000004") for i in range(1, 13)]
+EXTRA = [m(f"zeta/zeta-{i}", f"Zeta {i}", "0.000001", "0.000004") for i in range(1, 13)] + [m("zeta/zeta-libre:free", "Zeta Libre (free)", "0", "0")]   # 9.4: and a free one
 TEXT += EXTRA; ALL["data"] += EXTRA
 # ---------- Any API, one of those the user adds (“O cualquier otra”) ----------
 MIAPI = "https://api.miapi.test/v1"
@@ -72,14 +72,20 @@ try:
         # ---------- Built-in agents ----------
         page.click("#openBuiltIn"); page.wait_for_selector("#builtInView .builtin-agent")
         cards = page.eval_on_selector_all("#builtInView .builtin-agent .builtin-name", "bs => bs.map(b => b.textContent)")
-        check(len(cards) == 10 and cards[-1] == "Correo" and "Sabio 2" in cards and "Jefe" in cards and not any("Consejera" in t for t in cards),
-              f"“Agentes de serie”: the 9 of the recommended team, with “Sabio 2”, and Correo (v9) on its own ({cards})")
+        check(len(cards) == 11 and cards[-2:] == ["Correo", "Ayudante"] and "Sabio 2" in cards and "Jefe" in cards and not any("Consejera" in t for t in cards),
+              f"“Agentes de serie”: the 9 of the recommended team, with “Sabio 2”, and Correo (v9) and Ayudante (9.4) on their own ({cards})")
         check(page.is_visible("#builtInView .builtin-agent:has-text('Jefe') >> text=Siempre está") and page.is_visible("#builtInView button:text-is('Instalar el equipo recomendado (faltan 8)')"), "the boss is already there; button “Instalar el equipo recomendado (faltan 8)”")
         check(personal(page.inner_text("#builtInView")) == [], f"the built-in page, with no personal references: {personal(page.inner_text('#builtInView'))}")
         photo(page, "3-built-in-agents")
-        page.click("#builtInView .builtin-agent:has(.builtin-name:text-is('Arturito')) button:text-is('Instalar')"); page.wait_for_timeout(500)
+        card = "#builtInView .builtin-agent:has(.builtin-name:text-is('Arturito'))"
+        page.click(card + " button:text-is('Instalar')"); page.wait_for_timeout(300)
+        check(page.is_visible(card + " .install-brain input[aria-label='Buscar modelo']") and len(state(page)["agents"]) == 1, "9.4: «Install» first asks what it thinks with (with the brain search); nothing installed yet")
+        page.fill(card + " .install-brain input[aria-label='Buscar modelo']", "zeta 3"); page.wait_for_timeout(200)
+        page.click(card + " .install-brain .model-result:has-text('Zeta 3')"); page.wait_for_timeout(200)
+        page.click(card + " button:text-is('Instalar con este cerebro')"); page.wait_for_timeout(500)
         e = state(page)
         art = next((a for a in e["agents"] if a["id"] == "artie"), None)
+        check(art and art["brain"] == "zeta/zeta-3", f"and it's installed with the brain you chose ({art and art['brain']})")
         check(len(e["agents"]) == 2 and art and art["floor"] in [p["id"] for p in e["floors"]], "a single one can be installed (Arturito), with its floor")
         check(page.is_visible("#builtInView .builtin-agent:has(.builtin-name:text-is('Arturito')) button:text-is('Quitar del edificio')"), "and its card changes to “En tu edificio · Quitar del edificio”")
         page.click("#builtInView button:has-text('Instalar el equipo recomendado')"); page.wait_for_timeout(600)
@@ -88,7 +94,8 @@ try:
         remove = "#builtInView .builtin-agent:has(.builtin-name:text-is('Arturito')) button:text-is('Quitar del edificio')"
         page.click(remove); page.click("#builtInView .builtin-agent:has(.builtin-name:text-is('Arturito')) .danger"); page.wait_for_timeout(500)
         check(len(state(page)["agents"]) == 8 and page.is_visible("#builtInView .builtin-agent:has(.builtin-name:text-is('Arturito')) button:text-is('Instalar')"), "removing one (two taps): it leaves the building and is available to install again")
-        page.click("#builtInView .builtin-agent:has(.builtin-name:text-is('Arturito')) button:text-is('Instalar')"); page.wait_for_timeout(500)
+        page.click("#builtInView .builtin-agent:has(.builtin-name:text-is('Arturito')) button:text-is('Instalar')"); page.wait_for_timeout(300)
+        page.click("#builtInView .builtin-agent:has(.builtin-name:text-is('Arturito')) button:text-is('Instalar con este cerebro')"); page.wait_for_timeout(500)
         page.click("#builtInView .back-btn"); page.wait_for_selector("#builtInView", state="hidden")
         # ---------- Signs on top, top bar on one line, directory only in “Franjas” ----------
         page.wait_for_selector(".tier.storey .sign")
@@ -132,14 +139,22 @@ try:
         check(page.is_visible("#profile a[href*='order=most-popular']"), "and a link to OpenRouter's most popular ones")
         page.select_option(sel, "zeta/zeta-7"); page.wait_for_timeout(400)
         check(agent(page, "Tecno")["brain"] == "zeta/zeta-7", "any one can be chosen directly in the drop-down")
-        button = "#profile .field:has(> span:text-is('Cerebro')) .search-model"
-        check(page.is_visible(button) and page.inner_text(button) == f"Buscar entre todos ({len(TEXT) + len(OTHERS)})", f"and also “Buscar entre todos (N)” to type the name: “{page.inner_text(button) if page.is_visible(button) else ''}”")
-        page.click(button); page.fill("#profile input[aria-label='Buscar modelo']", "zeta 1"); page.wait_for_timeout(200)
+        box = "#profile .field:has(> span:text-is('Cerebro')) .model-search-box"
+        check(page.is_visible(box + " input[aria-label='Buscar modelo']"), "9.4: the search box is always in sight, above the drop-down (before it was a small button nobody saw)")
+        chips = page.eval_on_selector_all(box + " .chip", "cs => cs.map(c => c.textContent)")
+        check(chips == ["Gratis", "Usa herramientas", "Ve imágenes"], f"with one-tap filters: {chips}")
+        page.fill(box + " input[aria-label='Buscar modelo']", "zeta 1"); page.wait_for_timeout(200)
         res = page.eval_on_selector_all("#profile .model-search .model-result", "bs => bs.map(b => b.textContent)")
         check(res and all("Zeta 1" in r for r in res), f"you type “zeta 1” and the ones that have it come up ({len(res)})")
         photo(page, "7-search-model")
         page.click("#profile .model-search .model-result:has-text('Zeta 12')"); page.wait_for_timeout(400)
         check(agent(page, "Tecno")["brain"] == "zeta/zeta-12", "you choose one from the search and it's now its brain")
+        box = "#profile .field:has(> span:text-is('Cerebro')) .model-search-box"
+        page.click(box + " .chip:text-is('Gratis')"); page.wait_for_timeout(200)
+        free = page.eval_on_selector_all("#profile .model-search .model-result", "bs => bs.map(b => b.textContent)")
+        check(free and all("gratis" in r for r in free), f"«Gratis»: only the free ones ({len(free)}: {free[:3]})")
+        page.click(box + " .chip:text-is('Gratis')"); page.wait_for_timeout(200)
+        check(not page.is_visible("#profile .model-search"), "tapping it again, the list goes away")
         # ---------- Other APIs: any one, with its address ----------
         page.click("#openSettings"); page.wait_for_selector("#drawerBody h4:text-is('Otras API (tus propias claves)')")
         check(personal(page.inner_text("#drawerBody")) == [], f"Settings with no personal references: {personal(page.inner_text('#drawerBody'))}")
@@ -158,16 +173,16 @@ try:
         profile(page, "Tecno", "Cerebro y gasto")
         sel_prov = "#profile .field:has(> span:text-is('Con qué piensa')) select"
         opts = page.eval_on_selector_all(sel_prov + " option", "os => os.map(o => o.textContent)")
-        check(opts == ["OpenRouter (se paga por uso)", "Mi API · tu clave, pago por uso"], f"in its profile, “Con qué piensa”: {opts}")
+        check(opts == ["OpenRouter (se paga por uso)", "Mi API · tu clave"], f"in its profile, “Con qué piensa”: {opts}")
         page.select_option(sel_prov, "api-mi-api"); page.wait_for_timeout(500)
         t = agent(page, "Tecno")
         check(t["provider"] == "api-mi-api" and t["brain"] == "mia-grande", f"Tecno thinks with Mi API ({t['provider']} · {t['brain']})")
-        check(page.is_visible("#profile >> text=Se paga por uso a Mi API con tu clave"), "the profile says so: it comes out of your subscription, it doesn't count towards the cap")
+        check(page.is_visible("#profile >> text=Con tu clave de Mi API: gasta de su saldo de API"), "the profile says so: it comes out of your subscription, it doesn't count towards the cap")
         photo(page, "9-profile-other-api")
         chat_with(page, "Tecno"); send(page, "¿Qué tal todo?")
         page.wait_for_selector("#messages .msg.bot:not(.greeting) .meta", timeout=15000)
         check("Respuesta desde Mi API." in page.inner_text("#messages") and myapi_calls and myapi_calls[-1]["h"].get("authorization") == "Bearer sk-mia" and myapi_calls[-1]["b"]["model"] == "mia-grande", "it answers from Mi API, with its key and its model")
-        check("Mi API: tu clave, pago por uso" in page.inner_text("#messages .msg.bot:not(.greeting) .meta"), "below: “Mi API: tu suscripción”")
+        check("Mi API: tu clave" in page.inner_text("#messages .msg.bot:not(.greeting) .meta"), "below: “Mi API: tu suscripción”")
         t = agent(page, "Tecno")
         check(sum(t["spending"].values()) == 0 and sum(x["tokens"] for x in t["subscription"].values()) == 840, f"it doesn't add to the spending; it's recorded apart ({t['subscription']})")
         page.click("#closeChat")

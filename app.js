@@ -6,7 +6,7 @@
 // =====================================================================
 import { LOCALE, setLanguage, Building, ROLES, CAPABILITIES, BUILT_IN_SKILL_CAP, SEATS, PER_POOL, MAX_OFFICES, MAX_POOLS, MAX_MEETING_SEATS, VERSION, JEV_MODEL, MODEL_TYPES, LEVELS, LEVEL_NAME,
   seating, cleanLook, heartbeatText, levelKey, modelType, variablePrice, fmt, fmtCap, explainError, PROVIDERS, filterApiModels, MAX_PERSONALITY, MAX_OBJECTIVE_LINES,
-  cleanObjectives, unitPrice, hearingPricePerSecond, noPublishedPrice, describedPrice, imageTokens, memoryNotesMd, cleanTopic, modelVersion, chooseModel, brainFolders, readBackupFile, emailServers } from "./engine.js";
+  cleanObjectives, unitPrice, hearingPricePerSecond, noPublishedPrice, describedPrice, imageTokens, memoryNotesMd, cleanTopic, modelVersion, chooseModel, brainFolders, readBackupFile, emailServers, floorFile, checkFloorFile, spendingSummary } from "./engine.js";
 import { CHARACTERS } from "./characters.js";
 import { tr, trAlways, setNames, loadLanguage, translatePage, language, LANGUAGES, saveLanguage, savedLanguage } from "./languages.js";
 import { renderLanding } from "./landing.js";
@@ -30,7 +30,7 @@ const store = {
 };
 const K = { state: "ferAgent.state", key: "ferAgent.key", look: "ferAgent.look", pin: "ferAgent.pin", speaker: "ferAgent.speaker", backup: "ferAgent.backup", v4: "ferAgent.stateV4", language: "ferAgent.language",
   anthropicKey: "ferAgent.keyAnthropic", openaiKey: "ferAgent.keyOpenAI", xaiKey: "ferAgent.keyXai",
-  lastBackup: "ferAgent.lastBackup", device: "ferAgent.device", folder: "ferAgent.folder" };
+  lastBackup: "ferAgent.lastBackup", device: "ferAgent.device", folder: "ferAgent.folder", welcome: "ferAgent.welcome" };
 // What this browser saved before version 9 under other names moves to these ones (once)
 for (const [now, before] of [[K.state, "ferEdificio.estado"], [K.pin, "ferEdificio.pin"], [K.speaker, "ferEdificio.altavoz"], [K.backup, "ferEdificio.copia"], [K.v4, "ferEdificio.estadoV4"],
   [K.language, "ferAgent.idioma"], [K.lastBackup, "ferAgent.ultimaCopia"], [K.device, "ferAgent.aparato"], [K.folder, "ferAgent.carpeta"]]) {
@@ -188,7 +188,9 @@ async function refreshHome() {
 function askPin() { if ($("drawer").hidden) openDrawer("settings"); }
 const apiBase = () => (mode === "local" ? OR : "./api/or");
 const apiCab = (json) => { const c = mode === "local" ? { Authorization: "Bearer " + store.get(K.key) } : { "X-Fer-Pin": pin }; if (json) c["Content-Type"] = "application/json"; return c; };
-const hasAccess = () => (mode === "home" ? !!pin && !(isApp() && homeInfo.key === false) : !!store.get(K.key));
+// 9.4: with your own key from another AI (Claude, OpenAI, Gemini…) or a model on your computer you can also start, without OpenRouter
+const ownKey = () => !!ed && ed.connections().some((c) => hasApiKey(c.id));
+const hasAccess = () => (mode === "home" ? !!pin && !(isApp() && homeInfo.key === false && !ownKey()) : !!store.get(K.key) || ownKey());
 
 // =====================================================================
 // OpenRouter model lists (public, no key)
@@ -242,7 +244,7 @@ function modelLabel(m) {
 // We don't recommend models: a recommendation goes out of date within a week. The list is OpenRouter's, as it is today.
 const SEARCH_FROM = 15;   // with more than this, a search box next to the drop-down
 const POPULAR_MODELS = "https://openrouter.ai/models?output_modalities=text&order=most-popular";
-function modelPicker(type, current, { empty, extra, onChange, filter } = {}) {
+function modelPicker(type, current, { empty, extra, onChange, filter, start } = {}) {
   const sel = h("select", {});
   const list = (byType[type] || []).filter(filter || (() => true)).sort((a, b) => (n0(a.pricing && a.pricing.prompt) + n0(a.pricing && a.pricing.completion)) - (n0(b.pricing && b.pricing.prompt) + n0(b.pricing && b.pricing.completion)) || a.id.localeCompare(b.id));
   const allModels = type === "text" && !filter ? [...list, ...byType.others] : list;
@@ -260,24 +262,28 @@ function modelPicker(type, current, { empty, extra, onChange, filter } = {}) {
   fillIn(current || "");
   if (onChange) sel.addEventListener("change", () => onChange(sel.value));
   if (allModels.length > SEARCH_FROM) {
-    // also, «Search all»: you type part of the name and choose (the same as finding it in the drop-down, but faster)
-    const button = h("button", { type: "button", class: "btn mini search-model" }, tr(`Search all (${allModels.length})`));
-    let box = null;
-    button.onclick = (ev) => {
-      ev.preventDefault();
-      if (box && box.isConnected) { box.remove(); box = null; return; }
-      const q = h("input", { type: "search", placeholder: tr("Type part of the name: claude, gpt, gemini, flux…"), "aria-label": "Search model" });
-      const res = h("div", { class: "model-search" });
-      const renderResults = () => {
-        const t = withoutAccents(q.value.trim()), hall = allModels.filter((m) => !t || withoutAccents(m.id + " " + (m.name || "")).includes(t)).slice(0, 40);
-        res.replaceChildren(...hall.map((m) => h("button", { type: "button", class: "model-result", onclick: (e2) => { e2.preventDefault(); fillIn(m.id); box.remove(); box = null; sel.dispatchEvent(new Event("change")); } }, modelLabel(m))),
-          hall.length ? h("small", { class: "note" }, tr(hall.length === 40 ? "There are more: type a bit more of the name." : `${hall.length} found`)) : h("small", { class: "note" }, tr("None with that name.")));
-      };
-      q.oninput = renderResults;
-      box = h("div", { class: "model-search-box" }, q, res);
-      button.after(box); renderResults(); q.focus();
-    };
-    requestAnimationFrame(() => { if (sel.isConnected && sel.nextElementSibling !== button) sel.after(button); });
+    // 9.4: the search, always in sight (before it was a small button that nobody saw): you type part of the name and/or tap a filter,
+    // and the ones that fit come up below; you choose one with a tap. The drop-down stays, to browse them all.
+    const st = Object.assign({ q: "", free: false, tools: false, sees: false }, start || {});   // 9.4: start = filters already on (the first start: free and with tools)
+    const isFree = (m) => /:free$/.test(m.id) || (!variablePrice(m) && priceTxt(m) === tr("free"));
+    const usesTools = (m) => Array.isArray(m.supported_parameters) && m.supported_parameters.includes("tools");
+    const fits = (m) => (!st.q || withoutAccents(m.id + " " + (m.name || "")).includes(withoutAccents(st.q))) && (!st.free || isFree(m)) && (!st.tools || usesTools(m)) && (!st.sees || !!modelData(m).sees);
+    const q = h("input", { type: "search", class: "model-q", placeholder: tr("Search a brain: claude, gpt, gemini, deepseek…"), "aria-label": "Search model" });
+    const res = h("div", { class: "model-search", hidden: true });
+    const chip = (key, label) => { const c = h("button", { type: "button", class: "chip", "aria-pressed": String(!!st[key]) }, label); c.onclick = (e) => { e.preventDefault(); st[key] = !st[key]; c.setAttribute("aria-pressed", String(st[key])); renderResults(); }; return c; };
+    const chips = type === "text" ? h("div", { class: "model-chips" }, chip("free", "Free"), chip("tools", "Uses tools"), chip("sees", "Sees images")) : null;
+    function renderResults() {
+      st.q = q.value.trim();
+      if (!st.q && !st.free && !st.tools && !st.sees) { res.hidden = true; res.replaceChildren(); return; }
+      const all = allModels.filter(fits), hall = all.slice(0, 40);
+      res.hidden = false;
+      res.replaceChildren(...hall.map((m) => h("button", { type: "button", class: "model-result", onclick: (e2) => { e2.preventDefault(); fillIn(m.id); q.value = ""; for (const k of ["free", "tools", "sees"]) st[k] = false; chips && chips.querySelectorAll(".chip").forEach((c) => c.setAttribute("aria-pressed", "false")); renderResults(); sel.dispatchEvent(new Event("change")); } }, modelLabel(m))),
+        all.length ? h("small", { class: "note" }, all.length > 40 ? tr(`${all.length} found: the 40 cheapest. Type a bit more of the name.`) : tr(`${all.length} found`)) : h("small", { class: "note" }, tr("None with that name.")));
+    }
+    q.oninput = renderResults;
+    const bar = h("div", { class: "model-search-box" }, q, chips, res);
+    if (st.free || st.tools || st.sees) renderResults();
+    requestAnimationFrame(() => { if (sel.isConnected && sel.previousElementSibling !== bar) sel.before(bar); });
   }
   return sel;
 }
@@ -857,6 +863,7 @@ function renderFloor(cont, p) {
       h("button", { class: "btn mini", disabled: !p.pools || (p.pools - 1) * PER_POOL < r.pool.length, onclick: () => run({ type: "enlargeFloor", id: p.id, what: "pool", delta: -1 }) }, "− Pool"),
       h("button", { class: "btn mini", onclick: () => run({ type: "moveFloorUp", id: p.id }) }, "Move up"),
       h("button", { class: "btn mini", onclick: () => run({ type: "moveFloorDown", id: p.id }) }, "Move down"),
+      ags.length ? h("button", { class: "btn mini", title: "Its name, its job and its agents, without anything private: to load it in another building or share it", onclick: () => saveFloorFile(p) }, "Save to a file") : null,   // 9.4
       ags.length ? null : h("button", { class: "btn mini danger", onclick: (ev) => confirm(ev.target, "Delete the floor? Press again", () => Motor.run({ type: "deleteFloor", id: p.id }).then(() => { openFloorId = ""; render(); }).catch(warn)) }, "Delete floor")].filter(Boolean));
   }
   cont.append(acc);
@@ -1215,7 +1222,7 @@ function profileBrain(box, a, change, { brainless }) {
   } else {
     // What it thinks with: OpenRouter (pay per use) or one of your other APIs (Settings → Other APIs), one from a subscription you already pay for
     const prov = ed.brainOf(a).provider, conx = ed.connections();
-    const options = [["openrouter", "OpenRouter (pay per use)"], ...conx.map((c) => [c.id, (ed.provider(c.id) || {}).noKey ? `${c.name} · free, on your computer` : `${c.name} · your own key, pay per use`])];   // 9.2.4: a key is paid per use (it isn't your app plan)
+    const options = [["openrouter", "OpenRouter (pay per use)"], ...conx.map((c) => [c.id, (ed.provider(c.id) || {}).noKey ? `${c.name} · free, on your computer` : `${c.name} · your own key`])];   // 9.2.4: a key is paid per use (it isn't your app plan)
     if (prov !== "openrouter" && !conx.some((c) => c.id === prov)) options.push([prov, (ed.provider(prov) || {}).name || prov]);
     const selProv = h("select", { onchange: (ev) => {
       const fresh = ev.target.value;
@@ -1224,15 +1231,15 @@ function profileBrain(box, a, change, { brainless }) {
     } }, options.map(([k, t]) => h("option", { value: k }, t)));
     selProv.value = prov;
     const block = h("div", { class: "block" }, h("h4", {}, "Brain"), field("Thinks with", selProv));
-    if (!conx.length) block.append(h("small", { class: "note" }, "Do you have your own key from another AI (Claude, OpenAI, Gemini…) or a model on your computer? Add it in Settings → Other APIs and you'll be able to pick it here. Each key is paid per use to its company."));
+    if (!conx.length) block.append(h("small", { class: "note" }, "Do you have your own key from another AI (Claude, OpenAI, Gemini…) or a model on your computer? Add it in Settings → Other APIs and you'll be able to pick it here."));
     if (prov === "openrouter") {
-      block.append(field("Brain", modelPicker("text", a.brain, { onChange: (v) => change({ brain: v }) }), "All of OpenRouter's text models, from cheapest to most expensive. Or type the name with “Search all”. Prices in dollars per million tokens (input / output). “sees” = can look at images."),
+      block.append(field("Brain", modelPicker("text", a.brain, { onChange: (v) => change({ brain: v }) }), "All of OpenRouter's text models, from cheapest to most expensive. Or search it by name, just above. Prices in dollars per million tokens (input / output). “sees” = can look at images."),
         popularNote(), brainWarnings(a), proposalsFor("text"));
     } else {
       const P = ed.provider(prov) || { short: prov };
       block.append(directPicker(prov, a.brain, (v) => change({ brain: v })),
-        h("small", { class: "note" }, tr(hasApiKey(prov) ? `Paid per use to ${P.short} with your key (it isn't your ${P.short} app plan). It doesn't count towards the spending cap: it's tracked separately, so you can see it.` : `The ${P.short} key is missing: add it in Settings → Other APIs.`) + " " +
-          tr("Internet search only works with OpenRouter.")));
+        h("small", { class: "note" }, tr(hasApiKey(prov) ? `With your ${P.short} key: it spends from its API balance (what you put in, or the API credits your plan includes). It counts towards the spending cap, at the public price of the same model.` : `The ${P.short} key is missing: add it in Settings → Other APIs.`) + " " +
+          tr("Without the app, internet search only works with OpenRouter.")));
       const selExhausted = h("select", { onchange: (ev) => change({ onExhausted: ev.target.value }) }, h("option", { value: "openrouter" }, "Carry on with OpenRouter"), h("option", { value: "stop" }, "Stop working"));
       selExhausted.value = a.onExhausted || "openrouter";
       block.append(field(`If your ${P.short} quota runs out`, selExhausted, "When the company says there are no credits left (for example, at the end of the month), you choose."));
@@ -1354,7 +1361,10 @@ function docsBlock(a) {
       const d = await r.json();
       if (!r.ok) throw new Error(d.error || "");
       list.replaceChildren();
-      if (!d.files.length) { list.append(h("small", { class: "note" }, "No documents yet.")); return; }
+      // 9.4: the Fer Agent manual (the Helper's): a line of its own, not mixed with yours
+      const man = d.files.filter((f) => f.manual); d.files = d.files.filter((f) => !f.manual);
+      if (d.manual) list.append(h("p", { class: "note docs-manual" }, h("b", {}, "The Fer Agent manual"), " · ", man.length ? tr(`${man.length} chapters read, in the building's language. It comes with the app: it's updated with it.`) : "It isn't on this computer: update the app."));
+      if (!d.files.length) { list.append(h("small", { class: "note" }, d.manual ? "Nothing of yours added: the manual is enough to answer about Fer Agent." : "No documents yet.")); return; }
       const read = d.files.filter((f) => !f.error), bad = d.files.filter((f) => f.error);
       list.append(h("small", { class: "note" }, tr(`${read.length} documents read`) + (bad.length ? " · " + tr(`${bad.length} couldn't be read`) : "")));
       const ul = h("ul", { class: "docs-files" });
@@ -1457,8 +1467,7 @@ const fullCatalog = () => (mode === "home" ? homeSkills : ed.skillsCatalog());
 const catalog = () => fullCatalog().filter((k) => !BUILT_IN_SKILL_CAP[k.name]);   // 9.2: the built-in ones are inside their capability
 function skillsBlock(a, change) {
   const cat = catalog(), all = fullCatalog();   // the ones that run on their own on each heartbeat can be any (reading the email, the X Watcher…)
-  if (!all.length) return h("small", { class: "note" }, mode === "home" ? "Fer Home has no skills yet (“skills” folder next to fer-home.mjs)." :
-    "Hands work with Fer Home running on your computer: the agents' Chrome, their folder on the Mac and the skills. On this website, without Fer Home, they do nothing. How to set it up: README in the ZIP.");
+  if (!all.length) return h("small", { class: "note" }, mode === "home" ? "No skills yet: add them in Settings → Skills." : "Skills work in the app (or Fer Home), on your computer.");
   const has = (n) => a.skills.includes(n);
   const list = h("div", { class: "skills-list" }, cat.map((k) => h("label", { class: "cap" },
     h("input", { type: "checkbox", checked: has(k.name), onchange: (ev) => change({ skills: ev.target.checked ? [...new Set([...a.skills, k.name])] : a.skills.filter((x) => x !== k.name) }) }),
@@ -1598,7 +1607,7 @@ function renderChat(force) {
     cardsUpTo(x.ts || 0);
     if (x.role === "user") m.append(h("div", { class: "msg me" }, h("div", { class: "bubble" }, raw(x.content)), x.voice ? h("div", { class: "meta" }, x.voice) : null));
     else if (x.role === "assistant") {
-      const meta = h("div", { class: "meta" }, h("span", {}, x.provider ? tr(`${x.model || ""} · ${((ed.provider(x.provider) || {}).short) || x.provider}: your own key, pay per use`) + (x.subscription ? ` (≈${fmt(x.subscription)})` : "") : `${x.model || ""} · ${fmt(x.cost || 0)}`),
+      const meta = h("div", { class: "meta" }, h("span", {}, x.provider ? tr(`${x.model || ""} · ${((ed.provider(x.provider) || {}).short) || x.provider}: your own key`) + (x.subscription ? ` (≈${fmt(x.subscription)})` : "") : `${x.model || ""} · ${fmt(x.cost || 0)}`),
         speaks ? h("button", { onclick: (ev) => { unlockAudio(); speakText(x.content, ev.target.parentElement, a); } }, "▶ Listen") : null,
         copyButton(() => bubble),
         h("span", { class: "coins-msg" }, coinButton(a, "gold"), coinButton(a, "red")));
@@ -2111,6 +2120,28 @@ function requestCard(x) {
 // Built-in agents: the ones Fer Agent comes with, to install whenever you want
 // =====================================================================
 let builtInSignature = "";
+// 9.4: installing a built-in agent, you choose what it thinks with (before, a sage took the most expensive model by itself)
+function installBrainForm(x, onDone) {
+  const conx = ed.connections();
+  let prov = "openrouter", brain = x.brain || "";
+  const pickerBox = h("div", {});
+  const fill = () => pickerBox.replaceChildren(prov === "openrouter"
+    ? modelPicker("text", brain, { onChange: (v) => { brain = v; } })
+    : directPicker(prov, brain = (directSuggestions(prov, { role: x.role })[0] || ""), (v) => { brain = v; }));
+  const selProv = h("select", { onchange: (ev) => { prov = ev.target.value; brain = prov === "openrouter" ? (x.brain || "") : ""; fill(); } },
+    h("option", { value: "openrouter" }, "OpenRouter (pay per use)"), conx.map((c) => h("option", { value: c.id }, (ed.provider(c.id) || {}).noKey ? `${c.name} · free, on your computer` : `${c.name} · your own key`)));
+  fill();
+  return h("div", { class: "install-brain" },
+    h("b", {}, "What does it think with?"),
+    h("small", { class: "note" }, "Choose its brain now (it comes with a suggestion; you can change it later in its profile)."),
+    field("Thinks with", selProv), pickerBox,
+    h("div", { class: "row-c" }, h("button", { class: "btn mini primary", type: "button", onclick: (ev) => {
+      if (!brain) brain = ((pickerBox.querySelector("select") || {}).value || "").trim();   // the one the list shows, if you didn't touch it
+      if (!brain) { warn(Object.assign(new Error(tr("Choose its brain first.")), { shown: true })); return; }
+      ev.target.disabled = true;
+      Motor.run({ type: "installBuiltIn", id: x.id, brain, provider: prov }).then(onDone).catch((err) => { ev.target.disabled = false; warn(err); });
+    } }, "Install with this brain")));
+}
 function renderBuiltIn(force) {
   const v = $("builtInView");
   if (screen !== "builtIn") return;
@@ -2130,7 +2161,9 @@ function renderBuiltIn(force) {
         x.installed
           ? (x.id === "boss" ? null : [h("button", { class: "btn mini", type: "button", onclick: () => { closeScreen(); const a = ed.exactAgent(x.id); if (a) choose(a); } }, "See their profile"),
               h("button", { class: "btn mini danger", type: "button", onclick: (ev) => confirm(ev.target, "Remove it? It's deleted along with its short memory. Press again", () => Motor.run({ type: "deleteAgent", id: x.id }).then(() => { render(); renderBuiltIn(true); }).catch(warn)) }, "Remove from the building")])
-          : h("button", { class: "btn mini primary", type: "button", onclick: (ev) => { ev.target.disabled = true; Motor.run({ type: "installBuiltIn", id: x.id }).then(onDone).catch((err) => { ev.target.disabled = false; warn(err); }); } }, "Install"))));
+          : x.brainless || x.role === "jev"
+            ? h("button", { class: "btn mini primary", type: "button", onclick: (ev) => { ev.target.disabled = true; Motor.run({ type: "installBuiltIn", id: x.id }).then(onDone).catch((err) => { ev.target.disabled = false; warn(err); }); } }, "Install")
+            : h("button", { class: "btn mini primary", type: "button", onclick: (ev) => { const art = ev.target.closest(".builtin-agent"); if (!art.querySelector(".install-brain")) art.querySelector(".builtin-txt").append(installBrainForm(x, onDone)); } }, "Install"))));
   v.replaceChildren(screenHeader("Built-in agents"), h("div", { class: "inbox builtin-catalog" },
     h("h1", {}, "Built-in agents"),
     h("p", { class: "note-dark" }, "The agents that come with Fer Agent. A new building starts with just the boss: if you only want one agent, you already have it. Install the ones you want, whenever you want; if you remove one, it's back here."),
@@ -2322,7 +2355,7 @@ function meetingForm() {
 // Drawer: Settings, Spending, Look
 // =====================================================================
 let drawerType = "", drawerData = {}, focusBefore = null;
-const TITLES = { settings: "Settings", spending: "Spending", look: "Appearance", agent: "Create agent", storey: "Create floor" };
+const TITLES = { settings: "Settings", spending: "Spending", look: "Appearance", agent: "Create agent", storey: "Create floor", welcome: "First steps" };
 function openDrawer(type, data) {
   if ($("drawer").hidden) focusBefore = document.activeElement;
   drawerType = type; drawerData = data || {};
@@ -2330,6 +2363,7 @@ function openDrawer(type, data) {
   $("overlay").classList.toggle("light", type === "look"); $("drawer").classList.toggle("low", type === "look");
   if (type === "settings") renderSettings(); if (type === "spending") renderSpendingDrawer(); if (type === "look") renderLook();
   if (type === "agent") renderCreateAgent(true); if (type === "storey") renderCreateStorey();
+  if (type === "welcome") renderWelcome();
   $("drawer").hidden = false; $("overlay").hidden = false; $("drawerBody").scrollTop = 0; $("closeDrawer").focus();
   markNav();
 }
@@ -2415,6 +2449,72 @@ window.addEventListener("popstate", (ev) => {
 });
 
 // ---------------- Create floor ----------------
+// 9.4 · Floors in a file: load one (yours or from «Community floors»), seeing first who comes in and what each one does and spends
+const COMMUNITY = "https://raw.githubusercontent.com/Ferjovipe/fer-agent/main/community/floors/";
+const COMMUNITY_PAGE = "https://github.com/Ferjovipe/fer-agent/tree/main/community/floors";
+const fileName = (t) => String(t || "floor").normalize("NFD").replace(/[̀-ͯ]/g, "").replace(/[^\w-]+/g, "-").replace(/^-+|-+$/g, "").toLowerCase().slice(0, 40) || "floor";
+function saveFloorFile(p) {
+  const f = floorFile(ed.e, p.id);
+  if (!f) return;
+  download(JSON.stringify(f, null, 1), `fer-agent-floor-${fileName(p.name)}.json`);
+  toast("Floor saved to a file: without memory, tasks, spending, documents or accounts. You can load it in another building or share it.");
+}
+function floorPreview(box, f, community) {
+  const bad = checkFloorFile(f);
+  if (bad) { box.replaceChildren(h("p", { class: "warn-note" }, bad)); return; }
+  const add = h("button", { class: "btn primary", type: "button", onclick: async () => {
+    add.disabled = true;
+    try {
+      const r = await Motor.run({ type: "importFloor", file: f });
+      closeDrawer(); render(); openFloor(r.id); showTab(window.innerWidth <= 900 ? "building" : tab);
+      toast(tr(`Floor «${f.name}» added, with ${r.agents.length} agents.`));
+    } catch (e) { add.disabled = false; warn(e); }
+  } }, "Add this floor to my building");
+  box.replaceChildren(h("div", { class: "floor-preview" },
+    h("h4", {}, raw(f.name)), f.job ? h("p", { class: "note" }, raw(f.job)) : null,
+    f.author ? h("small", { class: "note" }, tr("By"), " ", raw(String(f.author).slice(0, 60))) : null,
+    h("ul", { class: "floor-agents" }, f.agents.map((a) => h("li", {},
+      h("b", {}, raw(String(a.name).slice(0, 40))), " · ", trAlways((ROLES[a.role] || {}).name || a.role),
+      h("small", { class: "note" }, spendingSummary(a, models)),
+      a.instructions ? h("small", { class: "floor-instr" }, raw(String(a.instructions).slice(0, 220) + (String(a.instructions).length > 220 ? "…" : ""))) : null))),
+    h("p", { class: "note" }, "They come in with «Ask me first»: before anything with an effect outside (sending, publishing, buying, deleting…) they ask you in the inbox. You can change it in each one's profile."),
+    community ? h("p", { class: "warn-note" }, "Someone else wrote their instructions: read them before adding the floor. What they do depends on them.") : null,
+    h("div", { class: "row-c" }, add)));
+}
+function floorFromFileBlock() {
+  const out = h("div", {});
+  const fi = h("input", { type: "file", accept: "application/json,.json", hidden: true, onchange: async () => {
+    const file = fi.files[0]; fi.value = ""; if (!file) return;
+    let x; try { x = JSON.parse(await file.text()); } catch { out.replaceChildren(h("p", { class: "warn-note" }, "That file can't be read: it isn't a Fer Agent floor file.")); return; }
+    floorPreview(out, x, false);
+  } });
+  return h("div", { class: "block floor-file" }, h("h4", {}, "Load a floor from a file"),
+    h("p", { class: "note", style: { margin: 0 } }, "A floor saved with «Save to a file» (on any floor, here or in another building): it comes with its agents, ready to work."),
+    h("div", { class: "row-c" }, fi, h("button", { class: "btn mini", type: "button", onclick: () => fi.click() }, "Choose file")), out);
+}
+function communityFloorsBlock() {
+  const list = h("div", { class: "community-list" }, h("small", { class: "note" }, "Loading…"));
+  const out = h("div", {});
+  (async () => {
+    try {
+      const r = await fetch(COMMUNITY + "index.json", { cache: "no-store" });
+      if (!r.ok) throw new Error("HTTP " + r.status);
+      const floors = ((await r.json()).floors || []).filter((x) => x && typeof x.file === "string" && /^[\w.-]+\.json$/.test(x.file));
+      list.replaceChildren();
+      if (!floors.length) { list.append(h("small", { class: "note" }, "None yet. Be the first: save one of yours to a file and send it to the project.")); return; }
+      for (const x of floors.slice(0, 200)) list.append(h("button", { class: "community-floor", type: "button", onclick: async () => {
+        out.replaceChildren(h("small", { class: "note" }, "Loading…"));
+        try { const r2 = await fetch(COMMUNITY + x.file, { cache: "no-store" }); if (!r2.ok) throw new Error("HTTP " + r2.status); floorPreview(out, await r2.json(), true); }
+        catch { out.replaceChildren(h("p", { class: "warn-note" }, "That floor couldn't be loaded right now.")); }
+      } }, h("b", {}, raw(String(x.name || "").slice(0, 40))), h("small", { class: "note" }, raw(String(x.job || "").slice(0, 140))),
+        h("small", { class: "note" }, tr(`${Number(x.agents) || 0} agents`) + (x.author ? " · " + tr("By") + " " + String(x.author).slice(0, 60) : "") + (x.language ? " · " + String(x.language).toUpperCase().slice(0, 5) : ""))));
+    } catch { list.replaceChildren(h("small", { class: "note" }, "The community floors couldn't be loaded right now (they need internet).")); }
+  })();
+  return h("div", { class: "block community-floors" }, h("h4", {}, "Community floors"),
+    h("p", { class: "note", style: { margin: 0 } }, "Floors that other people have made and shared, ready to load. Do you have one that works well? Save it to a file and send it to the project: ",
+      h("a", { href: COMMUNITY_PAGE, target: "_blank", rel: "noopener" }, "how to share it"), "."),
+    list, out);
+}
 function renderCreateStorey() {
   const c = $("drawerBody"); c.innerHTML = "";
   const nom = h("input", { placeholder: "For example: Sales, Home, Studies…", maxlength: "40" });
@@ -2427,7 +2527,8 @@ function renderCreateStorey() {
   c.append(h("p", { class: "note", style: { margin: 0 } }, "Each floor is a team with a job. On the left, its section head's office; on the right, its sub-agents' offices; and if there are many simple ones, the pool. The new floor is built at the top, under the dome."),
     h("label", { class: "field" }, h("span", {}, "Floor name"), nom),
     h("label", { class: "field" }, h("span", {}, "What it does"), fun),
-    h("div", { class: "row-c" }, h("button", { class: "btn primary", onclick: create }, "Create floor"), h("button", { class: "btn", onclick: closeDrawer }, "Cancel")));
+    h("div", { class: "row-c" }, h("button", { class: "btn primary", onclick: create }, "Create floor"), h("button", { class: "btn", onclick: closeDrawer }, "Cancel")),
+    floorFromFileBlock(), communityFloorsBlock());   // 9.4
   setTimeout(() => nom.focus(), 50);
 }
 
@@ -2610,8 +2711,8 @@ function otherApisBlock() {
   const saveList = (list) => Motor.run({ type: "connections", connections: list }).then(() => { render(); renderSettings(); }).catch(warn);
   const currentList = () => (ed.e.settings.connections || []).map((x) => Object.assign({}, x));
   const b = h("div", { class: "block" }, h("h4", {}, "Other APIs (your own keys)"),
-    h("p", { class: "note", style: { margin: 0 } }, "Each agent thinks with OpenRouter or with your own key from another AI (Claude, OpenAI, Gemini…), or with a model on your computer (free). Add them here and, in each agent's profile → Brain, choose which one it thinks with. Each key is paid per use to its company and doesn't count towards the spending cap: it's tracked separately, so you can see it."),
-    h("small", { class: "note" }, "A key is not your app plan: a Claude or ChatGPT plan doesn't pay for its key. Each company charges its key apart, per use, on its own website."));
+    h("p", { class: "note", style: { margin: 0 } }, "Each agent thinks with OpenRouter or with your own key from another AI (Claude, OpenAI, Gemini…), or with a model on your computer (free). Add them here and, in each agent's profile → Brain, choose which one it thinks with. Each key spends from its company's API balance, and what it spends counts towards the spending cap (at the public price of the same model)."),
+    h("small", { class: "note" }, "Each key spends from that company's API balance: what you put in, or the API credits your plan includes (Claude Max, for example, includes $100 or $200 a month since October 2026). Check it on that company's website."));
   for (const P of conx) {
     const msg = h("small", { class: "note" });
     const test = h("button", { class: "btn mini", type: "button", onclick: async () => { test.disabled = true; msg.textContent = tr("Testing…"); try { const l = await loadDirectModels(P.id); msg.textContent = tr(`It works: ${l.length} models. The first one: ${l[0] || "—"}.`); } catch (err) { msg.textContent = err.message; } test.disabled = false; } }, "Test");
@@ -2652,6 +2753,81 @@ function otherApisBlock() {
     } }, "Add"), err)));
   b.append(h("small", { class: "note" }, mode === "local" ? "The keys stay only in this browser and only travel to their API's address. They never go into backups or moves." : "With Fer Home, the keys live on its computer (data/config.json): node fer-home.mjs keys."));
   return b;
+}
+// 9.4 · The first start, guided: 1 your key, 2 the boss's brain (a free one is enough to try it), 3 its first task.
+// It comes up the first time (without a key); it can be skipped and everything is still in Settings.
+function renderWelcome() {
+  const c = $("drawerBody"); c.innerHTML = "";
+  const d = drawerData; if (!d.step) d.step = hasAccess() ? 2 : 1;
+  const go = (n) => { d.step = n; renderWelcome(); $("drawerBody").scrollTop = 0; };
+  const done = () => store.set(K.welcome, "1");
+  const j = ed.boss();
+  c.append(h("p", { class: "note" }, "Three steps and your building is working: your key, the boss's brain and its first task. You can skip them and do it later in Settings."),
+    h("ol", { class: "welcome-steps" }, ["Your key", "The boss's brain", "Its first task"].map((t, i) => h("li", { class: i + 1 === d.step ? "now" : i + 1 < d.step ? "done" : "", "aria-current": i + 1 === d.step ? "step" : null }, t))));
+  const box = h("div", { class: "block welcome-step" }); c.append(box);
+  if (d.step === 1) {
+    box.append(h("h4", {}, "Your key"));
+    if (hasAccess()) box.append(h("p", { class: "note" }, "Your key is saved."), h("div", { class: "row-c" }, h("button", { class: "btn primary", type: "button", onclick: () => go(2) }, "Next")));
+    else if (mode === "home" && !isApp()) box.append(h("p", { class: "note" }, "This building lives in Fer Home: its key is set up there. Open Settings to connect this website."),
+      h("button", { class: "btn primary", type: "button", onclick: () => openDrawer("settings") }, "Open Settings"));
+    else {
+      const k = h("input", { type: "password", autocomplete: "off", placeholder: "sk-or-...", "aria-label": "Your OpenRouter key" });
+      const save = async () => {
+        const v = k.value.trim(); if (!v) { k.focus(); return; }
+        try {
+          if (mode === "local") store.set(K.key, v); else { await callApp("/api/conf/key", { prov: "openrouter", key: v }); await refreshHome(); }
+          toast(mode === "local" ? "Key saved in this browser." : "Key saved on this computer."); render(); renderChat(true); go(2);
+        } catch (e) { warn(e); }
+      };
+      k.onkeydown = (ev) => { if (ev.key === "Enter") save(); };
+      box.append(h("p", { class: "note" }, "Your agents think with OpenRouter: with one key you have hundreds of brains (Claude, GPT, Gemini, DeepSeek…), free ones too. Paste yours here:"),
+        h("div", { class: "row-c" }, k, h("button", { class: "btn primary mini", type: "button", onclick: save }, "Save")),
+        h("small", { class: "note" }, mode === "local" ? "It's stored only in this browser, on this device." : "It's stored only on this computer, in the app's data folder."),
+        howToGetKey(),
+        h("p", { class: "note" }, "Do you already have a key from Claude, OpenAI or Gemini, or a model on your computer? ",
+          h("button", { class: "link-btn", type: "button", onclick: () => openDrawer("settings") }, "Add it in Settings → Other APIs"), "."));
+    }
+  } else if (d.step === 2) {
+    box.append(h("h4", {}, "The boss's brain"));
+    if (!j) box.append(h("p", { class: "note" }, "Your building has no boss yet."), h("button", { class: "btn primary", type: "button", onclick: () => go(3) }, "Next"));
+    else {
+      const withOR = mode === "local" ? !!store.get(K.key) : !(isApp() && homeInfo.key === false);
+      const own = ed.connections().filter((x) => hasApiKey(x.id));
+      const prov = withOR ? "openrouter" : (own.find((x) => x.id === j.provider) || own[0] || {}).id || "openrouter";
+      let brain = prov === j.provider || (prov === "openrouter" && !j.provider) ? j.brain : "";
+      box.append(h("p", { class: "note" }, tr(`${j.name} is your way of talking to the building: it shares out the work and keeps you informed. Choose what it thinks with.`)),
+        prov === "openrouter"
+          ? h("p", { class: "note" }, "To try it, a free one is enough: below, the free ones that use tools (the boss needs them). Free ones are sometimes slow or busy; for every day, a cheap one. You can change it whenever you like in its profile.")
+          : h("p", { class: "note" }, tr(`It will think with your ${(ed.provider(prov) || {}).name || prov} key. You can change it whenever you like in its profile.`)));
+      const picker = prov === "openrouter" ? modelPicker("text", brain, { onChange: (v) => { brain = v; }, start: { free: true, tools: true } })
+        : directPicker(prov, brain = brain || (directSuggestions(prov, { role: "boss" })[0] || ""), (v) => { brain = v; });
+      box.append(h("div", { class: "welcome-picker" }, picker),
+        h("div", { class: "row-c" },
+          h("button", { class: "btn primary", type: "button", onclick: async () => {
+            const sel = box.querySelector(".welcome-picker select"); if (prov === "openrouter" && sel && sel.value) brain = sel.value;
+            if (!brain) { warn(Object.assign(new Error(tr("Choose its brain first.")), { shown: true })); return; }
+            try { await Motor.run({ type: "editAgent", id: j.id, changes: { brain, provider: prov } }); render(); go(3); } catch (e) { warn(e); }
+          } }, "Use this brain"),
+          j.brain ? h("button", { class: "btn mini", type: "button", onclick: () => go(3) }, "Keep the one it has") : null));
+    }
+  } else {
+    box.append(h("h4", {}, "Its first task"));
+    const t = h("textarea", { rows: 3, "aria-label": "Its first task", placeholder: tr("Write what you want, in your own words…") });
+    const ideas = ["Introduce yourself and tell me in five lines what you can do for me.", "Ask me about my work and tell me which agents I should have in my building."];
+    box.append(h("p", { class: "note" }, "Ask it for something in your own words, as you would a person. Some ideas:"),
+      h("div", { class: "welcome-ideas" }, ideas.map((x) => h("button", { class: "btn mini", type: "button", onclick: () => { t.value = tr(x); t.focus(); } }, x))),
+      t,
+      h("div", { class: "row-c" }, h("button", { class: "btn primary", type: "button", onclick: () => {
+        const v = t.value.trim(); if (!v) { t.focus(); return; }
+        done(); closeDrawer();
+        if (j) { openChat(j.id); $("messageInput").value = v; send(); }
+      } }, tr(`Send it to ${j ? j.name : "the boss"}`))),
+      h("small", { class: "note" }, "Questions about Fer Agent? Install the Helper in «Built-in agents»: it knows the manual by heart."));
+  }
+  c.append(h("div", { class: "row-c welcome-foot" },
+    d.step > 1 ? h("button", { class: "btn mini", type: "button", onclick: () => go(d.step - 1) }, "Back") : null,
+    h("button", { class: "btn mini", type: "button", onclick: () => { done(); closeDrawer(); } }, "Skip: I'll do it myself"),
+    h("button", { class: "btn mini", type: "button", onclick: () => openDrawer("settings") }, "All settings")));
 }
 function renderSettings() {
   const c = $("drawerBody"), sc = c.scrollTop; c.innerHTML = "";
@@ -2702,6 +2878,7 @@ function renderSettings() {
   }
   c.append(otherApisBlock());
   c.append(emailBlock());
+  c.append(skillsSettingsBlock());
   // the building's name and objectives
   const nom = h("input", { value: ed.e.name || "" });
   nom.onchange = () => saveSetting({}, { name: nom.value.trim() || "My building" });
@@ -2805,6 +2982,42 @@ function renderSettings() {
 // The mailbox in Settings (for the Email agent): in the app it's connected here; in Fer Home, from its Terminal; a website on its own can't
 // 9.2 · Email: as many mailboxes as you like, of any provider. Each agent uses the ones you tick in its profile (Capabilities → Email).
 let emailEditing = null;   // the mailbox being edited ({} = a new one)
+// 9.4 · Skills, in one place: the ones that come with Fer Agent and yours; add one (a folder or a ZIP, the SKILL.md format of Claude, OpenClaw and Hermes)
+function skillsSettingsBlock() {
+  const box = h("div", { class: "block skills-settings" }, h("h4", {}, "Skills"),
+    h("p", { class: "note", style: { margin: 0 } }, "Extra abilities for your agents: you give them to each one in its profile → Capabilities → Extra skills. They use the SKILL.md format of Claude, OpenClaw and Hermes, so you can add the ones people share."),
+    h("p", { class: "warn-note" }, "A skill with a program runs it on your computer, with your permissions: add only the ones that come from someone you trust."));
+  if (mode !== "home") { box.append(h("small", { class: "note" }, "Needs the app (or Fer Home): skills work on your computer.")); return box; }
+  const all = homeSkills.filter((k) => !BUILT_IN_SKILL_CAP[k.name]);
+  const done = async (r) => { await refreshHome(); renderSettings(); toast(tr(`Installed: ${(r.skill && (r.skill.title || r.skill.name)) || r.name}`)); };
+  const post = async (url, body, raw) => {
+    const r = await fetch(url, { method: "POST", headers: Object.assign({ "X-Fer-Pin": pin }, raw ? { "Content-Type": "application/octet-stream" } : { "Content-Type": "application/json" }), body: raw ? body : JSON.stringify(body) });
+    const d = await r.json().catch(() => ({}));
+    if (!r.ok) throw Object.assign(new Error(d.error || "It couldn't be done."), { shown: true });
+    return d;
+  };
+  const zip = h("input", { type: "file", accept: ".zip", hidden: true });
+  zip.onchange = async () => { const f = zip.files[0]; zip.value = ""; if (!f) return; try { await done(await post(`./api/skills/add-zip?name=${encodeURIComponent(f.name.replace(/\.zip$/i, ""))}`, f, true)); } catch (e) { warn(e); } };
+  const pathInput = h("input", { type: "text", placeholder: "/Users/you/Downloads/my-skill", "aria-label": "Skill folder" });
+  const addFolder = async (p) => { if (!p) return; try { await done(await post("./api/skills/add-folder", { path: p })); } catch (e) { warn(e); } };
+  box.append(h("div", { class: "row-c" },
+    window.ferApp && window.ferApp.chooseFolder ? h("button", { class: "btn mini primary", type: "button", onclick: async () => addFolder(await window.ferApp.chooseFolder()) }, "Add a skill (folder)")
+      : h("span", { class: "row-c" }, pathInput, h("button", { class: "btn mini primary", type: "button", onclick: () => addFolder(pathInput.value.trim()) }, "Add this folder")),
+    zip, h("button", { class: "btn mini", type: "button", onclick: () => zip.click() }, "Add a skill (ZIP)"),
+    h("button", { class: "btn mini", type: "button", onclick: async () => { try { await post("./api/skills/open", {}); } catch (e) { warn(e); } } }, "Open the folder of yours")));
+  const ul = h("ul", { class: "skills-all" });
+  for (const k of all) ul.append(h("li", {},
+    h("div", { class: "row-c" }, h("b", {}, raw(k.title || k.name)),
+      h("span", { class: "plug" }, k.own ? "yours" : "built-in"),
+      k.fixed ? h("span", { class: "plug" }, "works on its own on each heartbeat") : null,
+      k.effect === "external" ? h("span", { class: "plug" }, "asks for your permission") : null,
+      h("span", { class: "plug" }, k.program ? "with a program" : "instructions"),
+      k.own ? h("button", { class: "link-btn", type: "button", onclick: async () => { try { await post("./api/skills/remove", { name: k.name }); await refreshHome(); renderSettings(); } catch (e) { warn(e); } } }, "Remove") : null),
+    h("small", {}, raw(k.description || ""))));
+  box.append(all.length ? ul : h("small", { class: "note" }, "No skills yet."),
+    h("small", { class: "note" }, "Reading websites, files and email aren't here: they're capabilities of each agent (Internet as you, Files, Email)."));
+  return box;
+}
 function emailBlock() {
   const box = h("div", { class: "block" }, h("h4", {}, "Email"));
   const list = homeInfo.mailboxes || (homeInfo.email ? [homeInfo.email] : []);
@@ -3409,5 +3622,5 @@ async function syncLanguage() {
   document.addEventListener("visibilitychange", () => { if (document.visibilityState === "visible" && brain.ad) syncBrain(); });
   showTab(window.innerWidth <= 900 ? "building" : "profile");
   render();
-  if (!hasAccess()) openDrawer("settings");
+  if (!hasAccess()) openDrawer(store.get(K.welcome) || (mode === "home" && !isApp()) ? "settings" : "welcome");   // 9.4: the first time, the guided first steps
 })();

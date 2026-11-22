@@ -12,7 +12,7 @@ The interface is in **English** and **Spanish** (EN · ES switch on the home pag
 
 - **A building, not a list.** Floors with a section head, offices and a pool; a dome with the boss and two sages; a lobby with Memory. Tap a floor to go in, tap an agent to open its profile.
 - **Start with just the boss.** If you only want one agent, you already have it. The built-in agents (two sages, Techie the technician, Artie for continuous improvement, the Agent Creator, JEV, the Controller and Memory) are installed from the **Built-in agents** page, one by one or as a recommended team.
-- **Each agent picks its brain.** OpenRouter (pay per use, all of its hundreds of models in the dropdown, from cheapest to most expensive, with a link to the most popular ones) or one of **Other APIs** (your subscriptions). What comes out of a subscription doesn't count towards the spending cap and is tracked separately.
+- **Each agent picks its brain.** OpenRouter (pay per use, all of its hundreds of models in the dropdown, from cheapest to most expensive, with a link to the most popular ones) or **your own key** from another AI (Claude, OpenAI, Gemini…), which spends from that company's API balance (some plans include monthly API credits: Claude Max, for example); what it spends counts towards the same spending cap, at the public price of the same model. A brain on your computer (Ollama, LM Studio) is free.
 - **Spending under control.** Daily and monthly caps that freeze the least important agents first, a per-agent cap, a general pause switch, and JEV (OpenRouter's decisions API) deciding before an agent spends on searching, retrying or creating another agent.
 - **Talk to each agent**, in writing or by voice, each with its own voice. Bring several together in the **meeting room**: the boss chairs and writes the minutes.
 - **Coins and lessons.** Give gold or red coins under any reply; a cheap model turns the reason into a rule, and the boss asks you who learns it: only that agent, everyone with its role, every agent or the ones you choose.
@@ -39,6 +39,9 @@ You move the building from one to another with **Save backup** and **Load a back
 ## The desktop app
 
 - **First time on a Mac:** the app isn't signed with an Apple certificate yet, so macOS says it can't verify the developer. Open **System Settings → Privacy & Security**, scroll down and press **Open Anyway** (only once).
+- **Accessibility on a Mac** (for agents with *Your computer as you* that use the keyboard and mouse): System Settings → Privacy & Security → Accessibility → Fer Agent. While the app isn't signed by Apple, macOS treats each new version as a different app: remove Fer Agent with **−**, add it again with **+**, and reopen the app.
+- **Updates (from 9.4):** the app checks the project's GitHub Releases when it opens and every 6 hours, downloads the new version and installs it when you quit. On a Mac this needs the Apple-signed build; until then, new versions are installed by hand.
+- **Apple signature:** the *Desktop app* workflow signs and notarizes the Mac build when the repository has the secrets `CSC_LINK`, `CSC_KEY_PASSWORD`, `APPLE_ID`, `APPLE_APP_SPECIFIC_PASSWORD` and `APPLE_TEAM_ID` (see `build/mac-signing.mjs`). Without them it's built as before.
 - **First time on Windows:** if you see “Windows protected your PC”, press **More info → Run anyway** (only once).
 - **Your data** (building, keys, brain folder, the agents' Chrome profile) stays on your computer: on a Mac in `~/Library/Application Support/Fer Agent/data`, on Windows in `%APPDATA%\Fer Agent\data`. A log, `fer-agent.log`, is kept there too.
 - **Your websites:** Settings → *Your websites, in the agents' Chrome* opens the agents' Chrome so you sign in once (your email, a social network…); the session stays on your computer.
@@ -46,11 +49,23 @@ You move the building from one to another with **Save backup** and **Load a back
 - **The brain folder:** Settings → *Change the folder*. Choose one inside Google Drive for desktop and you also have it in Drive and Obsidian.
 - **Building it yourself:** `npm install`, then `npm run app` to try it, or `npm run installers` to make the installer for your system. GitHub makes the Mac and Windows installers by itself (the *Desktop app* workflow in Actions).
 
+## What's new in 9.4
+
+- **First steps:** the first time, a three-step guide (your key, the boss's brain, its first task) instead of Settings.
+- **Brain search:** a search bar over the model list, with *Free*, *Uses tools* and *Sees images* filters. Installing a built-in agent, you choose its brain.
+- **Skills in Settings:** add one (a folder or a ZIP in the SKILL.md format of Claude, OpenClaw or Hermes), see which are yours, remove them.
+- **Documents across languages:** when a question in another language finds little, a cheap model writes the search words in Spanish and English and it searches again.
+- **Your own keys count towards the spending cap**, at the public price of the same model.
+- **The Helper:** a built-in agent whose documents are the manual. It answers how to install, set up and use Fer Agent.
+- **Floors in a file:** *Save to a file* on any floor (no memory, tasks, spending, documents, mailboxes, Telegram or keys). *Create floor* → *Load a floor from a file* and *Community floors*. Loaded agents start with *Ask me first*.
+- **Updates** from GitHub Releases, and the Apple signature ready for when the secrets are set.
+
 ## Getting started
 
 - Deploy this folder as a static website (for example, drag it into Netlify) or serve it locally: `python3 -m http.server` and open `http://localhost:8000`.
 - Get an OpenRouter key: create an account at [openrouter.ai](https://openrouter.ai), add some balance in [Credits](https://openrouter.ai/credits) (you pay in advance and only what your agents use is spent), then press **Create Key** in [Keys](https://openrouter.ai/keys), give it a spending limit and copy it (it's only shown once).
-- Press **Enter the building**, paste your OpenRouter key in Settings, and talk to the boss.
+- Press **Enter the building** and follow the **First steps**: your key, the boss's brain (a free one is enough to try it) and its first task. You can also start with your own key from Claude, OpenAI, Gemini… or a model on your computer (Settings → Other APIs).
+- Questions? Install the **Helper** from *Built-in agents*: its documents are the Fer Agent manual (`manual/`).
 - Optional: **Built-in agents** → *Install the recommended team*; **Settings → Other APIs** to add a subscription API; **Settings → Brain** to connect Google Drive.
 
 ## Files
@@ -64,6 +79,8 @@ You move the building from one to another with **Save backup** and **Load a back
 | `characters.js`, `img/` | The ten characters and the building drawings |
 | `fer-home.mjs`, `hands.mjs`, `skills/` | Fer Home and the agents' hands |
 | `app/`, `build/`, `package.json` | The desktop app (Electron) and how its installers are made |
+| `manual/` | The Fer Agent manual (`es/` and `en/`, 16 chapters), read by the Helper |
+| `community/` | Community floors: one file per floor and their list (`index.json`); how to share yours in `community/floors/README.md` |
 | `tests/` | Automated tests |
 
 ## Adding a language
@@ -77,7 +94,7 @@ Tested with automated tests (OpenRouter, the other APIs, Google Drive, Telegram 
 ## Tests
 
 ```
-node --test tests/engine.test.mjs tests/engine7.test.mjs tests/engine82.test.mjs tests/engine9.test.mjs tests/engine91.test.mjs tests/engine92.test.mjs tests/engine93.test.mjs tests/watcher.test.mjs tests/memory.test.mjs tests/email.test.mjs
+node --test tests/engine.test.mjs tests/engine7.test.mjs tests/engine82.test.mjs tests/engine9.test.mjs tests/engine91.test.mjs tests/engine92.test.mjs tests/engine93.test.mjs tests/engine94.test.mjs tests/watcher.test.mjs tests/memory.test.mjs tests/email.test.mjs
 python3 tests/web_test.py        # website (Spanish), v6 features   — needs Playwright
 python3 tests/web7_test.py       # website (Spanish), v7 features
 python3 tests/web8_test.py       # website (Spanish), v8 features
@@ -86,6 +103,7 @@ python3 tests/web9_test.py       # website in Spanish: no English left on any sc
 python3 tests/web9_storage_test.py     # a browser that used an earlier version keeps its building, images and Library
 python3 tests/web91_test.py            # 9.1: when each agent works, its own chat, Copy, the Creator in its chat, models by price, the logo, meetings that resume
 python3 tests/web921_test.py           # 9.2.1: before anything goes out, the exact text with Send, Correct and Reject
+python3 tests/web94_test.py            # 9.4: first steps, floors saved to and loaded from a file, community floors
 python3 tests/home_test.py       # Fer Home
 python3 tests/home7_test.py      # Fer Home with hands, Telegram, brain folder and another API
 python3 tests/app9_test.py       # the desktop app inside: keys in Settings, local only, the agents' Chrome

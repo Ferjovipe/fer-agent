@@ -42,6 +42,9 @@ const check = (c, t) => { console.log((c ? "PASS " : "FAIL ") + t); ok = ok && !
   await win.waitForTimeout(2000);
   await win.click("#landing .button-big >> nth=0");
   await win.waitForSelector("#drawer:not([hidden]) #drawerBody h4", { timeout: 15000 });
+  // 9.4: the first time, «First steps»; this test goes on to all of Settings
+  check(await win.isVisible("#drawerBody .welcome-step h4:text-is('Your key')"), "9.4: the first time, «First steps»");
+  await win.click("#drawerBody button:text-is('All settings')"); await win.waitForSelector("#drawerBody .where");
   check((await win.innerText("#mode")) === "In this app · works while it's open", "arriba: «In this app»");
   check(await win.isVisible("#drawerBody button:text-is('Change the folder')"), "Settings → brain: “Change the folder” button");
   await win.screenshot({ path: path.join(OUTPUT, "app9-smoke-settings.png") });

@@ -48,7 +48,7 @@ export function renderLanding(cont, { h, enter, figure, languages, language, cha
       h("div", { class: "builtin" }, BUILT_IN.map(([p, clothes, name, text]) => { const im = h("img", { alt: "" }); figure({ p, clothes }, im); return h("div", {}, im, h("span", {}, h("b", {}, name), h("small", {}, text))); }))),
     h("section", { class: "section-l" },
       h("h2", {}, "Spending, under control"),
-      h("p", {}, "Pay-per-use goes through your OpenRouter key, so everything is visible and everything has a brake. What you spend with other companies' keys is tracked separately."),
+      h("p", {}, "Everything you spend is visible and has a brake: your OpenRouter key and your own keys from other companies, all in the same counter and the same cap."),
       h("div", { class: "control" },
         h("div", {}, h("b", {}, "Caps that freeze"), h("span", {}, "A daily cap and a monthly one. As they get close, the least important agents are frozen first.")),
         h("div", {}, h("b", {}, "JEV before spending"), h("span", {}, "Before searching, retrying or creating another agent, JEV decides whether it's worth it.")),

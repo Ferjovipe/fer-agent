@@ -120,7 +120,7 @@ try:
         # ---------- Built-in agents ----------
         page.click("#openBuiltIn"); page.wait_for_selector("#builtInView .builtin-agent")
         names = page.eval_on_selector_all("#builtInView .builtin-name", "bs => bs.map(b => b.textContent)")
-        check(names == ["Boss", "Sage 1", "Sage 2", "Techie", "Artie", "Agent Creator", "JEV", "Controller", "Memory", "Email"], f"“Built-in agents” with their English names: {names}")
+        check(names == ["Boss", "Sage 1", "Sage 2", "Techie", "Artie", "Agent Creator", "JEV", "Controller", "Memory", "Email", "Helper"], f"“Built-in agents” with their English names: {names}")
         check(not spanish(page, "#builtInView", "serie"), f"built-in agents page in English: {leftovers.get('builtIn')}")
         photo(page, "3-built-in")
         page.click("#builtInView button:has-text('Install the recommended team')"); page.wait_for_timeout(700)

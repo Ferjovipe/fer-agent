@@ -111,7 +111,8 @@ export function createHands(op) {
           newOnes.set(name, { name, title: String(header.title || header.title || name), description: String(header.description || "").slice(0, 400),
             effect: header.effect === "external" ? "external" : "read", kind: ["pay", "send", "delete", "other"].includes(header.kind) ? header.kind : "other", fixed: header.fixed === true, data: header.data ? (typeof header.data === "string" ? header.data : JSON.stringify(header.data)) : "",   // «fija» only if its SKILL.md says so
             timeout: Math.min(3600, Math.max(10, Number(header.timeout) || 300)),   // seconds it can take at most (5 minutes by default)
-            settings: Array.isArray(header.settings) ? header.settings : [], script: header.script ? path.join(dir, n, String(header.script)) : "", instructions: body.slice(0, 4000), folder: path.join(dir, n) });
+            settings: Array.isArray(header.settings) ? header.settings : [], script: header.script ? path.join(dir, n, String(header.script)) : "", instructions: body.slice(0, 30000), folder: path.join(dir, n),
+            own: dir === o.skillsFolders[o.skillsFolders.length - 1] && o.skillsFolders.length > 1 });   // 9.4: yours (added in the app) or built-in
         } catch (err) { o.log(L("I couldn't read the skill {1}: {2}", n, err.message)); }
       }
     }
@@ -654,8 +655,10 @@ using System; using System.Runtime.InteropServices; public class M { [DllImport(
       if (out.length >= 3000) return;
     }
   }
-  async function docsOf(agent, folder) {
-    const folders = [ownDocs(agent), folder && path.isAbsolute(String(folder)) ? path.resolve(String(folder)) : ""].filter(Boolean), key = folders.join("|");
+  // 9.4: the Fer Agent manual (manual/es, manual/en), in the building's language: the Helper reads it as its documents
+  const manualOf = () => o.manualFolder ? path.join(o.manualFolder, /^en/i.test(String((o.locale && o.locale()) || "")) ? "en" : "es") : "";
+  async function docsOf(agent, folder, manual) {
+    const folders = [ownDocs(agent), folder && path.isAbsolute(String(folder)) ? path.resolve(String(folder)) : "", manual ? manualOf() : ""].filter(Boolean), key = folders.join("|");
     let ix = docsIndex.get(agent);
     if (!ix) { try { ix = JSON.parse(readFileSync(path.join(o.docsFolder, ".index", safeName(agent) + ".json"), "utf8")); ix.at = 0; } catch { ix = { key, at: 0, files: [] }; } docsIndex.set(agent, ix); }
     if (ix.key === key && Date.now() - ix.at < 30e3) return ix;   // looked at less than 30 seconds ago
@@ -680,7 +683,7 @@ using System; using System.Runtime.InteropServices; public class M { [DllImport(
   const STOP = new Set("de la el en los las del que con por para una uno unos unas como mas pero sus les este esta esto ese esa son ser fue han hay sin sobre entre cuando donde muy tambien the and for with that this from are was were have has not you your its our their what which who how about into than then them they will would can could".split(" "));
   const words = (t) => String(t || "").toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g, "").split(/[^a-z0-9ñ]+/).filter((w) => w.length >= 3 && !STOP.has(w));
   async function docsSearch(agent, d) {
-    const ix = await docsOf(agent, d.folder), q = [...new Set(words(d.query))];
+    const ix = await docsOf(agent, d.folder, d.manual), q = [...new Set(words(d.query))];
     if (!q.length) return { found: [], files: ix.files.length };
     const pieces = ix.files.flatMap((f) => f.chunks.map((text) => ({ file: f.name, text, w: words(text) })));
     const df = new Map(q.map((t) => [t, pieces.filter((p) => p.w.includes(t)).length]));
@@ -693,7 +696,8 @@ using System; using System.Runtime.InteropServices; public class M { [DllImport(
     return { found: found.map(({ file, text }) => ({ file, text })), files: ix.files.length };
   }
   function docsList(agent, d) {
-    return docsOf(agent, d.folder).then((ix) => ({ own: ownDocs(agent), files: ix.files.map((f) => ({ name: f.name, path: f.path, size: f.size, pieces: f.chunks.length, error: f.error, own: f.path.startsWith(ownDocs(agent) + path.sep) })) }));
+    const man = d.manual ? manualOf() : "";
+    return docsOf(agent, d.folder, d.manual).then((ix) => ({ own: ownDocs(agent), files: ix.files.map((f) => ({ name: f.name, path: f.path, size: f.size, pieces: f.chunks.length, error: f.error, own: f.path.startsWith(ownDocs(agent) + path.sep), manual: !!man && f.path.startsWith(man + path.sep) })) }));
   }
 
   return {
@@ -733,7 +737,7 @@ using System; using System.Runtime.InteropServices; public class M { [DllImport(
       if (!f) return Promise.reject(new Error(L("I don't know the step “{1}”.", op)));
       return enqueue("web", 120, f);
     },
-    catalog() { return [...skills.values()].map(({ name, title, description, effect, kind, fixed, data, settings }) => ({ name, title, description, effect, kind, fixed, data, settings })); },
+    catalog() { return [...skills.values()].map(({ name, title, description, effect, kind, fixed, data, settings, own, script, folder }) => ({ name, title, description, effect, kind, fixed, data, settings, own: !!own, program: !!script, folder })); },
     reload: load,
     // They are done one at a time (a single Chrome): that way two skills don't step on each other
     run(name, data, ctx) {
@@ -742,7 +746,7 @@ using System; using System.Runtime.InteropServices; public class M { [DllImport(
       if (!sk) return Promise.reject(new Error(L("The skill “{1}” doesn't exist.", name)));
       return enqueue(name, sk.timeout, async () => {
         if (sk.effect === "external" && !(ctx && ctx.authorized)) throw new Error(L("The skill “{1}” has an effect outside the website: it needs your permission (inbox).", name));
-        if (!sk.script) return { text: sk.instructions };   // a skill that is only instructions
+        if (!sk.script) return { text: sk.instructions, instructions: true, folder: sk.folder };   // a skill that is only instructions (like Claude's and OpenClaw's): its folder too, for its files
         const mod = await import(pathToFileURL(sk.script).href + "?v=" + Date.now());
         const f = mod.default || mod.run;
         if (typeof f !== "function") throw new Error(L("The skill “{1}” has no program to run.", name));

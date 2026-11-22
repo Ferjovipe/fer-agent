@@ -208,10 +208,11 @@ test("Claude with your subscription: Anthropic API format, tools, and what it sp
   assert.ok(m2.some((m) => m.role === "assistant" && m.content.some((c) => c.type === "tool_use" && c.id === "tu1")));
   assert.ok(m2.some((m) => m.role === "user" && m.content.some((c) => c.type === "tool_result" && c.tool_use_id === "tu1")));
   const expected = (1000 + 1200) * 0.000004 + (100 + 40) * 0.00002;
-  assert.equal(ed.agentSpending(s1, "today"), 0, "it comes out of your subscription: it doesn't count towards the cap");
+  assert.ok(Math.abs(ed.agentSpending(s1, "today") - expected) < 1e-12, "9.4: your own key costs money too: it counts towards the spending and the cap (≈ at the public price)");
+  assert.ok(Math.abs(ed.buildingSpending("today") - expected) < 1e-12, "and in the building's counter");
   const today = Object.values(s1.subscription)[0];
   assert.ok(today && Math.abs(today.usd - expected) < 1e-12 && today.tokens === 1000 + 1200 + 100 + 40, "it's recorded apart: tokens and what it would cost on OpenRouter (≈)");
-  assert.ok(ed.e.log.some((r) => /tu propia clave/.test(r.text) && /no cuenta para el tope/.test(r.text)));
+  assert.ok(ed.e.log.some((r) => /tu clave/.test(r.text) && /cuenta para el tope/.test(r.text) && !/no cuenta/.test(r.text)));
   assert.ok(calls.every((x) => !x.url.startsWith("https://openrouter.ai")), "it doesn't go through OpenRouter");
   assert.equal(ed.agent("Sabio 1").chat.at(-1).provider, "anthropic");
 });

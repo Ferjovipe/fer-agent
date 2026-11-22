@@ -1,7 +1,7 @@
 {
   "name": "fer-agent",
   "productName": "Fer Agent",
-  "version": "9.3.0",
+  "version": "9.4.0",
   "description": "Your AI agents live in a building: an open-source agentic company on your computer.",
   "author": "Fernando Villar Peláez",
   "homepage": "https://feragent.netlify.app",
@@ -14,7 +14,9 @@
     "installers": "electron-builder --publish never"
   },
   "dependencies": {
+    "electron-updater": "6.8.11",
     "imapflow": "2.9.1",
+    "jszip": "3.10.2",
     "mailparser": "3.12.4",
     "mammoth": "1.13.0",
     "nodemailer": "10.2.1",
@@ -49,6 +51,7 @@
       "fer-home.mjs",
       "hands.mjs",
       "skills/**",
+      "manual/**",
       "build/icon.png",
       "package.json",
       "LICENSE",
@@ -65,6 +68,12 @@
       "target": [
         {
           "target": "dmg",
+          "arch": [
+            "universal"
+          ]
+        },
+        {
+          "target": "zip",
           "arch": [
             "universal"
           ]
@@ -107,6 +116,14 @@
       "category": "Office",
       "maintainer": "Fernando Villar Peláez"
     },
-    "artifactName": "Fer-Agent-${version}-${os}-${arch}.${ext}"
+    "artifactName": "Fer-Agent-${version}-${os}-${arch}.${ext}",
+    "publish": [
+      {
+        "provider": "github",
+        "owner": "Ferjovipe",
+        "repo": "fer-agent",
+        "releaseType": "release"
+      }
+    ]
   }
 }

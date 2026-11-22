@@ -115,6 +115,7 @@ def router(route, request):
 
 INIT = """
 try { if (!localStorage.getItem("ferAgent.language")) localStorage.setItem("ferAgent.language", "es"); } catch (e) {}   // these tests are of the website in Spanish
+try { if (!localStorage.getItem("ferAgent.welcome")) localStorage.setItem("ferAgent.welcome", "1"); } catch (e) {}   // 9.4: the guided first steps have their own test (web94_test.py); here, straight to Settings
 HTMLMediaElement.prototype.play = function () { window.__sonado = (window.__sonado || 0) + 1; if (String(this.src).startsWith('blob:')) setTimeout(() => this.dispatchEvent(new Event('ended')), 150); return Promise.resolve(); };
 HTMLMediaElement.prototype.pause = function () {};
 """
@@ -494,6 +495,7 @@ try:
         profile(page, "Arturito"); page.click("#profile >> text=Borrar"); page.click("#profile >> text=¿Borrar? Pulsa otra vez")
         page.wait_for_function("!JSON.parse(localStorage.getItem('ferAgent.state')).agents.some(a => a.id === 'artie')")
         page.click("#openBuiltIn"); page.click("#builtInView .builtin-agent:has-text('Arturito') button:text-is('Instalar')")
+        page.click("#builtInView .builtin-agent:has-text('Arturito') button:text-is('Instalar con este cerebro')")   # 9.4: you choose its brain first
         page.wait_for_selector("text=Instalado: Arturito.")
         check(any(a["id"] == "artie" for a in state(page)["agents"]), "a deleted built-in agent (Arturito) is installed again from “Built-in agents”")
         page.click("#builtInView .back-btn"); page.click("#openSettings")

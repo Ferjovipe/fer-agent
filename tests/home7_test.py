@@ -211,7 +211,8 @@ try:
     check(r.get("reply") == "Consejo de Claude directo." and anthropic and anthropic[-1]["cabeceras"].get("x-api-key") == "sk-ant-casa", "Sabio 1 thinks with direct Claude, with the key that's in Fer Home")
     s1 = next(a for a in state()["state"]["agents"] if a["id"] == "sage1")
     subs = list((s1.get("subscription") or {}).values())
-    check(sum(s1["spending"].values()) == 0 and subs and subs[-1]["tokens"] > 0 and subs[-1]["usd"] > 0, f"v8: it comes out of your subscription, it doesn't count towards the cap; it's recorded apart (tokens and what it would cost on OpenRouter): {subs}")
+    check(subs and subs[-1]["tokens"] > 0 and subs[-1]["usd"] > 0 and abs(sum(s1["spending"].values()) - subs[-1]["usd"]) < 1e-9,
+          f"9.4: with your own key it spends from that company's API balance and it counts towards the cap, at the public price of the same model (recorded apart too: tokens and price): {subs}")
     check(any(c["id"] == "anthropic" for c in state()["state"]["settings"].get("connections", [])), "and Claude appears in Settings → Other APIs")
     # in parts: the website receives the pieces of the reply while the brain writes (one line per piece and, at the end, the result)
     req = urllib.request.Request(f"http://localhost:{P_HOME}/api/action", method="POST", data=json.dumps({"type": "speak", "agent": "sage1", "text": "¿Y el otro terreno?"}).encode(),

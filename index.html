@@ -65,8 +65,11 @@
   .backup-btn.stale { color: var(--danger); border-color: var(--danger); }
   .backup-btn.stale .backup-dot { background: var(--danger); }
   .reports-to { display: grid; gap: 6px; }
-  .search-model { justify-self: start; margin-top: 4px; }
-  .model-search-box { display: grid; gap: 6px; margin-top: 6px; }
+  .model-search-box { display: grid; gap: 6px; margin: 2px 0 6px; }
+  .model-search-box .model-q { width: 100%; box-sizing: border-box; }
+  .model-chips { display: flex; flex-wrap: wrap; gap: 6px; }
+  .model-chips .chip { border: 1px solid var(--line); background: var(--paper); color: inherit; border-radius: 999px; padding: 4px 12px; font-size: 13px; cursor: pointer; }
+  .model-chips .chip[aria-pressed="true"] { background: var(--ink, #1B2130); color: var(--paper, #fff); border-color: transparent; }
   .model-search { display: grid; gap: 2px; max-height: 260px; overflow-y: auto; border: 1px solid var(--line); border-radius: 10px; padding: 4px; background: var(--paper); }
   .model-result { text-align: left; border: 0; background: transparent; padding: 6px 8px; border-radius: 6px; font-size: 13px; }
   .model-result:hover, .model-result:focus-visible { background: var(--paper2); }
@@ -335,8 +338,35 @@
   .request textarea, .request input { background: rgba(255, 255, 255, .1); color: #FFE7B8; border: 1px solid rgba(255, 205, 130, .35); border-radius: 10px; padding: 6px 10px; width: 100%; }
   .request input[type="number"] { width: 72px; }
   .request .p-actions { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
+  /* 9.4: skills in Settings */
+  .skills-settings .skills-all { list-style: none; margin: 8px 0 0; padding: 0; display: grid; gap: 8px; }
+  .skills-settings .skills-all li { display: grid; gap: 2px; padding: 8px 0; border-bottom: 1px solid var(--line); }
+  .skills-settings .skills-all .link-btn { margin-left: auto; }
+  .skills-settings input[type=text] { min-width: 0; flex: 1; }
   /* 9.3: an agent's documents */
   .docs-block .docs-folder, .docs-block .docs-own { display: grid; gap: 6px; margin-top: 10px; }
+  /* 9.4 · floors in a file and community floors */
+  .floor-preview { border: 1px solid var(--line); border-radius: 12px; padding: 12px; margin-top: 10px; display: grid; gap: 6px; }
+  .floor-preview h4 { margin: 0; }
+  .floor-agents { list-style: none; margin: 4px 0; padding: 0; display: grid; gap: 8px; max-height: 340px; overflow: auto; }
+  .floor-agents li { display: grid; gap: 2px; padding-bottom: 8px; border-bottom: 1px solid var(--line); }
+  .floor-agents .floor-instr { color: var(--soft); font-style: italic; overflow-wrap: anywhere; }
+  .community-list { display: grid; gap: 6px; margin-top: 8px; }
+  .community-floor { display: grid; gap: 2px; text-align: left; padding: 10px 12px; border: 1px solid var(--line); border-radius: 10px; background: var(--paper); color: var(--ink); font: inherit; cursor: pointer; }
+  .community-floor:hover, .community-floor:focus-visible { border-color: var(--accent); }
+  /* 9.4 · first steps */
+  .welcome-steps { display: flex; gap: 6px; list-style: none; margin: 10px 0 12px; padding: 0; counter-reset: st; }
+  .welcome-steps li { flex: 1; counter-increment: st; padding: 8px 10px; border-radius: 10px; background: var(--paper2); color: var(--soft); font-size: 14px; line-height: 1.25; }
+  .welcome-steps li::before { content: counter(st); display: inline-grid; place-items: center; width: 20px; height: 20px; margin-right: 6px; border-radius: 50%; border: 1.5px solid currentColor; font-size: 12px; font-weight: 700; }
+  .welcome-steps li.now { background: var(--accent); color: var(--on-accent); font-weight: 600; }
+  .welcome-steps li.done { color: var(--ok); }
+  .welcome-steps li.done::before { content: "✓"; }
+  .welcome-step textarea { width: 100%; box-sizing: border-box; font: inherit; }
+  .welcome-ideas { display: flex; flex-wrap: wrap; gap: 6px; margin: 4px 0 8px; }
+  .welcome-ideas .btn { white-space: normal; text-align: left; }
+  .welcome-picker { margin: 6px 0 10px; }
+  .welcome-picker select { width: 100%; max-width: 100%; box-sizing: border-box; }
+  .welcome-foot { margin-top: 12px; justify-content: flex-end; }
   .docs-block .docs-files { list-style: none; margin: 6px 0 0; padding: 0; max-height: 260px; overflow: auto; font-size: 14px; }
   .docs-block .docs-files li { display: flex; gap: 8px; align-items: baseline; padding: 4px 0; border-bottom: 1px solid var(--line, rgba(0,0,0,.08)); overflow-wrap: anywhere; }
   .docs-block .docs-files li.bad { opacity: .7; }

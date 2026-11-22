@@ -1,4 +1,4 @@
-FER AGENT · EL EDIFICIO (versión 9.3)
+FER AGENT · EL EDIFICIO (versión 9.4)
 =====================================
 
 Tienes una empresa agéntica a tu servicio. Nosotros ponemos la base; tú decides el organigrama
@@ -19,7 +19,46 @@ engine.js                 El motor. Lo usan igual la web y Fer Casa.
 fer-home.mjs              Fer Casa: el mismo edificio encendido las 24 horas en un ordenador, y las manos.
 hands.mjs, skills/        Las manos de los agentes (app y Fer Casa): su Chrome, tus archivos, tu ordenador, el
                           correo y las skills.
+manual/                   El manual de Fer Agent (es/ y en/, 16 capítulos): lo lee el Ayudante.
+community/                Las plantas de la comunidad: el archivo de cada una y su lista (index.json).
 tests/                    Las pruebas automáticas (no hacen falta para usarlo).
+
+
+Versión 9.4
+-----------
+  - Primeros pasos: la primera vez (sin clave) sale una guía de tres pasos en lugar de Ajustes: tu clave,
+    el cerebro del jefe (la búsqueda ya enseña los gratis que usan herramientas) y su primer encargo, que
+    va a su chat. «Saltar: lo hago yo» la cierra; «Todos los ajustes» lleva a Ajustes.
+  - Buscar un cerebro: encima de la lista de modelos, una barra de búsqueda por nombre con los filtros
+    «Gratis», «Usa herramientas» y «Ve imágenes».
+  - Al instalar un agente de serie eliges tú su cerebro (antes, un sabio cogía solo el modelo más caro).
+  - Ajustes → Habilidades: añadir una (carpeta o ZIP, formato SKILL.md de Claude, OpenClaw o Hermes),
+    ver cuáles son tuyas y quitarlas. Las que son solo instrucciones el agente las sigue como tales.
+  - Sus documentos: si preguntas en otro idioma que el de los documentos y sale poco, un cerebro barato
+    escribe las palabras de búsqueda en español y en inglés, y vuelve a buscar.
+  - Con tu propia clave de otra IA (Claude, OpenAI, Gemini…): gasta del saldo de API de esa empresa (lo
+    que metas, o los créditos de API que incluya tu plan; Claude Max, por ejemplo, incluye 100 o 200 $ al
+    mes desde octubre de 2026) y cuenta para el tope de gasto, al precio público del mismo modelo. Con
+    una clave así también puedes empezar sin OpenRouter.
+  - El Ayudante (agente de serie): se sabe Fer Agent de memoria, porque sus documentos son el manual
+    (manual/, en el idioma del edificio). Responde cómo instalar, configurar y usar, paso a paso. Solo
+    trabaja cuando le preguntas, con el cerebro que elijas (con uno gratis basta).
+  - Plantas en un archivo: en cada planta, «Guardar en un archivo» (su nombre, su función y sus
+    agentes; sin memoria, tareas, gasto, documentos, buzones, Telegram ni claves). En «Crear piso»:
+    «Cargar una planta de un archivo» y «Plantas de la comunidad» (la lista del proyecto en GitHub). Antes
+    de añadirla ves quién entra, qué hace y qué gasta cada uno. Los agentes entran con «Pregúntame antes»
+    diga lo que diga el archivo. Cómo compartir una: community/floors/README.md.
+  - Actualizaciones: la app busca versión nueva en «Releases» del proyecto al abrirse y cada 6 horas, la
+    descarga y se instala al cerrar la app. Necesita las «Releases» públicas. En el Mac, solo con la app
+    firmada por Apple; hasta entonces, la versión nueva se instala a mano, como antes.
+  - Firma de Apple preparada: cuando estén en GitHub los secretos CSC_LINK, CSC_KEY_PASSWORD, APPLE_ID,
+    APPLE_APP_SPECIFIC_PASSWORD y APPLE_TEAM_ID, el instalador del Mac sale firmado y notarizado por
+    Apple (build/mac-signing.mjs). Sin ellos sale como hasta ahora.
+  - Probado por Fer en su Mac: «abre Notas y crea una nota que diga hola» funciona con una orden directa
+    a Notas. Usar el teclado y el ratón necesita el permiso de Accesibilidad. Mientras la app no esté
+    firmada por Apple, ese permiso hay que volver a darlo con cada versión nueva: en Ajustes del Sistema →
+    Privacidad y seguridad → Accesibilidad, quitar Fer Agent con «−», volver a añadirlo con «+» y abrir
+    la app de nuevo.
 
 
 Versión 9.3
@@ -67,8 +106,8 @@ Tras las primeras pruebas de Fer con el Jefe y Lupe:
   - (9.2.4) Correos en 1 paso: el cortafuegos deja pasar el enlace de «correo nuevo» de tu propio Gmail u
     Outlook (abre el correo ya escrito; sigue sin salir sin tu «Enviar»). Antes, el agente rellenaba
     casilla a casilla releyendo Gmail entero (unos 15 pasos; con Opus, unos 0,60 $ un correo de una línea).
-  - (9.2.4) Lo que antes se llamaba «tu suscripción» es lo que es: tu propia clave de otra IA, que se paga
-    por uso a esa empresa (el plan de la app de Claude o de ChatGPT no la paga).
+  - (9.2.4) Lo que antes se llamaba «tu suscripción» es lo que es: tu propia clave de otra IA, que gasta
+    del saldo de API de esa empresa (lo que metas o los créditos de API que incluya tu plan).
   - (9.2.4) Un paso en una web que lleva más de 24 horas esperando tu sí caduca solo (su pestaña ya se
     cerró). Los agentes no te mencionan los códigos internos de los permisos.
 
@@ -263,12 +302,13 @@ Qué cambia respecto a la versión 7
    Si quitas uno, ahí vuelve a estar. En Ajustes, «Empezar de cero»: «Solo el jefe» o «Con el equipo
    recomendado» (se conservan los ajustes y el gasto).
 3. Cada agente elige con qué piensa: en su ficha → Cerebro y gasto, «Con qué piensa»: OpenRouter (se
-   paga por uso) o una de tus otras API. Se añaden en Ajustes → «Otras API (tus suscripciones)»: las
-   conocidas con un toque (Claude, OpenAI, Grok, Gemini, DeepSeek, Mistral, Ollama, LM Studio) o
+   paga por uso) o una de tus propias claves. Se añaden en Ajustes → «Otras API (tus propias claves)»:
+   las conocidas con un toque (Claude, OpenAI, Grok, Gemini, DeepSeek, Mistral, Ollama, LM Studio) o
    cualquier otra con su nombre, su dirección y si habla como OpenAI (la mayoría) o como Claude.
-   Lo que sale de tu suscripción no cuenta para el tope de gasto: se apunta aparte (tokens y, si el
-   mismo modelo está en OpenRouter, cuánto costaría allí), para que lo veas. Si se acaba tu cupo,
-   eliges: que siga con OpenRouter o que se pare. Lo que se paga aparte, mejor por OpenRouter.
+   Cada clave gasta del saldo de API de su empresa: lo que metas tú o los créditos que incluya tu plan
+   (Claude Max, por ejemplo, incluye 100 o 200 $ al mes desde octubre de 2026). Desde la 9.4 lo que
+   gasta cuenta para el tope, al precio público del mismo modelo. Si se acaba tu saldo,
+   eliges: que siga con OpenRouter o que se pare. Un modelo en tu ordenador (Ollama, LM Studio) es gratis.
 4. «Foto y nombre»: desde la ficha, «Cambiar su foto y su nombre». El nombre se cambia ahí mismo.
 5. Seis personajes nuevos (diez en total). Los nuevos van con sus colores tal cual.
 6. «Informa a»: cualquier agente del edificio, con un buscador cuando hay más de seis. No deja hacer
@@ -334,8 +374,9 @@ Suscripciones: cuáles se pueden usar aquí (FUENTE: páginas de ayuda de cada e
 --------------------------------------------------------------------------------------------------------
 Regla general: solo con una CLAVE DE API. Nunca con el inicio de sesión de la app (usuario y
 contraseña u OAuth) en programas de terceros, salvo que la empresa lo permita por escrito.
-- Claude: algunos planes traen créditos de API cada mes, que se reclaman vinculando una organización
-  de Claude Console. Con esa clave, permitido. Cuando se acaban, las llamadas paran.
+- Claude: Max (100 $ al mes en Max 5x, 200 $ en Max 20x) y Team traen créditos de API cada mes desde el
+  7 de octubre de 2026; se reclaman vinculando una organización de Claude Console. Con esa clave,
+  permitido. Cuando se acaban, las llamadas paran (salvo que hayas comprado más).
 - ChatGPT: algunos planes traen créditos de API (se vinculan a una organización de
   platform.openai.com). Con esa clave, permitido. Deja la recarga automática apagada.
 - Gemini: Google AI Pro y Ultra traen créditos mensuales de Google Cloud que sirven para la API de
@@ -548,6 +589,8 @@ Pruebas (para quien quiera comprobarlo)
   node --test tests/engine9.test.mjs     los edificios de versiones anteriores pasan a la 9 sin perder nada
   node --test tests/engine91.test.mjs    9.1: lo del latido en su chat, «Despertar ahora», cerebro saturado, empezar de cero, la Creadora y la sala
   node --test tests/engine93.test.mjs    9.3: sus documentos (PDF, Word y texto) y la consulta automática
+  node --test tests/engine94.test.mjs    9.4: plantas en un archivo (guardar, cargar, comprobar las de la comunidad)
+  python3 tests/web94_test.py            9.4: los primeros pasos, guardar y cargar plantas, plantas de la comunidad
   node --test tests/engine92.test.mjs    9.2: permisos, Internet como tú (contra una tienda de prueba), archivos y órdenes
   node --test tests/memory.test.mjs     la memoria automática: Memory archiva sola lo importante de cada conversación
   node --test tests/email.test.mjs      el correo: lee lo que entra, prepara las respuestas y envía solo con tu sí

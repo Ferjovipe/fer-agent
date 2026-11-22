@@ -51,6 +51,20 @@ function openWindow() {
   win.on("closed", () => { win = null; });
 }
 
+// 9.4 · Updates: the app looks for a new version in the project's GitHub «Releases» when it opens and every 6 hours, downloads it
+// in the background and installs it when you close the app (the system tells you when it's ready). On a Mac it only works with the
+// app signed by Apple; until then, the new version is installed by hand, as before. FER_NO_UPDATES=1: it doesn't look.
+function lookForUpdates(language) {
+  if (!app.isPackaged || process.env.FER_NO_UPDATES === "1") return;
+  let updater;
+  try { ({ autoUpdater: updater } = require("electron-updater")); } catch (e) { console.log("Updates: " + e.message); return; }
+  updater.logger = { info: (m) => console.log("Updates: " + m), warn: (m) => console.warn("Updates: " + m), error: (m) => console.error("Updates: " + m), debug: () => {} };
+  const notice = language === "es" ? { title: "Fer Agent: versión nueva lista", body: "La versión {version} ya está descargada: se instala sola al cerrar la app." }
+    : { title: "Fer Agent: new version ready", body: "Version {version} is downloaded: it installs itself when you close the app." };
+  const look = () => updater.checkForUpdatesAndNotify(notice).catch((e) => console.log("Updates: " + ((e && e.message) || e)));
+  look(); setInterval(look, 6 * 3600e3);
+}
+
 app.whenReady().then(async () => {
   const data = path.join(app.getPath("userData"), "data");
   // before version 9 it was called «datos»: it moves once (Fer Home then moves what's inside)
@@ -72,6 +86,7 @@ app.whenReady().then(async () => {
   try { pin = JSON.parse(fs.readFileSync(path.join(data, "config.json"), "utf8")).pin; } catch {}
   openWindow();
   app.on("activate", () => { if (!win) openWindow(); });
+  lookForUpdates(language);
 });
 // The only things the window can ask the app for: choosing the brain folder and reopening
 ipcMain.handle("choose-folder", async () => {

@@ -89,7 +89,7 @@ try:
         # ---------- Built-in agents ----------
         page.click("#openBuiltIn"); page.wait_for_selector("#builtInView .builtin-agent")
         names = page.eval_on_selector_all("#builtInView .builtin-name", "bs => bs.map(b => b.textContent)")
-        check(names == ["Jefe", "Sabio 1", "Sabio 2", "Tecno", "Arturito", "Creador de agentes", "JEV", "Interventor", "Memory", "Correo"], f"«Agentes de serie» with their Spanish names: {names}")
+        check(names == ["Jefe", "Sabio 1", "Sabio 2", "Tecno", "Arturito", "Creador de agentes", "JEV", "Interventor", "Memory", "Correo", "Ayudante"], f"«Agentes de serie» with their Spanish names: {names}")
         check(not english(page, "#builtInView", "serie"), f"built-in agents page in Spanish: {leftovers.get('builtIn')}")
         page.click("#builtInView button:has-text('Instalar el equipo recomendado')"); page.wait_for_timeout(700)
         notice = page.inner_text("#toast") if page.is_visible("#toast") else ""
