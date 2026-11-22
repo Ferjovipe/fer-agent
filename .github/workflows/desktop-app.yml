@@ -44,22 +44,30 @@ jobs:
       - name: Apple signature (only with the secrets)
         if: env.APPLE_SIGNED == 'true'
         run: node build/mac-signing.mjs
+      # (two steps: an empty CSC_LINK makes electron-builder look for a certificate in the project folder)
       - name: Build the installers
+        if: env.APPLE_SIGNED != 'true'
         run: npx electron-builder ${{ matrix.orden }} --publish never
         env:
-          CSC_IDENTITY_AUTO_DISCOVERY: ${{ env.APPLE_SIGNED == 'true' && 'true' || 'false' }}
-          CSC_LINK: ${{ env.APPLE_SIGNED == 'true' && secrets.CSC_LINK || '' }}
-          CSC_KEY_PASSWORD: ${{ env.APPLE_SIGNED == 'true' && secrets.CSC_KEY_PASSWORD || '' }}
-          APPLE_ID: ${{ env.APPLE_SIGNED == 'true' && secrets.APPLE_ID || '' }}
-          APPLE_APP_SPECIFIC_PASSWORD: ${{ env.APPLE_SIGNED == 'true' && secrets.APPLE_APP_SPECIFIC_PASSWORD || '' }}
-          APPLE_TEAM_ID: ${{ env.APPLE_SIGNED == 'true' && secrets.APPLE_TEAM_ID || '' }}
+          CSC_IDENTITY_AUTO_DISCOVERY: "false"
+      - name: Build the installers (signed and notarized by Apple)
+        if: env.APPLE_SIGNED == 'true'
+        run: npx electron-builder ${{ matrix.orden }} --publish never
+        env:
+          CSC_LINK: ${{ secrets.CSC_LINK }}
+          CSC_KEY_PASSWORD: ${{ secrets.CSC_KEY_PASSWORD }}
+          APPLE_ID: ${{ secrets.APPLE_ID }}
+          APPLE_APP_SPECIFIC_PASSWORD: ${{ secrets.APPLE_APP_SPECIFIC_PASSWORD }}
+          APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
       - uses: actions/upload-artifact@v4
+        continue-on-error: true   # if GitHub's space for artifacts is full, the installers still go to «Releases» (when there's a version)
         with:
           name: fer-agent-${{ runner.os }}
           path: |
             dist/*.dmg
             dist/*.exe
           if-no-files-found: error
+          retention-days: 7   # 9.4: the installers of each build are kept a week (GitHub's space for them is limited)
       - name: Publish in Releases (only with a version)
         if: startsWith(github.ref, 'refs/tags/v') || (github.event_name == 'workflow_dispatch' && inputs.version != '')
         uses: softprops/action-gh-release@v2
