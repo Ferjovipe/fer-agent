@@ -90,6 +90,7 @@ export default {
   "Open source · Works with your OpenRouter key or with your subscription's API": "Código abierto · Funciona con tu clave de OpenRouter o con la API de tu suscripción",
   "How it works ↓": "Cómo funciona ↓",
   "How it works": "Cómo funciona",
+  "Fer Agent in under a minute": "Fer Agent en menos de un minuto",
   "A building is your organisation. Each floor is a team with its own job; each agent, a profile with its brain, its heartbeat and its capabilities.": "Un edificio es tu organización. Cada piso, un equipo con su función; cada agente, una ficha con su cerebro, su latido y sus capacidades.",
   "Build your floors": "Levanta tus pisos",
   "Create the floors you need and give each one its job. On the left, the section head's office; on the right, the offices.": "Crea los pisos que necesites y ponle a cada uno su función. A la izquierda, el despacho del jefe de sección; a la derecha, las oficinas.",

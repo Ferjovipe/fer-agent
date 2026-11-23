@@ -200,7 +200,7 @@ try:
         check("te piden permiso antes de enviar, pagar o gastar" in landing_text, "home page: what the agents do, and that they ask before sending, paying or spending")
         check("reparte el trabajo" not in landing_text and "hablas con el jefe" not in landing_text.lower(), "the sentence “hablas con el jefe y él reparte el trabajo” is gone (from everywhere on the home page)")
         sections = page.eval_on_selector_all("#landing .section-l h2", "hs => hs.map(h => h.textContent)")
-        check(sections[:6] == ["Cómo funciona", "Agentes de serie", "El gasto, bajo control", "Vive donde quieras", "Qué es un agente y qué arriesgas", "Código abierto"], f"home page with its sections: {sections}")
+        check(sections[:7] == ["Fer Agent en menos de un minuto", "Cómo funciona", "Agentes de serie", "El gasto, bajo control", "Vive donde quieras", "Qué es un agente y qué arriesgas", "Código abierto"], f"home page with its sections (the video first): {sections}")
         page.screenshot(path=os.path.join(OUTPUT, "landing.png"))
         enter(page)
         page.wait_for_selector(".tier")
