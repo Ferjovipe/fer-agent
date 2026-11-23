@@ -90,7 +90,11 @@ The program is written in English. Copy `languages/es.js` (English on the left, 
 
 ## Status
 
-Tested with automated tests (OpenRouter, the other APIs, Google Drive, Telegram and X are simulated; the agents' Chrome is a real Chromium, browsing a local test shop): the engine, permissions, Internet as you, files and system orders on Linux, the website in Spanish and in English, and Fer Home. **Not tested yet with real keys or machines:** controlling the screen and apps on Mac and Windows, each agent's own Telegram bot, the other APIs (and whether each one accepts calls from a browser), Google Drive, X, JEV's decisions API and Lyria's audio.
+Tested with automated tests (OpenRouter, the other APIs, Google Drive, Telegram and X are simulated; the agents' Chrome is a real Chromium, browsing a local test shop): the engine, permissions, Internet as you, files and system orders on Linux, the website in Spanish and in English, and Fer Home.
+
+**Tested by hand on a real Mac (9.3–9.4):** free brains from OpenRouter and an own Claude key; an agent's own Telegram bot; an agent sending a real email (after your Send); the Helper answering from the manual; opening Notes and creating a note with a direct order to the app (typing and clicking also need macOS Accessibility permission).
+
+**Not tested yet with real keys or machines:** Windows, controlling the keyboard and mouse once Accessibility is granted, the other APIs (and whether each one accepts calls from a browser), Google Drive, X, JEV's decisions API and Lyria's audio.
 
 ## Tests
 
@@ -112,6 +116,10 @@ python3 tests/app9_test.py       # the desktop app inside: keys in Settings, loc
 node tests/app9_smoke.cjs dist/linux-unpacked/fer-agent    # the built app, opened for real (needs a screen or xvfb-run)
 ```
 
+
+## Security and contributing
+
+How to report a security problem, and what the app does and doesn't protect you from: [SECURITY.md](SECURITY.md). How to help (bugs, floors, skills, translations, code): [CONTRIBUTING.md](CONTRIBUTING.md).
 
 ## License
 

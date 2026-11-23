@@ -21,6 +21,8 @@ hands.mjs, skills/        Las manos de los agentes (app y Fer Casa): su Chrome, 
                           correo y las skills.
 manual/                   El manual de Fer Agent (es/ y en/, 16 capítulos): lo lee el Ayudante.
 community/                Las plantas de la comunidad: el archivo de cada una y su lista (index.json).
+SECURITY.md               Cómo avisar de un fallo de seguridad y qué protege (y qué no) la app.
+CONTRIBUTING.md           Cómo ayudar: fallos, plantas, habilidades, traducciones y código.
 tests/                    Las pruebas automáticas (no hacen falta para usarlo).
 
 
