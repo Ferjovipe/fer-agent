@@ -36,7 +36,7 @@ const check = (c, t) => { console.log((c ? "PASS " : "FAIL ") + t); ok = ok && !
   check(await win.title() !== "" && /127\.0\.0\.1:8852\/$/.test(win.url()), `the window opens the building on this computer (${win.url()})`);
   check(await win.evaluate(() => !!(window.ferApp && window.ferApp.chooseFolder && window.ferApp.restart)) && await win.evaluate(() => typeof require === "undefined"),
     "the window can only ask to choose a folder and reopen (no access to the computer)");
-  check((await win.innerText("#landing h1")) === "You have an agentic company at your service.", "a computer in English, the app in English");
+  check((await win.innerText("#landing h1")) === "Your team of AI agents, working for you.", "a computer in English, the app in English");
   check((await win.locator("#landing .button-outline").count()) === 0, "inside the app the download buttons don't appear");
   await win.screenshot({ path: path.join(OUTPUT, "app9-smoke-landing.png") });
   await win.waitForTimeout(2000);

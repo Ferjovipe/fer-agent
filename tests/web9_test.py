@@ -70,7 +70,7 @@ try:
         page.on("pageerror", lambda e: errors.append(str(e)))
         page.goto(URL); page.wait_for_selector("#landing .hero-txt")
         # ---------- Home page ----------
-        check(page.inner_text("#landing h1") == "Tienes una empresa agéntica a tu servicio.", f"the home page in Spanish: «{page.inner_text('#landing h1')}»")
+        check(page.inner_text("#landing h1") == "Tu equipo de agentes de IA, trabajando para ti.", f"the home page in Spanish: «{page.inner_text('#landing h1')}»")
         check(page.evaluate("document.documentElement.lang") == "es", "the page says it is in Spanish (lang=es)")
         check(not english(page, "#landing", "portada"), f"home page with no English left: {leftovers.get('portada')}")
         photo(page, "1-landing")

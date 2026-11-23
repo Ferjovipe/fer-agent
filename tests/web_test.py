@@ -196,8 +196,8 @@ try:
         page.wait_for_selector("#landing .button-big")
         h1 = page.inner_text("#landing h1")
         landing_text = page.inner_text("#landing")
-        check("empresa agéntica a tu servicio" in h1 and page.is_visible(".hero > img[src='img/landing.webp']"), f"home page: “{h1}” over the tower at night")
-        check("Tú decides el organigrama y qué hace cada agente" in landing_text, "home page: “Nosotros ponemos la base. Tú decides el organigrama y qué hace cada agente.”")
+        check("Tu equipo de agentes de IA" in h1 and page.is_visible(".hero > img[src='img/landing.webp']"), f"home page: “{h1}” over the tower at night")
+        check("te piden permiso antes de enviar, pagar o gastar" in landing_text, "home page: what the agents do, and that they ask before sending, paying or spending")
         check("reparte el trabajo" not in landing_text and "hablas con el jefe" not in landing_text.lower(), "the sentence “hablas con el jefe y él reparte el trabajo” is gone (from everywhere on the home page)")
         sections = page.eval_on_selector_all("#landing .section-l h2", "hs => hs.map(h => h.textContent)")
         check(sections[:6] == ["Cómo funciona", "Agentes de serie", "El gasto, bajo control", "Vive donde quieras", "Qué es un agente y qué arriesgas", "Código abierto"], f"home page with its sections: {sections}")
@@ -632,11 +632,11 @@ try:
         # ---------- Translation: a test dictionary changes the texts without touching the code ----------
         b = p.chromium.launch()
         ctx = b.new_context(viewport={"width": 1280, "height": 860}); ctx.add_init_script(INIT); ctx.route("https://**/*", router)
-        ctx.route("**/languages/zz.js", lambda r: r.fulfill(status=200, content_type="text/javascript", body='export default { "You have an agentic company at your service.": "ZZ · una empresa agéntica a tu servicio.", "Talk to {1}": "ZZ hablar con {1}", "Settings": "ZZ ajustes", "Today, no spending": "ZZ hoy, sin gasto" };'))   # v9: the code is in English; a dictionary has English on the left
+        ctx.route("**/languages/zz.js", lambda r: r.fulfill(status=200, content_type="text/javascript", body='export default { "Your team of AI agents, working for you.": "ZZ · tu equipo de agentes de IA.", "Talk to {1}": "ZZ hablar con {1}", "Settings": "ZZ ajustes", "Today, no spending": "ZZ hoy, sin gasto" };'))   # v9: the code is in English; a dictionary has English on the left
         page = ctx.new_page(); errors = []; page.on("pageerror", lambda e: errors.append(str(e)))
         page.goto(URL + "?lang=zz"); page.evaluate("localStorage.setItem('ferAgent.key','sk-or-test')"); page.goto(URL + "?lang=zz")
         page.wait_for_selector("#landing h1")
-        check(page.inner_text("#landing h1") == "ZZ · una empresa agéntica a tu servicio.", "translation: the home page comes from the dictionary")
+        check(page.inner_text("#landing h1") == "ZZ · tu equipo de agentes de IA.", "translation: the home page comes from the dictionary")
         enter(page, team=False); page.wait_for_selector(".tier")
         check(page.inner_text("#talkToBoss") == "ZZ hablar con Jefe" and page.get_attribute("#openSettings", "aria-label") == "ZZ ajustes" and page.inner_text("#meterToday") == "ZZ hoy, sin gasto", "translation: the header too, with sentences that carry data (“ZZ hablar con Jefe”)")
         check(not errors, f"translation with no errors: {errors}")

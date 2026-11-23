@@ -98,7 +98,7 @@ try:
               f"on the home page, “Download for Mac” and “Download for Windows”: the installer of the latest version, straight away, without asking for anything ({got})")
         notice = page.inner_text("#landing .landing-notice")
         check(notice.startswith("Fer Agent is free, open-source software, provided “as is”") and "at your own risk" in notice, f"the disclaimer, in English: “{notice[:70]}”")
-        check(page.inner_text("#landing h1") == "You have an agentic company at your service." and page.get_attribute(".landing-languages button[lang='en']", "aria-pressed") == "true",
+        check(page.inner_text("#landing h1") == "Your team of AI agents, working for you." and page.get_attribute(".landing-languages button[lang='en']", "aria-pressed") == "true",
               "a browser in English sees the home page in English (EN marked)")
         check(not spanish(page, "#landing", "portada"), f"home page with no Spanish left: {leftovers.get('portada')}")
         photo(page, "1-landing")
@@ -259,7 +259,7 @@ try:
         # ---------- Switching to Spanish with the home page's button ----------
         page.click("#toLanding"); page.wait_for_selector("#landing .landing-languages")
         page.click(".landing-languages button[lang='es']"); page.wait_for_load_state("load"); page.wait_for_selector("#landing .hero-txt"); page.wait_for_timeout(800)
-        check(page.inner_text("#landing h1") == "Tienes una empresa agéntica a tu servicio." and state(page).get("language") == "es", "ES · Español: the website and the building move to Spanish")
+        check(page.inner_text("#landing h1") == "Tu equipo de agentes de IA, trabajando para ti." and state(page).get("language") == "es", "ES · Español: the website and the building move to Spanish")
         n_ag = next(a for a in state(page)["agents"] if a["id"] == "sage1")["name"]
         check(n_ag == "Sabio 1", f"the built-in names change with the language ({n_ag})")
         check(not errors, f"no errors on the page: {errors[:3]}")
