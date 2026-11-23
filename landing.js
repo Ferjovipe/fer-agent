@@ -7,6 +7,8 @@
 const DOWNLOAD = "https://github.com/Ferjovipe/fer-agent/releases/latest";
 // the installers of the latest version, straight away (their names don't change from one version to the next)
 const DOWNLOAD_MAC = DOWNLOAD + "/download/Fer-Agent-mac.dmg", DOWNLOAD_WINDOWS = DOWNLOAD + "/download/Fer-Agent-windows.exe";
+// the video lives on the website; anywhere else (the desktop app, Fer Home, a copy on your computer) it plays from there
+const VIDEO_HOME = location.hostname === "feragent.netlify.app" ? "" : "https://feragent.netlify.app/";
 export function renderLanding(cont, { h, enter, figure, languages, language, changeLanguage }) {
   cont.innerHTML = "";
   const BUILT_IN = [
@@ -35,10 +37,10 @@ export function renderLanding(cont, { h, enter, figure, languages, language, cha
             h("a", { class: "button-outline", href: DOWNLOAD_WINDOWS, rel: "noopener" }, "Download for Windows")])),
         h("span", { class: "small-print" }, "Free and open source · Mac, Windows or the browser · With the AI you choose")),
       h("button", { class: "download", type: "button", onclick: () => cont.querySelector(".section-l").scrollIntoView({ behavior: "smooth" }) }, "How it works ↓")),
-    // the launch video, in the website's language (the desktop app doesn't carry the video files)
-    /Electron\//.test(navigator.userAgent) ? null : h("section", { class: "section-l video-l" },
+    // the launch video, in the website's language. The desktop app and Fer Home don't carry the video files: they play it from the website
+    h("section", { class: "section-l video-l" },
       h("h2", {}, "Fer Agent in under a minute"),
-      h("video", { class: "promo", controls: true, playsinline: true, preload: "none", poster: `video/poster-${language === "es" ? "es" : "en"}.jpg`, src: `video/feragent-${language === "es" ? "es" : "en"}.mp4` })),
+      h("video", { class: "promo", controls: true, playsinline: true, preload: "none", poster: `${VIDEO_HOME}video/poster-${language === "es" ? "es" : "en"}.jpg`, src: `${VIDEO_HOME}video/feragent-${language === "es" ? "es" : "en"}.mp4` })),
     h("section", { class: "section-l" },
       h("h2", {}, "How it works"),
       h("p", {}, "A building is your organisation. Each floor is a team with its own job; each agent, a profile with its brain, its heartbeat and its capabilities."),
