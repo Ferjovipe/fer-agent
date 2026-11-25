@@ -1,6 +1,6 @@
 # Common problems
 
-**The Mac won't let me open the app.** System Settings → Privacy & Security → «Open Anyway». If it says it's damaged: in Terminal, xattr -dr com.apple.quarantine "/Applications/Fer Agent.app".
+**The Mac won't let me open the app.** Download it from the project's Releases page: it's signed and notarized by Apple, and the Mac only asks once (press «Open»). If you still have a version from before 9.4.2: System Settings → Privacy & Security → «Open Anyway».
 
 **The agent doesn't do anything by itself.** Check whether the building is paused (the heart at the top) and whether the agent is on «Only when asked» or off (Work → When it works).
 
@@ -11,8 +11,6 @@
 **The agent can't browse or use its capabilities.** Its brain must «use tools»: look for it with the «Uses tools» filter. And the capability must be ticked in its profile.
 
 **It doesn't get into my email or my website.** Open Settings → «Your websites, in the agents' Chrome» and sign in yourself once on that website.
-
-**I already gave the Accessibility permission and the notice keeps coming up.** It happens when you install a new version while the app isn't signed by Apple: for the Mac it's another app. In Accessibility, remove Fer Agent with «−», add it again with «+» from Applications, turn it on and reopen Fer Agent (Cmd+Q and open). Pressing «Deny» on the notice doesn't fix it: press «Open System Settings».
 
 **It can't control my apps on the Mac.** Give Fer Agent the Accessibility and Screen Recording permissions (System Settings → Privacy & Security) and open the app again.
 

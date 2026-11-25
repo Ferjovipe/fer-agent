@@ -86,5 +86,5 @@ jobs:
           prerelease: ${{ contains(inputs.version || github.ref_name, '-') }}
           body: |
             Fer Agent desktop app · Mac: `Fer-Agent-mac.dmg` (any Mac, Apple chip or Intel) · Windows: `Fer-Agent-windows.exe`.
-            First time on a Mac (if this version isn't signed by Apple): System Settings → Privacy & Security → **Open Anyway**. On Windows: **More info → Run anyway**.
-            Then follow the «First steps» (your key, the boss's brain and its first task). From 9.4 the app updates itself (on a Mac, once it's signed by Apple).
+            Mac: signed and notarized by Apple; the first time, the Mac asks once and you press **Open**. On Windows: **More info → Run anyway**.
+            Then follow the «First steps» (your key, the boss's brain and its first task). From 9.4 the app updates itself.

@@ -1,6 +1,6 @@
 # Problemas frecuentes
 
-**El Mac no deja abrir la aplicación.** Ajustes del Sistema → Privacidad y seguridad → «Abrir igualmente». Si dice que está dañada: en Terminal, xattr -dr com.apple.quarantine "/Applications/Fer Agent.app".
+**El Mac no deja abrir la aplicación.** Descárgala de la página de Releases del proyecto: está firmada y notarizada por Apple, y el Mac solo pregunta una vez (pulsa «Abrir»). Si aún tienes una versión anterior a la 9.4.2: Ajustes del Sistema → Privacidad y seguridad → «Abrir igualmente».
 
 **El agente no hace nada solo.** Mira si el edificio está en pausa (el corazón, arriba) y si el agente está en «Solo cuando se lo piden» o apagado (Trabajo → Cuándo trabaja).
 
@@ -13,8 +13,6 @@
 **No entra en mi correo o en mi web.** Abre Ajustes → «Tus webs, en el Chrome de los agentes» y entra tú una vez en esa web.
 
 **No puede controlar mis apps en el Mac.** Dale a Fer Agent los permisos de Accesibilidad y Grabación de pantalla (Ajustes del Sistema → Privacidad y seguridad) y vuelve a abrir la aplicación.
-
-**Ya di el permiso de Accesibilidad y el aviso sigue saliendo.** Pasa al instalar una versión nueva mientras la app no está firmada por Apple: para el Mac es otra app. En Accesibilidad, quita Fer Agent con «−», añádelo otra vez con «+» desde Aplicaciones, enciéndelo y vuelve a abrir Fer Agent (Cmd+Q y abrir). Pulsar «Denegar» en el aviso no lo arregla: pulsa «Abrir Ajustes del Sistema».
 
 **No encuentra algo en sus documentos.** Mira en su ficha que el documento aparezca como leído (un PDF escaneado no tiene texto). Pregunta con palabras que estén en el documento.
 

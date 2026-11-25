@@ -7,19 +7,11 @@
 3. Arrastra «Fer Agent» a la carpeta Aplicaciones. Si ya tenías una versión, elige «Reemplazar». No pierdes nada: tu edificio y tus claves se guardan aparte.
 4. Abre Fer Agent desde Aplicaciones.
 
-### Si el Mac dice que no puede verificar la aplicación
-
-Mientras la aplicación no lleve la firma de Apple, la primera vez el Mac la bloquea. Dos formas de abrirla:
-- **Sin Terminal**: abre Ajustes del Sistema → Privacidad y seguridad. Abajo verás «Fer Agent se ha bloqueado»: pulsa «Abrir igualmente».
-- **Con Terminal** (si dice que la aplicación «está dañada»): abre Terminal, pega esto y pulsa Intro:
-  xattr -dr com.apple.quarantine "/Applications/Fer Agent.app"
-  Después ábrela normalmente.
+La aplicación está firmada y notarizada por Apple. La primera vez, el Mac te pregunta si quieres abrir una aplicación descargada de internet: pulsa «Abrir».
 
 ### Permisos del Mac para «Tu ordenador como tú»
 
 La primera vez que un agente use tu ordenador, el Mac pedirá dos permisos para Fer Agent: **Accesibilidad** (pulsar y escribir) y **Grabación de pantalla** (ver la pantalla). Se dan en Ajustes del Sistema → Privacidad y seguridad. Después, cierra y vuelve a abrir Fer Agent.
-
-Mientras la app no esté firmada por Apple, el Mac trata cada versión nueva como una app distinta: el interruptor de Accesibilidad que encendiste era de la versión anterior y el aviso vuelve a salir. Arreglo: Ajustes del Sistema → Privacidad y seguridad → Accesibilidad → selecciona Fer Agent y pulsa «−»; pulsa «+», elige Fer Agent en Aplicaciones y enciéndelo; cierra Fer Agent del todo (Cmd+Q) y ábrelo otra vez.
 
 Hay dos «autorizar» distintos: el de la **bandeja de Fer Agent** (tu permiso para que el agente haga algo concreto) y el de **Accesibilidad del Mac** (que el Mac deje a Fer Agent usar el teclado y el ratón). Abrir una app o pedirle algo con una orden directa (por ejemplo, crear una nota en Notas) no necesita Accesibilidad; pulsar y escribir, sí.
 
@@ -30,7 +22,7 @@ Hay dos «autorizar» distintos: el de la **bandeja de Fer Agent** (tu permiso p
 
 ## Actualizaciones
 
-Desde la 9.4 la app busca versión nueva al abrirse y cada 6 horas. Si la hay, la descarga sola y se instala al cerrar la app (el sistema te avisa cuando está lista). En el Mac esto funciona cuando la app está firmada por Apple; hasta entonces, la versión nueva se instala a mano: descargas el instalador y arrastras Fer Agent a Aplicaciones.
+Desde la 9.4 la app busca versión nueva al abrirse y cada 6 horas. Si la hay, la descarga sola y se instala al cerrar la app (el sistema te avisa cuando está lista).
 
 ## Dónde se guardan tus datos
 

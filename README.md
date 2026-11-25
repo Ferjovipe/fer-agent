@@ -38,9 +38,9 @@ You move the building from one to another with **Save backup** and **Load a back
 
 ## The desktop app
 
-- **First time on a Mac:** the app isn't signed with an Apple certificate yet, so macOS says it can't verify the developer. Open **System Settings → Privacy & Security**, scroll down and press **Open Anyway** (only once).
-- **Accessibility on a Mac** (for agents with *Your computer as you* that use the keyboard and mouse): System Settings → Privacy & Security → Accessibility → Fer Agent. While the app isn't signed by Apple, macOS treats each new version as a different app: remove Fer Agent with **−**, add it again with **+**, and reopen the app.
-- **Updates (from 9.4):** the app checks the project's GitHub Releases when it opens and every 6 hours, downloads the new version and installs it when you quit. On a Mac this needs the Apple-signed build; until then, new versions are installed by hand.
+- **First time on a Mac:** the app is signed and notarized by Apple. macOS only asks once whether you want to open an app downloaded from the internet: press **Open**.
+- **Accessibility on a Mac** (for agents with *Your computer as you* that use the keyboard and mouse): System Settings → Privacy & Security → Accessibility → Fer Agent.
+- **Updates (from 9.4):** the app checks the project's GitHub Releases when it opens and every 6 hours, downloads the new version and installs it when you quit.
 - **Apple signature:** the *Desktop app* workflow signs and notarizes the Mac build when the repository has the secrets `CSC_LINK`, `CSC_KEY_PASSWORD`, `APPLE_ID`, `APPLE_APP_SPECIFIC_PASSWORD` and `APPLE_TEAM_ID` (see `build/mac-signing.mjs`). Without them it's built as before.
 - **First time on Windows:** if you see “Windows protected your PC”, press **More info → Run anyway** (only once).
 - **Your data** (building, keys, brain folder, the agents' Chrome profile) stays on your computer: on a Mac in `~/Library/Application Support/Fer Agent/data`, on Windows in `%APPDATA%\Fer Agent\data`. A log, `fer-agent.log`, is kept there too.
